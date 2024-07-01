@@ -2,6 +2,8 @@ import platform
 import subprocess
 import os
 
+from uuid import uuid4
+from time import sleep
 from PyQt5.QtWidgets import QMessageBox
 
 from .const import *
@@ -12,6 +14,30 @@ class _DockerUtilsMixin:
     self.volume_path = self.get_volume_path()
     self.docker_image = DOCKER_IMAGE
     self.docker_container_name = DOCKER_CONTAINER_NAME
+    self.env_file = ENV_FILE
+    self.node_id = self.get_node_id()
+    self.mqtt_host = DEFAULT_MQTT_HOST
+    self.mqtt_user = DEFAULT_MQTT_USER
+    self.mqtt_password = DEFAULT_MQTT_PASSWORD
+    self.generate_env_file()
+    return
+  
+  def get_node_id(self):
+    return 'naeural_' + str(uuid4())[:8]
+    
+  def generate_env_file(self):
+    if os.path.exists(self.env_file):
+      pass
+    else:
+      str_env = ENV_TEMPLATE.format(
+        self.node_id, 
+        self.mqtt_host, 
+        self.mqtt_user, 
+        self.mqtt_password
+      )
+      with open(self.env_file, 'w') as f:
+        f.write(str_env)
+    return
 
 
   def get_volume_path(self):
@@ -43,6 +69,7 @@ class _DockerUtilsMixin:
         'docker', 'run', '--gpus=all', '--env-file', self.env_file, '-v', 
         f'{self.volume_path}:/edge_node/_local_cache', '--name', self.docker_container_name, '-d', self.docker_image
       ])
+      sleep(2)
       QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
     except subprocess.CalledProcessError:
       QMessageBox.warning(self, 'Container Launch', 'Failed to launch container.')
@@ -53,7 +80,8 @@ class _DockerUtilsMixin:
     try:
       subprocess.check_call(['docker', 'stop', self.docker_container_name])
       subprocess.check_call(['docker', 'rm', self.docker_container_name])
-      QMessageBox.information(self, 'Container Stop', 'Container stopped successfully.')
+      sleep(2)
+      QMessageBox.information(self, 'Container Stop', 'Container stopped successfully.')      
     except subprocess.CalledProcessError:
       QMessageBox.warning(self, 'Container Stop', 'Failed to stop container.')
     return

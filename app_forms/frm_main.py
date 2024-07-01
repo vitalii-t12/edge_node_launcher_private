@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
   QGridLayout, 
   QSpacerItem, 
   QSizePolicy
+  
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -41,11 +42,12 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     
     self.initUI()
     self.timer = QTimer(self)
-    self.timer.timeout.connect(self.plot_data)
-    self.timer.start(10000)  # Refresh every 10 seconds
+    self.timer.timeout.connect(self.refresh_all)
+    self.timer.start(5_000)  # Refresh every 10 seconds
 
     self.plot_data()  # Initial plot
     return
+
 
   def initUI(self):
     self.setWindowTitle(WINDOW_TITLE)
@@ -68,9 +70,18 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
 
     menu_layout.addLayout(top_button_area)
 
-    menu_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+    # spacer
+    menu_layout.addSpacerItem(QSpacerItem(10, 50, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
+    # Add a horizontal line
+    horizontal_line = QFrame()
+    horizontal_line.setFrameShape(QFrame.HLine)
+    horizontal_line.setFrameShadow(QFrame.Sunken)
+    menu_layout.addWidget(horizontal_line)    
+
+    # bottom button area
     bottom_button_area = QVBoxLayout()
+    bottom_button_area.setAlignment(Qt.AlignBottom)
 
     # self.localAddressLabel = QLabel(LOCAL_NODE_ADDRESS_LABEL_TEXT)
     # bottom_button_area.addWidget(self.localAddressLabel)
@@ -87,9 +98,9 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     self.copyButton.clicked.connect(self.copy_address)
     bottom_button_area.addWidget(self.copyButton)
     
-    self.refreshButton = QPushButton(REFRESH_LOCAL_ADDRESS_BUTTON_TEXT)
-    self.refreshButton.clicked.connect(self.refresh_local_address)
-    bottom_button_area.addWidget(self.refreshButton)
+    # self.refreshButton = QPushButton(REFRESH_LOCAL_ADDRESS_BUTTON_TEXT)
+    # self.refreshButton.clicked.connect(self.refresh_local_address)
+    # bottom_button_area.addWidget(self.refreshButton)
 
     self.deleteButton = QPushButton(DELETE_AND_RESTART_BUTTON_TEXT)
     self.deleteButton.clicked.connect(self.delete_and_restart)
@@ -139,6 +150,7 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     self.apply_stylesheet()
     return
 
+
   def apply_stylesheet(self):
     self.setStyleSheet("""
       QPushButton {
@@ -179,12 +191,13 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     return
 
 
-
   def update_toggle_button_text(self):
     if self.is_container_running():
       self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
     else:
       self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+    return
+
 
   def edit_env_file(self):
     env_content = ''
@@ -227,7 +240,8 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     except FileNotFoundError:
       QMessageBox.warning(self, 'Plot Data', f'{LOCAL_HISTORY_FILE} not found.')
     return  
-    
+
+
   def plot_graphs(self, data):
     self.stack.setCurrentIndex(1)
     
@@ -316,11 +330,12 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     address_path = os.path.join(self.volume_path, LOCAL_ADDRESS_FILE)
     try:
       with open(address_path, 'r') as file:
-        address_info = file.read().split(' ')
-        self.addressDisplay.setText('Addr: ' + address_info[0])
-        self.nameDisplay.setText(address_info[1] if len(address_info) > 1 else '')
+        address_info = [x for x in file.read().split(' ') if len(x) > 0]
         self.node_addr = address_info[0]
         self.node_name = address_info[1] if len(address_info) > 1 else ''
+        str_display = address_info[0][:8] + '...' + address_info[0][-8:]
+        self.addressDisplay.setText('Addr: ' + str_display)
+        self.nameDisplay.setText('Name: ' + address_info[1] if len(address_info) > 1 else '')
     except FileNotFoundError:
       self.addressDisplay.setText('Address file not found.')
       self.nameDisplay.setText('')
@@ -329,4 +344,10 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
   def copy_address(self):
     clipboard = QApplication.clipboard()
     clipboard.setText(self.addressDisplay.text())
+    
+    
+  def refresh_all(self):
+    self.refresh_local_address()
+    self.plot_data()
+    return    
 
