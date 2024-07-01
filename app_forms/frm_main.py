@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import base64
 
 from PyQt5.QtWidgets import (
   QApplication, 
@@ -20,7 +21,7 @@ from PyQt5.QtWidgets import (
   
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QPixmap, QIcon
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
@@ -29,13 +30,19 @@ from datetime import datetime
 from utils.const import *
 from utils.docker import _DockerUtilsMixin
 
+from utils.icon import ICON_BASE64
+
+
+def get_icon_from_base64(base64_str):
+  icon_data = base64.b64decode(base64_str)
+  pixmap = QPixmap()
+  pixmap.loadFromData(icon_data)
+  return QIcon(pixmap)
 
 
 class EdgeNodeManager(QWidget, _DockerUtilsMixin):
   def __init__(self):
     super().__init__()
-
-    self.env_file = ENV_FILE
 
     if not self.check_docker():
       sys.exit(1)
@@ -47,22 +54,32 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
 
     self.plot_data()  # Initial plot
     return
+  
+  def center(self):
+    screen_geometry = QApplication.desktop().screenGeometry()
+    x = (screen_geometry.width() - self.width()) // 2
+    y = (screen_geometry.height() - self.height()) // 2
+    self.move(x, y)
+    return
 
 
   def initUI(self):
+    HEIGHT = 1100
     self.setWindowTitle(WINDOW_TITLE)
-    self.setGeometry(100, 100, 1500, 900)
+    self.setGeometry(0, 0, 1800, HEIGHT)
+    
+    self.center()
+
 
     main_layout = QHBoxLayout(self)
 
-    # Left menu layout
-    menu_layout = QVBoxLayout()
+    # Left menu layout with fixed width
+    menu_widget = QWidget()
+    menu_widget.setFixedWidth(300)  # Set the fixed width here
+    menu_layout = QVBoxLayout(menu_widget)
     menu_layout.setAlignment(Qt.AlignTop)
     
     top_button_area = QVBoxLayout()
-    self.envEditButton = QPushButton(EDIT_ENV_BUTTON_TEXT)
-    self.envEditButton.clicked.connect(self.edit_env_file)
-    top_button_area.addWidget(self.envEditButton)
 
     self.toggleButton = QPushButton(LAUNCH_CONTAINER_BUTTON_TEXT)
     self.toggleButton.clicked.connect(self.toggle_container)
@@ -70,22 +87,18 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
 
     menu_layout.addLayout(top_button_area)
 
-    # spacer
-    menu_layout.addSpacerItem(QSpacerItem(10, 50, QSizePolicy.Minimum, QSizePolicy.Expanding))
+    # Spacer to push bottom_button_area to the bottom
+    menu_layout.addSpacerItem(QSpacerItem(20, int(HEIGHT * 0.75) , QSizePolicy.Minimum, QSizePolicy.Expanding))
 
     # Add a horizontal line
     horizontal_line = QFrame()
     horizontal_line.setFrameShape(QFrame.HLine)
     horizontal_line.setFrameShadow(QFrame.Sunken)
-    menu_layout.addWidget(horizontal_line)    
+    menu_layout.addWidget(horizontal_line)
 
-    # bottom button area
+    # Bottom button area
     bottom_button_area = QVBoxLayout()
-    bottom_button_area.setAlignment(Qt.AlignBottom)
 
-    # self.localAddressLabel = QLabel(LOCAL_NODE_ADDRESS_LABEL_TEXT)
-    # bottom_button_area.addWidget(self.localAddressLabel)
-    
     self.addressDisplay = QLabel('')
     self.addressDisplay.setFont(QFont("Courier New"))
     bottom_button_area.addWidget(self.addressDisplay)
@@ -97,11 +110,11 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     self.copyButton = QPushButton(COPY_ADDRESS_BUTTON_TEXT)
     self.copyButton.clicked.connect(self.copy_address)
     bottom_button_area.addWidget(self.copyButton)
-    
-    # self.refreshButton = QPushButton(REFRESH_LOCAL_ADDRESS_BUTTON_TEXT)
-    # self.refreshButton.clicked.connect(self.refresh_local_address)
-    # bottom_button_area.addWidget(self.refreshButton)
 
+    self.envEditButton = QPushButton(EDIT_ENV_BUTTON_TEXT)
+    self.envEditButton.clicked.connect(self.edit_env_file)
+    bottom_button_area.addWidget(self.envEditButton)
+    
     self.deleteButton = QPushButton(DELETE_AND_RESTART_BUTTON_TEXT)
     self.deleteButton.clicked.connect(self.delete_and_restart)
     bottom_button_area.addWidget(self.deleteButton)
@@ -109,7 +122,7 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     bottom_button_area.addStretch()
     menu_layout.addLayout(bottom_button_area)
     
-    main_layout.addLayout(menu_layout, 1)
+    main_layout.addWidget(menu_widget)  # Add the fixed-width widget
 
     # Right side layout (stacked widget for main view and graphs)
     self.stack = QStackedWidget(self)
@@ -148,7 +161,10 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     self.setLayout(main_layout)
     self.refresh_local_address()
     self.apply_stylesheet()
+    
+    self.setWindowIcon(get_icon_from_base64(ICON_BASE64))
     return
+
 
 
   def apply_stylesheet(self):
@@ -202,26 +218,40 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
   def edit_env_file(self):
     env_content = ''
     try:
-      with open(self.env_file, 'r') as file:
-        env_content = file.read()
+        with open(self.env_file, 'r') as file:
+            env_content = file.read()
     except FileNotFoundError:
-      pass
-    
+        pass
+
+    # Create the text edit widget with Courier New font and light font color
     text_edit = QTextEdit()
     text_edit.setText(env_content)
-    
+    text_edit.setFont(QFont("Courier New", 12))
+    text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
+
+    # Create the dialog
     dialog = QDialog(self)
     dialog.setWindowTitle('Edit .env File')
+    dialog.setGeometry(0, 0, 1000, 900)  # Enlarge the edit window
+
+    # Center the dialog on the screen
+    screen_geometry = QApplication.desktop().screenGeometry()
+    x = (screen_geometry.width() - dialog.width()) // 2
+    y = (screen_geometry.height() - dialog.height()) // 2
+    dialog.move(x, y)
+
     dialog_layout = QVBoxLayout()
     dialog_layout.addWidget(text_edit)
-    
+
+    # Save button
     save_button = QPushButton('Save')
     save_button.clicked.connect(lambda: self.save_env_file(text_edit.toPlainText(), dialog))
     dialog_layout.addWidget(save_button)
-    
+
     dialog.setLayout(dialog_layout)
     dialog.exec_()
     return
+
 
 
   def save_env_file(self, content, dialog):
@@ -234,96 +264,79 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
   def plot_data(self):
     data_path = os.path.join(self.volume_path, LOCAL_HISTORY_FILE)
     try:
-      with open(data_path, 'r') as file:
-        data = json.load(file)
-      self.plot_graphs(data)
+      if os.path.exists(data_path):
+        with open(data_path, 'r') as file:
+          data = json.load(file)
+        self.plot_graphs(data)
+      else:
+        self.plot_graphs(None)
     except FileNotFoundError:
-      QMessageBox.warning(self, 'Plot Data', f'{LOCAL_HISTORY_FILE} not found.')
+      self.plot_graphs(None)
     return  
 
 
   def plot_graphs(self, data):
     self.stack.setCurrentIndex(1)
-    
-    timestamps = [datetime.fromisoformat(ts) for ts in data['timestamps']]
-    
+
+    timestamps = [datetime.fromisoformat(ts) for ts in data['timestamps']] if data and 'timestamps' in data else []
+
+    def setup_axis(ax, title, xlabel, ylabel):
+      ax.set_facecolor('#243447')
+      ax.set_title(title, color='white')
+      ax.set_xlabel(xlabel, color='white')
+      ax.set_ylabel(ylabel, color='white')
+      if timestamps:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        ax.xaxis.set_major_locator(mdates.SecondLocator(interval=60))
+        ax.xaxis.set_minor_locator(mdates.SecondLocator(interval=10))
+        ax.tick_params(axis='x', colors='white', which='major')
+        ax.tick_params(axis='y', colors='white')
+        ax.tick_params(axis='x', which='minor', length=4, color='white')
+        ax.tick_params(which='both', width=1)
+        ax.tick_params(which='major', length=7)
+      return
+
+    def plot_graph(ax, timestamps, values, label, color):
+      if timestamps and values:
+        ax.plot(timestamps, values, label=label, color=color)
+        ax.legend()
+      else:
+        ax.text(0.5, 0.5, 'NO DATA', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, color='white')
+
     # Plot CPU Load
     self.fig_cpu.clear()
-    ax_cpu = self.fig_cpu.add_subplot(111, facecolor='#243447')
-    ax_cpu.plot(timestamps, data['cpu_load'], label='CPU Load', color='white')
-    ax_cpu.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-    ax_cpu.xaxis.set_major_locator(mdates.SecondLocator(interval=60))
-    ax_cpu.xaxis.set_minor_locator(mdates.SecondLocator(interval=10))
-    ax_cpu.set_title('CPU Load', color='white')
-    ax_cpu.set_xlabel('Timestamp', color='white')
-    ax_cpu.set_ylabel('Load (%)', color='white')
-    ax_cpu.legend()
-    ax_cpu.tick_params(axis='x', colors='white', which='major')
-    ax_cpu.tick_params(axis='y', colors='white')
-    ax_cpu.tick_params(axis='x', which='minor', length=4, color='white')
-    ax_cpu.tick_params(which='both', width=1)
-    ax_cpu.tick_params(which='major', length=7)
+    ax_cpu = self.fig_cpu.add_subplot(111)
+    setup_axis(ax_cpu, 'CPU Load', 'Timestamp', 'Load (%)')
+    plot_graph(ax_cpu, timestamps, data.get('cpu_load', []) if data else [], 'CPU Load', 'white')
     self.canvas_cpu.draw()
 
     # Plot Memory Load
     self.fig_memory.clear()
-    ax_memory = self.fig_memory.add_subplot(111, facecolor='#243447')
-    ax_memory.plot(timestamps, data['occupied_memory'], label='Occupied Memory', color='white')
-    ax_memory.plot(timestamps, data['total_memory'], label='Total Memory', color='yellow')
-    ax_memory.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-    ax_memory.xaxis.set_major_locator(mdates.SecondLocator(interval=60))
-    ax_memory.xaxis.set_minor_locator(mdates.SecondLocator(interval=10))
-    ax_memory.set_title('Memory Load', color='white')
-    ax_memory.set_xlabel('Timestamp', color='white')
-    ax_memory.set_ylabel('Memory (GB)', color='white')
-    ax_memory.legend()
-    ax_memory.tick_params(axis='x', colors='white', which='major')
-    ax_memory.tick_params(axis='y', colors='white')
-    ax_memory.tick_params(axis='x', which='minor', length=4, color='white')
-    ax_memory.tick_params(which='both', width=1)
-    ax_memory.tick_params(which='major', length=7)
+    ax_memory = self.fig_memory.add_subplot(111)
+    setup_axis(ax_memory, 'Memory Load', 'Timestamp', 'Memory (GB)')
+    plot_graph(ax_memory, timestamps, data.get('occupied_memory', []) if data else [], 'Occupied Memory', 'white')
+    plot_graph(ax_memory, timestamps, data.get('total_memory', []) if data else [], 'Total Memory', 'yellow')
     self.canvas_memory.draw()
 
     # Plot GPU Load if available
-    if any(data['gpu_load']):
-      self.fig_gpu.clear()
-      ax_gpu = self.fig_gpu.add_subplot(111, facecolor='#243447')
-      ax_gpu.plot(timestamps, data['gpu_load'], label='GPU Load', color='white')
-      ax_gpu.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-      ax_gpu.xaxis.set_major_locator(mdates.SecondLocator(interval=60))
-      ax_gpu.xaxis.set_minor_locator(mdates.SecondLocator(interval=10))
-      ax_gpu.set_title('GPU Load', color='white')
-      ax_gpu.set_xlabel('Timestamp', color='white')
-      ax_gpu.set_ylabel('Load (%)', color='white')
-      ax_gpu.legend()
-      ax_gpu.tick_params(axis='x', colors='white', which='major')
-      ax_gpu.tick_params(axis='y', colors='white')
-      ax_gpu.tick_params(axis='x', which='minor', length=4, color='white')
-      ax_gpu.tick_params(which='both', width=1)
-      ax_gpu.tick_params(which='major', length=7)
-      self.canvas_gpu.draw()
+    self.fig_gpu.clear()
+    ax_gpu = self.fig_gpu.add_subplot(111)
+    setup_axis(ax_gpu, 'GPU Load', 'Timestamp', 'Load (%)')
+    plot_graph(ax_gpu, timestamps, data.get('gpu_load', []) if data else [], 'GPU Load', 'white')
+    self.canvas_gpu.draw()
 
     # Plot GPU Memory Load if available
-    if any(data['gpu_occupied_memory']):
-      self.fig_gpu_memory.clear()
-      ax_gpu_memory = self.fig_gpu_memory.add_subplot(111, facecolor='#243447')
-      ax_gpu_memory.plot(timestamps, data['gpu_occupied_memory'], label='Occupied GPU Memory', color='white')
-      ax_gpu_memory.plot(timestamps, data['gpu_total_memory'], label='Total GPU Memory', color='yellow')
-      ax_gpu_memory.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-      ax_gpu_memory.xaxis.set_major_locator(mdates.SecondLocator(interval=60))
-      ax_gpu_memory.xaxis.set_minor_locator(mdates.SecondLocator(interval=10))
-      ax_gpu_memory.set_title('GPU Memory Load', color='white')
-      ax_gpu_memory.set_xlabel('Timestamp', color='white')
-      ax_gpu_memory.set_ylabel('Memory (GB)', color='white')
-      ax_gpu_memory.legend()
-      ax_gpu_memory.tick_params(axis='x', colors='white', which='major')
-      ax_gpu_memory.tick_params(axis='y', colors='white')
-      ax_gpu_memory.tick_params(axis='x', which='minor', length=4, color='white')
-      ax_gpu_memory.tick_params(which='both', width=1)
-      ax_gpu_memory.tick_params(which='major', length=7)
-      self.canvas_gpu_memory.draw()
+    self.fig_gpu_memory.clear()
+    ax_gpu_memory = self.fig_gpu_memory.add_subplot(111)
+    setup_axis(ax_gpu_memory, 'GPU Memory Load', 'Timestamp', 'Memory (GB)')
+    plot_graph(ax_gpu_memory, timestamps, data.get('gpu_occupied_memory', []) if data else [], 'Occupied GPU Memory', 'white')
+    plot_graph(ax_gpu_memory, timestamps, data.get('gpu_total_memory', []) if data else [], 'Total GPU Memory', 'yellow')
+    self.canvas_gpu_memory.draw()
 
     return
+
+    return
+
 
 
   def refresh_local_address(self):

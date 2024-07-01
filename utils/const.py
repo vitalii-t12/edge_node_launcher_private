@@ -1,8 +1,9 @@
 # Constants Section
 ENV_FILE = '.env'
+DOCKER_VOLUME = 'naeural_vol'
 DOCKER_IMAGE = 'naeural/edge_node'
 DOCKER_CONTAINER_NAME = 'edge_node_container'
-WINDOWS_VOLUME_PATH = '\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\naeural_vol\\_data'
+WINDOWS_VOLUME_PATH = f'\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
 LINUX_VOLUME_PATH = '/var/lib/docker/volumes/naeural_vol/_data'
 LOCAL_HISTORY_FILE = '_data/local_history.json'
 E2_PEM_FILE = '_data/e2.pem'
@@ -54,3 +55,4 @@ EE_GITVER=token_for_accessing_private_repositories
 EE_OPENAI=token_for_accessing_openai_api
 EE_HF_TOKEN=token_for_accessing_huggingface_api
 '''
+

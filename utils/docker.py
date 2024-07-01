@@ -20,6 +20,13 @@ class _DockerUtilsMixin:
     self.mqtt_user = DEFAULT_MQTT_USER
     self.mqtt_password = DEFAULT_MQTT_PASSWORD
     self.generate_env_file()
+    self.CMD = [
+        'docker', 'run', '--gpus=all', 
+        '--env-file', self.env_file, 
+        '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', 
+        '--name', self.docker_container_name, '-d', 
+        self.docker_image
+    ]
     return
   
   def get_node_id(self):
@@ -50,8 +57,11 @@ class _DockerUtilsMixin:
     try:
       subprocess.check_output(['docker', '--version'])
       return True
-    except subprocess.CalledProcessError:
-      QMessageBox.warning(self, 'Docker Check', 'Docker is not installed. Please install Docker and restart the application.')
+    except (subprocess.CalledProcessError, FileNotFoundError):
+      QMessageBox.warning(
+         self, 'Docker Check', 
+         'Docker is not installed. Please install Docker and restart the application.\n\nFor more information, visit: https://docs.docker.com/get-docker/'
+      )
       return False
 
 
@@ -65,10 +75,7 @@ class _DockerUtilsMixin:
 
   def launch_container(self):
     try:
-      subprocess.check_call([
-        'docker', 'run', '--gpus=all', '--env-file', self.env_file, '-v', 
-        f'{self.volume_path}:/edge_node/_local_cache', '--name', self.docker_container_name, '-d', self.docker_image
-      ])
+      subprocess.check_call(self.CMD)
       sleep(2)
       QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
     except subprocess.CalledProcessError:
@@ -89,12 +96,18 @@ class _DockerUtilsMixin:
 
   def delete_and_restart(self):
     pem_path = os.path.join(self.volume_path, E2_PEM_FILE)
-    try:
-      os.remove(pem_path)
-      self.stop_container()
-      self.launch_container()
-      QMessageBox.information(self, 'Restart Container', f'{E2_PEM_FILE} deleted and container restarted.')
-    except FileNotFoundError:
-      QMessageBox.warning(self, 'Restart Container', f'{E2_PEM_FILE} not found.')
+    if not self.is_container_running():
+      QMessageBox.warning(self, 'Restart Edge Node', 'Edge Node is not running.')
+    else:
+      # now we ask for confirmation
+      reply = QMessageBox.question(self, 'Restart Edge Node', 'Are you sure you want to reset the local node?', QMessageBox.Yes | QMessageBox.No)
+      if reply == QMessageBox.Yes:
+        try:
+          self.stop_container()
+          os.remove(pem_path)
+          self.launch_container()
+          QMessageBox.information(self, 'Restart Edge Node', f'{E2_PEM_FILE} deleted and Edge Node restarted.')
+        except Exception as e:
+          QMessageBox.warning(self, 'Restart Edge Node', f'Failed to reset Edge Node: {e}')
     return
   
