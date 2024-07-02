@@ -1,14 +1,16 @@
+from ver import __VER__
 # Constants Section
 ENV_FILE = '.env'
 DOCKER_VOLUME = 'naeural_vol'
 DOCKER_IMAGE = 'naeural/edge_node'
+DOCKER_TAG = 'develop'
 DOCKER_CONTAINER_NAME = 'edge_node_container'
 WINDOWS_VOLUME_PATH = f'\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
 LINUX_VOLUME_PATH = '/var/lib/docker/volumes/naeural_vol/_data'
 LOCAL_HISTORY_FILE = '_data/local_history.json'
 E2_PEM_FILE = '_data/e2.pem'
 LOCAL_ADDRESS_FILE = '_data/local_address.txt'
-WINDOW_TITLE = 'Edge Node Manager'
+WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
 EDIT_ENV_BUTTON_TEXT = 'Edit .env File'
 LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Container'
 STOP_CONTAINER_BUTTON_TEXT = 'Stop Container'
@@ -56,3 +58,41 @@ EE_OPENAI=token_for_accessing_openai_api
 EE_HF_TOKEN=token_for_accessing_huggingface_api
 '''
 
+STYLESHEET = """
+  QPushButton {
+    background-color: #1E90FF; 
+    color: white; 
+    border: 2px solid #87CEEB; 
+    padding: 10px 20px; 
+    font-size: 16px; 
+    margin: 4px 2px;
+    border-radius: 15px;
+  }
+  QPushButton:hover {
+    background-color: #104E8B;
+  }
+  QLabel {
+    font-size: 14px;
+    color: white;
+  }
+  QProgressBar {
+    border: 2px solid #1E90FF;
+    border-radius: 5px;
+    text-align: center;
+    height: 30px;
+    color: white;
+  }
+  QProgressBar::chunk {
+    background-color: #1E90FF;
+  }
+  QDialog, QWidget {
+    background-color: #0D1F2D;
+  }
+  QTextEdit {
+    background-color: #0D1F2D;
+    color: white;
+    font-size: 12px;
+    border: 1px solid #1E90FF;
+    border-radius: 5px;
+  }
+"""

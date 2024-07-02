@@ -32,6 +32,7 @@ from utils.docker import _DockerUtilsMixin
 
 from utils.icon import ICON_BASE64
 
+from ver import __VER__ as __version__
 
 def get_icon_from_base64(base64_str):
   icon_data = base64.b64decode(base64_str)
@@ -40,12 +41,17 @@ def get_icon_from_base64(base64_str):
   return QIcon(pixmap)
 
 
-class EdgeNodeManager(QWidget, _DockerUtilsMixin):
+class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
   def __init__(self):
     super().__init__()
+    
+    self.__version__ = __version__
 
     if not self.check_docker():
       sys.exit(1)
+      
+      
+    self._icon = get_icon_from_base64(ICON_BASE64)
     
     self.initUI()
     self.timer = QTimer(self)
@@ -53,6 +59,8 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     self.timer.start(5_000)  # Refresh every 10 seconds
 
     self.plot_data()  # Initial plot
+    
+    self.showMaximized()
     return
   
   def center(self):
@@ -62,6 +70,13 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     self.move(x, y)
     return
 
+
+  def set_windows_taskbar_icon(self):
+    import ctypes
+    myappid = 'naeural.edge_node_launcher'  # arbitrary string
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    return
+  
 
   def initUI(self):
     HEIGHT = 1100
@@ -162,40 +177,15 @@ class EdgeNodeManager(QWidget, _DockerUtilsMixin):
     self.refresh_local_address()
     self.apply_stylesheet()
     
-    self.setWindowIcon(get_icon_from_base64(ICON_BASE64))
+    self.setWindowIcon(self._icon)
+    
+    self.set_windows_taskbar_icon()
     return
 
 
 
   def apply_stylesheet(self):
-    self.setStyleSheet("""
-      QPushButton {
-        background-color: #1E90FF; 
-        color: white; 
-        border: 2px solid #87CEEB; 
-        padding: 10px 20px; 
-        font-size: 16px; 
-        margin: 4px 2px;
-        border-radius: 15px;
-      }
-      QPushButton:hover {
-        background-color: #104E8B;
-      }
-      QLabel {
-        font-size: 16px;
-        color: white;
-        margin: 10px 2px;
-      }
-      QWidget {
-        background-color: #0D1F2D;
-      }
-      QFrame {
-        background-color: #0D1F2D;
-      }
-      QVBoxLayout, QHBoxLayout {
-        background-color: #0D1F2D;
-      }
-    """)
+    self.setStyleSheet(STYLESHEET)
 
 
   def toggle_container(self):
