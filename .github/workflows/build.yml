@@ -28,10 +28,10 @@ jobs:
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
       # Step to read version.py and compare
-      - name: Check version in version.py
+      - name: Check version in ver.py
         id: check-version
         run: |
-          CURRENT_VERSION=$(cat version.py | grep -o "'.*'")
+          CURRENT_VERSION=$(cat ver.py | grep -o "'.*'")
           echo "Current version is $CURRENT_VERSION"
 
           if [ "$CURRENT_VERSION" == "$LATEST_TAG" ]; then
@@ -128,7 +128,7 @@ jobs:
       - name: Retrieve version
         id: retrieve_version
         run: |
-          echo "VERSION=$(cat version.py | grep -o "'.*'")" >> $GITHUB_OUTPUT
+          echo "VERSION=$(cat ver.py | grep -o "'.*'")" >> $GITHUB_OUTPUT
 
       - uses: actions/download-artifact@v3
         with:
