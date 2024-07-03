@@ -82,8 +82,9 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QTextEdi
 from PyQt5.QtCore import Qt
 
 class ProgressBarWindow(QDialog):
-  def __init__(self, message, icon_object):
+  def __init__(self, message, icon_object, sender):
     super().__init__()
+    self.sender = sender
     self.setWindowTitle("Progress")
     self.setWindowIcon(icon_object)
     self.setWindowModality(Qt.ApplicationModal)
@@ -122,7 +123,8 @@ class ProgressBarWindow(QDialog):
   
   def on_docker_pull_finished(self, success):
     if success:
-      QMessageBox.information(self, 'Docker Pull', 'Docker image pulled successfully.')
+      QMessageBox.information(self, 'Docker Pull', 'Docker image pulled successfully.')      
+      self.sender.add_log('Docker image pulled successfully.')
     else:
       QMessageBox.warning(self, 'Docker Pull', 'Failed to pull Docker image.')
     self.accept()  # Close the progress dialog
@@ -133,6 +135,8 @@ class ProgressBarWindow(QDialog):
 class _DockerUtilsMixin:
   def __init__(self):
     super().__init__()
+    self.node_addr = None
+    self.container_last_run_status = None
     self.volume_path = self.__get_volume_path()
     self.docker_container_name = DOCKER_CONTAINER_NAME
     self.docker_tag = DOCKER_TAG
@@ -158,7 +162,7 @@ class _DockerUtilsMixin:
 
 
   def __maybe_docker_pull(self):
-    progress_dialog = ProgressBarWindow("Pulling Docker Image...", self._icon)
+    progress_dialog = ProgressBarWindow("Pulling Docker Image...", self._icon, self)
     self.docker_pull_thread = DockerPullThread(self.docker_image)
     self.docker_pull_thread.progress_update.connect(progress_dialog.update_progress)
     self.docker_pull_thread.pull_finished.connect(progress_dialog.on_docker_pull_finished)
@@ -167,9 +171,6 @@ class _DockerUtilsMixin:
     self.progress_dialog = progress_dialog
     self.progress_dialog.exec_()
     return
-
-
-
   
   
   def get_node_id(self):
@@ -231,7 +232,8 @@ class _DockerUtilsMixin:
 
   def check_docker(self):
     try:
-      subprocess.check_output(['docker', '--version'])
+      output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
+      self.add_log("Docker status: " + output)
       return True
     except (subprocess.CalledProcessError, FileNotFoundError):
       QMessageBox.warning(
@@ -243,8 +245,18 @@ class _DockerUtilsMixin:
 
   def is_container_running(self):
     try:
-      status = subprocess.check_output(['docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name])
-      return status.strip() == b'true'
+      status = subprocess.check_output(
+        ['docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name],
+        stderr=subprocess.STDOUT, universal_newlines=True
+      )
+      status = status.strip()
+      container_running = status.split()[-1] == 'true'
+      if container_running != self.container_last_run_status:
+        self.add_log('Container status changed: {} -> {} (status: {})'.format(
+          self.container_last_run_status, container_running, status
+        ))
+        self.container_last_run_status = container_running
+      return container_running
     except subprocess.CalledProcessError:
       return False
 
@@ -254,7 +266,9 @@ class _DockerUtilsMixin:
       is_env_ok = self.__check_env_keys()
       if not is_env_ok:
         return
+      self.add_log('Updating image...')
       self.__maybe_docker_pull()
+      self.add_log('Starting container...')
       subprocess.check_call(self.CMD)
       sleep(2)
       QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
@@ -265,6 +279,7 @@ class _DockerUtilsMixin:
 
   def stop_container(self):
     try:
+      self.add_log('Stopping container...')
       subprocess.check_call(['docker', 'stop', self.docker_container_name])
       subprocess.check_call(['docker', 'rm', self.docker_container_name])
       sleep(2)

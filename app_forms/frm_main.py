@@ -47,20 +47,27 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     
     self.__version__ = __version__
 
-    if not self.check_docker():
-      sys.exit(1)
       
       
     self._icon = get_icon_from_base64(ICON_BASE64)
     
     self.initUI()
+
+    if not self.check_docker():
+      sys.exit(1)
+    
     self.timer = QTimer(self)
     self.timer.timeout.connect(self.refresh_all)
-    self.timer.start(5_000)  # Refresh every 10 seconds
+    self.timer.start(10_000)  # Refresh every 10 seconds
 
     self.plot_data()  # Initial plot
     
     self.showMaximized()
+    self.update_toggle_button_text()
+    return
+  
+  def add_log(self, line):
+    self.logView.append(line)
     return
   
   def center(self):
@@ -140,16 +147,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     main_layout.addWidget(menu_widget)  # Add the fixed-width widget
 
     # Right side layout (stacked widget for main view and graphs)
-    self.stack = QStackedWidget(self)
+    self.left_panel = QWidget()
+    left_panel_layout = QVBoxLayout()
     
-    self.mainView = QWidget()
-    main_layout_2 = QVBoxLayout()
-    self.localAddressLabelMain = QLabel(LOCAL_NODE_ADDRESS_LABEL_TEXT)
-    main_layout_2.addWidget(self.localAddressLabelMain)
-    self.addressDisplayMain = QLabel('')
-    main_layout_2.addWidget(self.addressDisplayMain)
-    self.mainView.setLayout(main_layout_2)
-    
+    # the graph area
     self.graphView = QWidget()
     graph_layout = QGridLayout()
     self.fig_cpu = Figure(facecolor='#243447')
@@ -164,14 +165,22 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     graph_layout.addWidget(self.canvas_cpu, 0, 0)
     graph_layout.addWidget(self.canvas_memory, 0, 1)
     graph_layout.addWidget(self.canvas_gpu, 1, 0)
-    graph_layout.addWidget(self.canvas_gpu_memory, 1, 1)
-    
+    graph_layout.addWidget(self.canvas_gpu_memory, 1, 1)    
     self.graphView.setLayout(graph_layout)
+  
+    left_panel_layout.addWidget(self.graphView)
     
-    self.stack.addWidget(self.mainView)
-    self.stack.addWidget(self.graphView)
+    # the log scroll text area
+    self.logView = QTextEdit()
+    self.logView.setReadOnly(True)
+    self.logView.setStyleSheet(STYLESHEET)
+    self.logView.setFixedHeight(150)
+    self.logView.setFont(QFont("Courier New"))
+    left_panel_layout.addWidget(self.logView)      
     
-    main_layout.addWidget(self.stack, 3)
+    self.left_panel.setLayout(left_panel_layout)
+      
+    main_layout.addWidget(self.left_panel)
 
     self.setLayout(main_layout)
     self.refresh_local_address()
@@ -249,6 +258,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
       file.write(content)
     dialog.accept()
     return
+  
+  
+  def cleanup_data(self, data):
+    start_time = data['timestamps'][0] if 'timestamps' in data else None
+    end_time = data['timestamps'][-1] if 'timestamps' in data else None
+    
 
 
   def plot_data(self):
@@ -257,6 +272,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
       if os.path.exists(data_path):
         with open(data_path, 'r') as file:
           data = json.load(file)
+        self.add_log('Data loaded successfully: {} timestamps from {} to {}'.format(
+          len(data['timestamps']), data['timestamps'][0], data['timestamps'][-1])
+        )
         self.plot_graphs(data)
       else:
         self.plot_graphs(None)
@@ -266,8 +284,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
 
 
   def plot_graphs(self, data):
-    self.stack.setCurrentIndex(1)
-
     timestamps = [datetime.fromisoformat(ts) for ts in data['timestamps']] if data and 'timestamps' in data else []
 
     def setup_axis(ax, title, xlabel, ylabel):
@@ -277,7 +293,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
       ax.set_ylabel(ylabel, color='white')
       if timestamps:
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-        ax.xaxis.set_major_locator(mdates.SecondLocator(interval=60))
+        ax.xaxis.set_major_locator(mdates.SecondLocator(interval=360))
         ax.xaxis.set_minor_locator(mdates.SecondLocator(interval=10))
         ax.tick_params(axis='x', colors='white', which='major')
         ax.tick_params(axis='y', colors='white')
@@ -334,11 +350,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     try:
       with open(address_path, 'r') as file:
         address_info = [x for x in file.read().split(' ') if len(x) > 0]
-        self.node_addr = address_info[0]
-        self.node_name = address_info[1] if len(address_info) > 1 else ''
-        str_display = address_info[0][:8] + '...' + address_info[0][-8:]
-        self.addressDisplay.setText('Addr: ' + str_display)
-        self.nameDisplay.setText('Name: ' + address_info[1] if len(address_info) > 1 else '')
+        if len(address_info) == 0:
+          raise FileNotFoundError
+        if address_info[0] != self.node_addr:
+          self.node_addr = address_info[0]
+          self.node_name = address_info[1] if len(address_info) > 1 else ''
+          str_display = address_info[0][:8] + '...' + address_info[0][-8:]
+          self.addressDisplay.setText('Addr: ' + str_display)
+          self.nameDisplay.setText('Name: ' + address_info[1] if len(address_info) > 1 else '')
+          self.add_log(f'Local address updated: {self.node_addr} : {self.node_name}')
     except FileNotFoundError:
       self.addressDisplay.setText('Address file not found.')
       self.nameDisplay.setText('')
@@ -347,10 +367,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
   def copy_address(self):
     clipboard = QApplication.clipboard()
     clipboard.setText(self.addressDisplay.text())
+    return
     
     
   def refresh_all(self):
     self.refresh_local_address()
     self.plot_data()
+    self.update_toggle_button_text()
     return    
 
