@@ -26,7 +26,7 @@ class DockerPullThread(QThread):
 
   def run(self):
     try:
-      process = subprocess.Popen(['docker', 'pull', self.image_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+      process = subprocess.Popen(['docker', 'pull', self.image_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
       
       for line in iter(process.stdout.readline, ''):
         self.parse_output(line)
@@ -223,7 +223,7 @@ class _DockerUtilsMixin:
 
   def check_docker(self):
     try:
-      output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
+      output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
       self.add_log("Docker status: " + output)
       return True
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -238,7 +238,7 @@ class _DockerUtilsMixin:
     try:
       status = subprocess.check_output(
         ['docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name],
-        stderr=subprocess.STDOUT, universal_newlines=True
+        stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW
       )
       status = status.strip()
       container_running = status.split()[-1] == 'true'
@@ -260,7 +260,7 @@ class _DockerUtilsMixin:
       self.add_log('Updating image...')
       self.__maybe_docker_pull()
       self.add_log('Starting container...')
-      subprocess.check_call(self.CMD)
+      subprocess.check_call(self.CMD, creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)
       QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
     except subprocess.CalledProcessError:
@@ -271,8 +271,8 @@ class _DockerUtilsMixin:
   def stop_container(self):
     try:
       self.add_log('Stopping container...')
-      subprocess.check_call(['docker', 'stop', self.docker_container_name])
-      subprocess.check_call(['docker', 'rm', self.docker_container_name])
+      subprocess.check_call(['docker', 'stop', self.docker_container_name], creationflags=subprocess.CREATE_NO_WINDOW)
+      subprocess.check_call(['docker', 'rm', self.docker_container_name], creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)
       QMessageBox.information(self, 'Container Stop', 'Container stopped successfully.')      
     except subprocess.CalledProcessError:
