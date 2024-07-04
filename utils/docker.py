@@ -139,7 +139,7 @@ class _DockerUtilsMixin:
     self.__generate_env_file()
     self.__setup_docker_run()
     return
-  
+    
   def __setup_docker_run(self):
     self.docker_image = DOCKER_IMAGE + ":" + self.docker_tag
     self.CMD = [

@@ -19,6 +19,9 @@ LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 REFRESH_LOCAL_ADDRESS_BUTTON_TEXT = 'Refresh Local Address'
 COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
 
+REFRESH_TIME = 10_000
+MAX_HISTORY_QUEUE = 5 * 60 // 10 # 5 minutes @ 10 seconds each hb
+
 DEFAULT_MQTT_HOST = 'r9092118.ala.eu-central-1.emqxsl.com'
 DEFAULT_MQTT_USER = 'corenaeural'
 DEFAULT_MQTT_PASSWORD = ''
