@@ -2,7 +2,8 @@ import sys
 import os
 import json
 import base64
-import matplotlib.dates as mdates
+from datetime import datetime
+from time import time
 
 from PyQt5.QtWidgets import (
   QApplication, 
@@ -10,23 +11,20 @@ from PyQt5.QtWidgets import (
   QVBoxLayout, 
   QPushButton, 
   QLabel, 
+  QGridLayout,
+  QFrame, 
   QMessageBox, 
   QTextEdit, 
   QDialog, 
   QHBoxLayout, 
-  QStackedWidget, 
-  QFrame, 
-  QGridLayout, 
   QSpacerItem, 
   QSizePolicy
-  
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QPixmap, QIcon
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-from datetime import datetime
-from time import time
+import pyqtgraph as pg
+
+from pyqtgraph import AxisItem
 
 from utils.const import *
 from utils.docker import _DockerUtilsMixin
@@ -41,15 +39,20 @@ def get_icon_from_base64(base64_str):
   pixmap.loadFromData(icon_data)
   return QIcon(pixmap)
 
+class DateAxisItem(AxisItem):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.setLabel(text='Timestamp')
+
+  def tickStrings(self, values, scale, spacing):
+    return [datetime.fromtimestamp(value).strftime("%H:%M") for value in values]
 
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
   def __init__(self):
     super().__init__()
     
     self.__version__ = __version__
-
     self.__last_timesteps = []
-      
     self._icon = get_icon_from_base64(ICON_BASE64)
     
     self.initUI()
@@ -78,21 +81,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     self.move(x, y)
     return
 
-
   def set_windows_taskbar_icon(self):
     import ctypes
     myappid = 'naeural.edge_node_launcher'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     return
   
-
   def initUI(self):
     HEIGHT = 1100
     self.setWindowTitle(WINDOW_TITLE)
     self.setGeometry(0, 0, 1800, HEIGHT)
-    
     self.center()
-
 
     main_layout = QHBoxLayout(self)
 
@@ -111,7 +110,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     menu_layout.addLayout(top_button_area)
 
     # Spacer to push bottom_button_area to the bottom
-    menu_layout.addSpacerItem(QSpacerItem(20, int(HEIGHT * 0.75) , QSizePolicy.Minimum, QSizePolicy.Expanding))
+    menu_layout.addSpacerItem(QSpacerItem(20, int(HEIGHT * 0.75), QSizePolicy.Minimum, QSizePolicy.Expanding))
 
     # Add a horizontal line
     horizontal_line = QFrame()
@@ -147,28 +146,25 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     
     main_layout.addWidget(menu_widget)  # Add the fixed-width widget
 
-    # Right side layout (stacked widget for main view and graphs)
+    # Right side layout (for graphs)
     self.left_panel = QWidget()
     left_panel_layout = QVBoxLayout()
     
     # the graph area
     self.graphView = QWidget()
     graph_layout = QGridLayout()
-    self.fig_cpu = Figure(facecolor='#243447')
-    self.canvas_cpu = FigureCanvas(self.fig_cpu)
-    self.fig_memory = Figure(facecolor='#243447')
-    self.canvas_memory = FigureCanvas(self.fig_memory)
-    self.fig_gpu = Figure(facecolor='#243447')
-    self.canvas_gpu = FigureCanvas(self.fig_gpu)
-    self.fig_gpu_memory = Figure(facecolor='#243447')
-    self.canvas_gpu_memory = FigureCanvas(self.fig_gpu_memory)
     
-    graph_layout.addWidget(self.canvas_cpu, 0, 0)
-    graph_layout.addWidget(self.canvas_memory, 0, 1)
-    graph_layout.addWidget(self.canvas_gpu, 1, 0)
-    graph_layout.addWidget(self.canvas_gpu_memory, 1, 1)    
+    self.cpu_plot = pg.PlotWidget(background='#243447')
+    self.memory_plot = pg.PlotWidget(background='#243447')
+    self.gpu_plot = pg.PlotWidget(background='#243447')
+    self.gpu_memory_plot = pg.PlotWidget(background='#243447')
+    
+    graph_layout.addWidget(self.cpu_plot, 0, 0)
+    graph_layout.addWidget(self.memory_plot, 0, 1)
+    graph_layout.addWidget(self.gpu_plot, 1, 0)
+    graph_layout.addWidget(self.gpu_memory_plot, 1, 1)
+    
     self.graphView.setLayout(graph_layout)
-  
     left_panel_layout.addWidget(self.graphView)
     
     # the log scroll text area
@@ -180,7 +176,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     left_panel_layout.addWidget(self.logView)      
     
     self.left_panel.setLayout(left_panel_layout)
-      
     main_layout.addWidget(self.left_panel)
 
     self.setLayout(main_layout)
@@ -188,15 +183,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     self.apply_stylesheet()
     
     self.setWindowIcon(self._icon)
-    
     self.set_windows_taskbar_icon()
     return
 
-
-
   def apply_stylesheet(self):
     self.setStyleSheet(STYLESHEET)
-
 
   def toggle_container(self):
     if self.is_container_running():
@@ -206,14 +197,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     self.update_toggle_button_text()
     return
 
-
   def update_toggle_button_text(self):
     if self.is_container_running():
       self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
     else:
       self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
     return
-
 
   def edit_env_file(self):
     env_content = ''
@@ -252,14 +241,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     dialog.exec_()
     return
 
-
-
   def save_env_file(self, content, dialog):
     with open(self.env_file, 'w') as file:
       file.write(content)
     dialog.accept()
     return
-  
   
   def cleanup_data(self, data):
     if 'timestamps' not in data:
@@ -279,7 +265,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
         len(data['timestamps']), start_time, end_time)
       )
     return
-      
 
   def plot_data(self):
     data_path = os.path.join(self.volume_path, LOCAL_HISTORY_FILE)
@@ -296,63 +281,49 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     return  
 
 
-  def plot_graphs(self, data):
-    timestamps = [datetime.fromisoformat(ts) for ts in data['timestamps']] if data and 'timestamps' in data else []
+  def plot_graphs(self, data, limit=100):
+    timestamps = [datetime.fromisoformat(ts).timestamp() for ts in data['timestamps'][-limit:]] if data and 'timestamps' in data else []
 
-    def setup_axis(ax, title, xlabel, ylabel):
-      ax.set_facecolor('#243447')
-      ax.set_title(title, color='white')
-      ax.set_xlabel(xlabel, color='white')
-      ax.set_ylabel(ylabel, color='white')
-      if timestamps:
-        ax.xaxis.set_minor_locator(mdates.SecondLocator(interval=10))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-        ax.xaxis.set_major_locator(mdates.SecondLocator(interval=120))
-        ax.tick_params(axis='x', colors='white', which='major')
-        ax.tick_params(axis='y', colors='white')
-        ax.tick_params(axis='x', which='minor', length=4, color='white')
-        ax.tick_params(which='both', width=1)
-        ax.tick_params(which='major', length=7)
-      return
-
-    def plot_graph(ax, timestamps, values, label, color):
-      if timestamps and values:
-        ax.plot(timestamps, values, label=label, color=color)
-        ax.legend()
+    def update_plot(plot, timestamps, values, label, color):
+      plot.clear()
+      plot.addLegend()
+      if values:
+        values = values[-limit:]
+        plot.plot(timestamps, values, pen=pg.mkPen(color=color, width=2), name=label)
       else:
-        ax.text(0.5, 0.5, 'NO DATA', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, color='white')
-      return
+        plot.plot([0], [0], pen=None, symbol='o', symbolBrush=color, name='NO DATA')
+      plot.setLabel('left', text=label)
+      plot.setLabel('bottom', text='Timestamp')
 
     # Plot CPU Load
-    self.fig_cpu.clear()
-    ax_cpu = self.fig_cpu.add_subplot(111)
-    plot_graph(ax_cpu, timestamps, data.get('cpu_load', []) if data else [], 'CPU Load', 'white')
-    setup_axis(ax_cpu, 'CPU Load', 'Timestamp', 'Load (%)')
-    self.canvas_cpu.draw()
+    self.cpu_plot.getAxis('bottom').setTickSpacing(60, 10)
+    self.cpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
+    self.cpu_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.cpu_plot.setTitle('CPU Load')
+    update_plot(self.cpu_plot, timestamps, data.get('cpu_load', []) if data else [], 'CPU Load', 'w')
 
     # Plot Memory Load
-    self.fig_memory.clear()
-    ax_memory = self.fig_memory.add_subplot(111)
-    plot_graph(ax_memory, timestamps, data.get('occupied_memory', []) if data else [], 'Occupied Memory', 'white')
-    plot_graph(ax_memory, timestamps, data.get('total_memory', []) if data else [], 'Total Memory', 'yellow')
-    setup_axis(ax_memory, 'Memory Load', 'Timestamp', 'Memory (GB)')
-    self.canvas_memory.draw()
+    self.memory_plot.getAxis('bottom').setTickSpacing(60, 10)
+    self.memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
+    self.memory_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.memory_plot.setTitle('Memory Load')
+    update_plot(self.memory_plot, timestamps, data.get('total_memory', []) if data else [], 'Total Memory', 'y')
+    update_plot(self.memory_plot, timestamps, data.get('occupied_memory', []) if data else [], 'Occupied Memory', 'w')
 
     # Plot GPU Load if available
-    self.fig_gpu.clear()
-    ax_gpu = self.fig_gpu.add_subplot(111)
-    plot_graph(ax_gpu, timestamps, data.get('gpu_load', []) if data else [], 'GPU Load', 'white')
-    setup_axis(ax_gpu, 'GPU Load', 'Timestamp', 'Load (%)')
-    self.canvas_gpu.draw()
+    self.gpu_plot.getAxis('bottom').setTickSpacing(60, 10)
+    self.gpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
+    self.gpu_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.gpu_plot.setTitle('GPU Load')
+    update_plot(self.gpu_plot, timestamps, data.get('gpu_load', []) if data else [], 'GPU Load', 'w')
 
     # Plot GPU Memory Load if available
-    self.fig_gpu_memory.clear()
-    ax_gpu_memory = self.fig_gpu_memory.add_subplot(111)
-    plot_graph(ax_gpu_memory, timestamps, data.get('gpu_occupied_memory', []) if data else [], 'Occupied GPU Memory', 'white')
-    plot_graph(ax_gpu_memory, timestamps, data.get('gpu_total_memory', []) if data else [], 'Total GPU Memory', 'yellow')
-    setup_axis(ax_gpu_memory, 'GPU Memory Load', 'Timestamp', 'Memory (GB)')
-    self.canvas_gpu_memory.draw()
-
+    self.gpu_memory_plot.getAxis('bottom').setTickSpacing(60, 10)
+    self.gpu_memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
+    self.gpu_memory_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.gpu_memory_plot.setTitle('GPU Memory Load')
+    update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_total_memory', []) if data else [], 'Total GPU Memory', 'y')
+    update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_occupied_memory', []) if data else [], 'Occupied GPU Memory', 'w')
     return
 
 
@@ -381,7 +352,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     clipboard.setText(self.addressDisplay.text())
     return
     
-    
   def refresh_all(self):
     t0 = time()
     self.refresh_local_address()
@@ -392,4 +362,3 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     t3 = time()
     self.add_log(f'Time taken: {t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text)')
     return    
-
