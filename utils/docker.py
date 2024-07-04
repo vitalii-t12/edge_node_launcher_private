@@ -1,23 +1,16 @@
+import os
 import platform
 import subprocess
-import os
-import subprocess
-import re
-
 from collections import OrderedDict
-from uuid import uuid4
 from time import sleep
-from PyQt5.QtWidgets import QMessageBox, QInputDialog
+from uuid import uuid4
+
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtWidgets import (QApplication, QDialog, QInputDialog, QLabel,
+                             QMessageBox, QProgressBar, QTextEdit, QVBoxLayout)
 
 from .const import *
 
-from PyQt5.QtWidgets import (
-  QApplication, QDialog, QVBoxLayout, QLabel, QProgressBar,
-  QTextEdit
-)
-from PyQt5.QtCore import Qt
-
-from PyQt5.QtCore import QThread, pyqtSignal
 
 class DockerPullThread(QThread):
   progress_update = pyqtSignal(str, int)
@@ -78,8 +71,6 @@ class DockerPullThread(QThread):
     return int((self.pulled_layers / self.total_layers) * 100)
   
 
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QTextEdit
-from PyQt5.QtCore import Qt
 
 class ProgressBarWindow(QDialog):
   def __init__(self, message, icon_object, sender):
