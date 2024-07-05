@@ -108,9 +108,11 @@ class ProgressBarWindow(QDialog):
     self.output_edit.verticalScrollBar().setValue(self.output_edit.verticalScrollBar().maximum())
     self.progress_bar.setValue(progress)
 
+
   def apply_stylesheet(self):
-    self.setStyleSheet(STYLESHEET)
+    self.setStyleSheet(self._current_stylesheet)
     return
+
   
   def on_docker_pull_finished(self, success):
     if success:

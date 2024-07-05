@@ -11,15 +11,17 @@ LOCAL_HISTORY_FILE = '_data/local_history.json'
 E2_PEM_FILE = '_data/e2.pem'
 LOCAL_ADDRESS_FILE = '_data/local_address.txt'
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
-EDIT_ENV_BUTTON_TEXT = 'Edit .env File'
-LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Container'
-STOP_CONTAINER_BUTTON_TEXT = 'Stop Container'
-DELETE_AND_RESTART_BUTTON_TEXT = 'Reset local node'
+EDIT_ENV_BUTTON_TEXT = 'Edit startup env'
+LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Edge Node'
+STOP_CONTAINER_BUTTON_TEXT = 'Stop Edge Node'
+DAPP_BUTTON_TEXT = 'Launch dApp'
+EXPLORER_BUTTON_TEXT = 'Naeural Explorer'
+DELETE_AND_RESTART_BUTTON_TEXT = 'Reset Node Address'
 LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 REFRESH_LOCAL_ADDRESS_BUTTON_TEXT = 'Refresh Local Address'
 COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
 
-REFRESH_TIME = 10_000
+REFRESH_TIME = 12_000
 MAX_HISTORY_QUEUE = 5 * 60 // 10 # 5 minutes @ 10 seconds each hb
 
 DEFAULT_MQTT_HOST = 'r9092118.ala.eu-central-1.emqxsl.com'
@@ -61,7 +63,7 @@ EE_OPENAI=token_for_accessing_openai_api
 EE_HF_TOKEN=token_for_accessing_huggingface_api
 '''
 
-STYLESHEET = """
+DARK_STYLESHEET = """
   QPushButton {
     background-color: #1E90FF; 
     color: white; 
@@ -97,5 +99,55 @@ STYLESHEET = """
     font-size: 12px;
     border: 1px solid #1E90FF;
     border-radius: 5px;
+  }
+  
+  PlotWidget {
+    background-color: #243447;
+    border: 1px solid #87CEEB;
+    color: yellow;  
+  }
+"""
+
+LIGHT_STYLESHEET = """
+  QPushButton {
+    background-color: #D3D3D3;
+    color: black;
+    border: 2px solid #A9A9A9;
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 4px 2px;
+    border-radius: 15px;
+  }
+  QPushButton:hover {
+    background-color: #A9A9A9;
+  }
+  QLabel {
+    font-size: 14px;
+    color: black;
+  }
+  QProgressBar {
+    border: 2px solid #D3D3D3;
+    border-radius: 5px;
+    text-align: center;
+    height: 30px;
+    color: black;
+  }
+  QProgressBar::chunk {
+    background-color: #D3D3D3;
+  }
+  QDialog, QWidget {
+    background-color: #F0F0F0;
+  }
+  QTextEdit {
+    background-color: #FFFFFF;
+    color: black;
+    font-size: 12px;
+    border: 1px solid #D3D3D3;
+    border-radius: 5px;
+  }
+  
+  PlotWidget {
+    background-color: #909090;
+    border: 1px solid #A9A9A9;
   }
 """
