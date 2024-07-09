@@ -1,0 +1,27 @@
+name: Cleanup Artifacts
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: List and delete old artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts" \
+            | jq -r '.artifacts | sort_by(.created_at) | .[:-4] | .[] | @base64' \
+            | while read artifact; do
+                artifact_id=$(echo "$artifact" | base64 --decode | jq -r '.id')
+                curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+                  "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$artifact_id"
+              done
