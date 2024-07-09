@@ -15,7 +15,7 @@ jobs:
         with:
           # Keep artifacts that are less than 1 month old
           # All our artifacts are tagged
-          age: '1 month'
+          age: '1 hour'
           # Keep the most recent 4 artifacts
           skip-recent: 4
 
