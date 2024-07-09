@@ -323,9 +323,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             data[key] = data[key][-MAX_HISTORY_QUEUE:]
         start_time = data['timestamps'][0] 
         end_time = data['timestamps'][-1]
-        self.add_log('Data loaded & cleaned: {} timestamps from {} to {}'.format(
-          len(data['timestamps']), start_time, end_time)
-        )
+        if False:
+          self.add_log('Data loaded & cleaned: {} timestamps from {} to {}'.format(
+            len(data['timestamps']), start_time, end_time)
+          )
         result = True
     return result
 
