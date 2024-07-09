@@ -1,4 +1,7 @@
 from ver import __VER__
+
+FULL_DEBUG = True
+
 # Constants Section
 ENV_FILE = '.env'
 DOCKER_VOLUME = 'naeural_vol'
@@ -23,6 +26,8 @@ COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
 
 REFRESH_TIME = 12_000
 MAX_HISTORY_QUEUE = 5 * 60 // 10 # 5 minutes @ 10 seconds each hb
+
+AUTO_UPDATE_CHECK_INTERVAL = 60
 
 DEFAULT_MQTT_HOST = 'r9092118.ala.eu-central-1.emqxsl.com'
 DEFAULT_MQTT_USER = 'corenaeural'

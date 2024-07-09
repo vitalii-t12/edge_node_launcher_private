@@ -90,7 +90,7 @@ class _UpdaterMixin:
         """)
 
       # Execute the batch script
-      subprocess.Popen(['cmd', '/c', 'start', '/min', script_path], shell=True)
+      subprocess.Popen(['cmd', '/c', 'start', '/min', script_path], shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
       self.add_log(f'Batch script created and executed: {script_path}')
 
     else:
@@ -124,11 +124,12 @@ class _UpdaterMixin:
     return
 
 
-  def check_for_updates(self):
+  def check_for_updates(self, verbose=True):
     try:
       latest_version, download_urls = self.get_latest_release_version()
       latest_version = latest_version.lstrip('v').strip().replace('"', '').replace("'", '')
-      self.add_log(f'Obtained latest version: {latest_version}')
+      if verbose:
+        self.add_log(f'Obtained latest version: {latest_version}')
       if self._compare_versions(CURRENT_VERSION, latest_version):
         reply = QMessageBox.question(None, 'Update Available',
                                     f'A new version v{latest_version} is available (current v{CURRENT_VERSION}). Do you want to update?',
@@ -155,7 +156,8 @@ class _UpdaterMixin:
           self._extract_zip(zip_path, download_dir)
           self._replace_executable(download_dir, 'EdgeNodeLauncher')
       else:
-        self.add_log("You are already using the latest version. Current: {}, Online: {}".format(CURRENT_VERSION, latest_version))
+        if verbose:
+          self.add_log("You are already using the latest version. Current: {}, Online: {}".format(CURRENT_VERSION, latest_version))
     except Exception as e:
       self.add_log(f"Failed to check for updates: {e}")
 

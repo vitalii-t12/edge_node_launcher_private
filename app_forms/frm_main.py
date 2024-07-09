@@ -55,6 +55,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     self._current_stylesheet = DARK_STYLESHEET
     self.__last_plot_data = None
+    self.__last_auto_update_check = 0
     
     self.__version__ = __version__
     self.__last_timesteps = []
@@ -76,7 +77,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.add_log(f'Edge Node Launcher v{self.__version__} started.')
     
-    self.check_for_updates()
     return
   
   def add_log(self, line):
@@ -443,6 +443,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     t3 = time()
     if False:
       self.add_log(f'Time taken: {t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text)')
+    
+    if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
+      verbose = self.__last_auto_update_check == 0
+      self.__last_auto_update_check = time()
+      self.check_for_updates(verbose=verbose or FULL_DEBUG)
     return    
 
 
