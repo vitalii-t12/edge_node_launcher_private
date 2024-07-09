@@ -175,6 +175,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.envEditButton.clicked.connect(self.edit_env_file)
     bottom_button_area.addWidget(self.envEditButton)
     
+    # view_config_files
+    self.btn_view_configs = QPushButton(VIEW_CONFIGS_BUTTON_TEXT)
+    self.btn_view_configs.clicked.connect(self.view_config_files)
+    bottom_button_area.addWidget(self.btn_view_configs)
+
+    
     self.deleteButton = QPushButton(DELETE_AND_RESTART_BUTTON_TEXT)
     self.deleteButton.clicked.connect(self.delete_and_restart)
     bottom_button_area.addWidget(self.deleteButton)
@@ -302,12 +308,69 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     dialog.setLayout(dialog_layout)
     dialog.exec_()
     return
-
+  
   def save_env_file(self, content, dialog):
     with open(self.env_file, 'w') as file:
       file.write(content)
     dialog.accept()
     return
+  
+  
+  def view_config_files(self):
+    config_startup_content = ''
+    config_app_content = ''
+    try:
+      with open(self.config_startup_file, 'r') as file:
+        config_startup_content = file.read()
+      
+      with open(self.config_app_file, 'r') as file:
+        config_app_content = file.read()
+    except FileNotFoundError:
+      return
+
+    # Create the text edit widget with Courier New font and light font color
+    startup_text_edit = QTextEdit()
+    startup_text_edit.setText(config_startup_content)
+    startup_text_edit.setFont(QFont("Courier New", 11))
+    startup_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
+
+    app_text_edit = QTextEdit()
+    app_text_edit.setText(config_app_content)
+    app_text_edit.setFont(QFont("Courier New", 11))
+    app_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
+
+    # Create the dialog
+    dialog = QDialog(self)
+    dialog.setWindowTitle('View config files')
+    dialog.setGeometry(0, 0, 1000, 900)  # Enlarge the edit window
+
+    # Center the dialog on the screen
+    screen_geometry = QApplication.desktop().screenGeometry()
+    x = (screen_geometry.width() - dialog.width()) // 2
+    y = (screen_geometry.height() - dialog.height()) // 2
+    dialog.move(x, y)
+
+    dialog_layout = QVBoxLayout()
+    dialog_layout.addWidget(startup_text_edit)
+    dialog_layout.addWidget(app_text_edit)
+
+    # Save button
+    save_button = QPushButton('Ok')
+    save_button.clicked.connect(
+      lambda: self.close_config_files(
+        startup_text_edit.toPlainText(), app_text_edit.toPlainText(), dialog)
+      )
+    dialog_layout.addWidget(save_button)
+
+    dialog.setLayout(dialog_layout)
+    dialog.exec_()
+    return  
+  
+  def close_config_files(self, txt_startup, txt_app, dialog):
+    # TODO: edit files
+    dialog.accept()
+    return
+
   
   def check_data(self, data):
     result = False

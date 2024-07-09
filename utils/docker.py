@@ -138,6 +138,10 @@ class _DockerUtilsMixin:
     self.mqtt_host = DEFAULT_MQTT_HOST
     self.mqtt_user = DEFAULT_MQTT_USER
     self.mqtt_password = DEFAULT_MQTT_PASSWORD
+    
+    self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
+    self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
+    
     self.__generate_env_file()
     self.__setup_docker_run()
     return
@@ -213,7 +217,7 @@ class _DockerUtilsMixin:
         self.mqtt_password
       )
       with open(self.env_file, 'w') as f:
-        f.write(str_env)
+        f.write(str_env)    
     return
 
 
