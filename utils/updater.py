@@ -77,6 +77,7 @@ class _UpdaterMixin:
   def check_for_updates(self):
     try:
       latest_version, download_urls = self.get_latest_release_version()
+      latest_version = latest_version.lstrip('v').strip().replace('"', '').replace("'", '')
       self.add_log(f'Obtained latest version: {latest_version}')
       if self._compare_versions(CURRENT_VERSION, latest_version):
         reply = QMessageBox.question(None, 'Update Available',
@@ -106,7 +107,7 @@ class _UpdaterMixin:
           QMessageBox.information(None, 'Update Complete', 'The application will now restart to complete the update.')
           os.execl(sys.executable, sys.executable, *sys.argv)
       else:
-        self.add_log("You are already using the latest version. Current: {}, Latest: {}".format(CURRENT_VERSION, latest_version))
+        self.add_log("You are already using the latest version. Current: {}, Online: {}".format(CURRENT_VERSION, latest_version))
     except Exception as e:
       self.add_log(f"Failed to check for updates: {e}")
 
