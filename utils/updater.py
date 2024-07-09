@@ -39,8 +39,6 @@ class _UpdaterMixin:
     else:
       if latest_version_parts < current_version_parts:
         self.add_log('Your version is newer than the latest version. Are you a time traveler or a dev?')
-      else:
-        self.add_log('You are already using the latest version.')
     return result
 
   @staticmethod
