@@ -16,8 +16,6 @@ jobs:
           # Keep artifacts that are less than 1 month old
           # All our artifacts are tagged
           age: '1 month'
-          # Skip tags -- releases
-          skip-tags: true
           # Keep the most recent 4 artifacts
           skip-recent: 4
 
