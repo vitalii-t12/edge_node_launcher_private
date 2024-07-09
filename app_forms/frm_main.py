@@ -29,6 +29,7 @@ from pyqtgraph import AxisItem
 
 from utils.const import *
 from utils.docker import _DockerUtilsMixin
+from utils.updater import _UpdaterMixin
 
 from utils.icon import ICON_BASE64
 
@@ -48,7 +49,7 @@ class DateAxisItem(AxisItem):
   def tickStrings(self, values, scale, spacing):
     return [datetime.fromtimestamp(value).strftime("%H:%M:%S") for value in values]
 
-class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
+class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def __init__(self):
     super().__init__()
 
@@ -72,10 +73,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     
     self.showMaximized()
     self.update_toggle_button_text()
+    
+    self.add_log(f'Edge Node Launcher v{self.__version__} started.')
+    
+    self.check_for_updates()
     return
   
   def add_log(self, line):
     self.logView.append(line)
+    QApplication.processEvents()  # Flush the event queue
     return
   
   def center(self):
@@ -434,7 +440,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin):
     t2 = time()
     self.update_toggle_button_text()
     t3 = time()
-    self.add_log(f'Time taken: {t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text)')
+    if False:
+      self.add_log(f'Time taken: {t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text)')
     return    
 
 

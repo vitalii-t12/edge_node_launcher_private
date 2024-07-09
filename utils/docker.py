@@ -110,7 +110,7 @@ class ProgressBarWindow(QDialog):
 
 
   def apply_stylesheet(self):
-    self.setStyleSheet(self._current_stylesheet)
+    self.setStyleSheet(self.sender._current_stylesheet)
     return
 
   
