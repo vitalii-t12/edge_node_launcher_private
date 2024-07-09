@@ -4,6 +4,7 @@ import requests
 import zipfile
 import shutil
 import platform
+import subprocess
 from PyQt5.QtWidgets import QMessageBox
 
 from ver import __VER__ as CURRENT_VERSION
@@ -58,21 +59,72 @@ class _UpdaterMixin:
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
       zip_ref.extractall(extract_to)
 
+
   def _replace_executable(self, extracted_dir, executable_name):
     current_executable = sys.executable
     if current_executable.endswith('python.exe'):
       raise Exception('Cannot replace the current executable as it is running in a virtual environment.')
+    
     self.add_log(f'Preparing executable replacement: {current_executable}')
+    
     if sys.platform == "win32":
-      executable_path = os.path.join(extracted_dir, executable_name + '.exe')
+      new_executable = os.path.join(extracted_dir, executable_name + '.exe')
+      temp_executable = os.path.join(extracted_dir, executable_name + '_new.exe')
+
+      # Copy the new executable to a temporary location
+      shutil.copy(new_executable, temp_executable)
+      self.add_log(f'New executable copied to temporary location: {temp_executable}')
+
+      # Create a batch script to replace the executable after the current process exits
+      script_path = os.path.join(extracted_dir, 'replace_executable.bat')
+      with open(script_path, 'w') as script:
+        script.write(f"""
+        @echo off
+        :loop
+        tasklist /FI "IMAGENAME eq {os.path.basename(current_executable)}" 2>NUL | find /I /N "{os.path.basename(current_executable)}">NUL
+        if "%ERRORLEVEL%"=="0" (
+            timeout /T 1 /NOBREAK >NUL
+            goto loop
+        )
+        move /Y "{temp_executable}" "{current_executable}"
+        start "" "{current_executable}"
+        del "%~f0"
+        """)
+
+      # Execute the batch script
+      subprocess.Popen(['cmd', '/c', 'start', '/min', script_path], shell=True)
+      self.add_log(f'Batch script created and executed: {script_path}')
+
     else:
-      executable_path = os.path.join(extracted_dir, executable_name)
-    dest = os.path.dirname(current_executable)
-    self.add_log(f'Replacing executabl from {executable_path} -> {dest}')
-    shutil.copy(executable_path, dest)
-    self.add_log(f'Changing permissions of {current_executable} to 0o755')
-    os.chmod(current_executable, 0o755)
+      new_executable = os.path.join(extracted_dir, executable_name)
+      temp_executable = os.path.join(extracted_dir, executable_name + '_new')
+
+      # Copy the new executable to a temporary location
+      shutil.copy(new_executable, temp_executable)
+      self.add_log(f'New executable copied to temporary location: {temp_executable}')
+
+      # Create a shell script to replace the executable after the current process exits
+      script_path = os.path.join(extracted_dir, 'replace_executable.sh')
+      with open(script_path, 'w') as script:
+        script.write(f"""
+        #!/bin/bash
+        while pgrep -f "{os.path.basename(current_executable)}" > /dev/null; do sleep 1; done
+        mv "{temp_executable}" "{current_executable}"
+        chmod +x "{current_executable}"
+        "{current_executable}" &
+        rm -- "$0"
+        """)
+
+      # Make the shell script executable and run it
+      os.chmod(script_path, 0o755)
+      subprocess.Popen(['sh', script_path])
+      self.add_log(f'Shell script created and executed: {script_path}')
+
+    # Exit the current application
+    QMessageBox.information(None, 'Update Complete', 'The application will now restart to complete the update.')    
+    sys.exit()
     return
+
 
   def check_for_updates(self):
     try:
@@ -104,8 +156,6 @@ class _UpdaterMixin:
           self.add_log(f'Extracting update from {zip_path}...')
           self._extract_zip(zip_path, download_dir)
           self._replace_executable(download_dir, 'EdgeNodeLauncher')
-          QMessageBox.information(None, 'Update Complete', 'The application will now restart to complete the update.')
-          os.execl(sys.executable, sys.executable, *sys.argv)
       else:
         self.add_log("You are already using the latest version. Current: {}, Online: {}".format(CURRENT_VERSION, latest_version))
     except Exception as e:
