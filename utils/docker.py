@@ -145,14 +145,18 @@ class _DockerUtilsMixin:
     self.__generate_env_file()
     self.__setup_docker_run()
     return
-    
+  
   def __setup_docker_run(self):
     self.docker_image = DOCKER_IMAGE + ":" + self.docker_tag
+    self.CMD_CLEAN = [
+        'docker', 'rm', self.docker_container_name,
+    ]
     self.CMD = [
-        'docker', 'run', '--gpus=all', 
-        '--env-file', self.env_file, 
-        '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', 
-        '--name', self.docker_container_name, '-d', 
+        'docker', 'run', '--gpus=all',  # use all GPUs
+        '--rm', # remove the container when it exits
+        '--env-file', self.env_file,  # pass the .env file to the container
+        '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
+        '--name', self.docker_container_name, '-d',  # name the container
         self.docker_image
     ]
     return
@@ -249,7 +253,7 @@ class _DockerUtilsMixin:
       status = status.strip()
       container_running = status.split()[-1] == 'true'
       if container_running != self.container_last_run_status:
-        self.add_log('Container status changed: {} -> {} (status: {})'.format(
+        self.add_log('Edge Node container status changed: {} -> {} (status: {})'.format(
           self.container_last_run_status, container_running, status
         ))
         self.container_last_run_status = container_running
@@ -265,24 +269,31 @@ class _DockerUtilsMixin:
         return
       self.add_log('Updating image...')
       self.__maybe_docker_pull()
-      self.add_log('Starting container...')
+      # first try to clean the container
+      self.add_log("Attempting to clean up the container...")
+      subprocess.call(self.CMD_CLEAN, creationflags=subprocess.CREATE_NO_WINDOW)
+      self.add_log('Starting Edge Node container...')
       subprocess.check_call(self.CMD, creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)
       QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
-    except subprocess.CalledProcessError:
+      self.add_log('Edge Node container launched successfully.')
+    except subprocess.CalledProcessError as e:
       QMessageBox.warning(self, 'Container Launch', 'Failed to launch container.')
+      self.add_log('Edge Node container start failed: {}'.format(e))
     return
 
 
   def stop_container(self):
     try:
-      self.add_log('Stopping container...')
+      self.add_log('Stopping Edge Node container...')
       subprocess.check_call(['docker', 'stop', self.docker_container_name], creationflags=subprocess.CREATE_NO_WINDOW)
       subprocess.check_call(['docker', 'rm', self.docker_container_name], creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)
       QMessageBox.information(self, 'Container Stop', 'Container stopped successfully.')      
+      self.add_log('Edge Node container stopped successfully.')
     except subprocess.CalledProcessError:
       QMessageBox.warning(self, 'Container Stop', 'Failed to stop container.')
+      self.add_log('Edge Node container stop failed.')
     return
 
 

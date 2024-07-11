@@ -53,6 +53,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def __init__(self):
     super().__init__()
 
+    self.__current_node_uptime = -1
+    self.__current_node_epoch = -1
+    self.__current_node_epoch_avail = -1
+    self.__current_node_ver = -1
+    self.__display_uptime = None
+
     self._current_stylesheet = DARK_STYLESHEET
     self.__last_plot_data = None
     self.__last_auto_update_check = 0
@@ -151,17 +157,21 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.nameDisplay.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.nameDisplay)
 
-    self.node_uptime = QLabel('Up Time:')
+    self.node_uptime = QLabel(UPTIME_LABEL)
     self.node_uptime.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.node_uptime)
 
-    self.node_epoch = QLabel('Epoch:')
+    self.node_epoch = QLabel(EPOCH_LABEL)
     self.node_epoch.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.node_epoch)
 
-    self.node_epoch_avail = QLabel('Epoch avail:')
+    self.node_epoch_avail = QLabel(EPOCH_AVAIL_LABEL)
     self.node_epoch_avail.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.node_epoch_avail)
+
+    self.node_version = QLabel()
+    self.node_version.setFont(QFont("Courier New"))
+    info_box_layout.addWidget(self.node_version)
     
     info_box.setLayout(info_box_layout)
     bottom_button_area.addWidget(info_box)
@@ -375,6 +385,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def check_data(self, data):
     result = False
     if 'timestamps' in data:
+      self.__current_node_epoch = data.pop('epoch', -1)
+      self.__current_node_epoch_avail = data.pop('epoch_avail', -1)
+      self.__current_node_uptime = data.pop('uptime', -1)
+      self.__current_node_ver = data.pop('version', '')
+              
       start_time = data['timestamps'][0] 
       end_time = data['timestamps'][-1]
       current_timestamps = data['timestamps'].copy()
@@ -477,19 +492,47 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           self.nameDisplay.setText('Name: ' + address_info[1] if len(address_info) > 1 else '')
           self.add_log(f'Local address updated: {self.node_addr} : {self.node_name}')
           
-          # update uptime, epoch and epoch avail
-          uptime = 0
-          node_epoch = 0
-          node_epoch_avail = 0
-          self.node_uptime.setText(f'Up Time: {uptime}')
-          self.node_epoch.setText(f'Epoch: {node_epoch}')
-          self.node_epoch_avail.setText(f'Epoch avail: {node_epoch_avail}')
         # endif new address
       # endwith open                    
     except FileNotFoundError:
       self.addressDisplay.setText('Address file not found.')
       self.nameDisplay.setText('')
     return
+  
+  def maybe_refresh_uptime(self):
+    # update uptime, epoch and epoch avail
+    uptime = self.__current_node_uptime
+    node_epoch = self.__current_node_epoch
+    node_epoch_avail = self.__current_node_epoch_avail
+    ver = self.__current_node_ver
+    color = 'white'
+    if not self.container_last_run_status:
+      uptime = "STOPPED"
+      node_epoch = "N/A"
+      node_epoch_avail = 0
+      ver = "N/A"
+      color = 'red'
+    #end if overwrite if stopped      
+    if uptime != self.__display_uptime:
+      if self.__display_uptime is not None and node_epoch_avail > 0:
+        color = 'lightgreen'
+        
+      self.node_uptime.setText(f'Up Time: {uptime}')
+      self.node_uptime.setStyleSheet(f'color: {color}')
+      
+      self.node_epoch.setText(f'Epoch: {node_epoch}')
+      self.node_epoch.setStyleSheet(f'color: {color}')
+      
+      prc = round(node_epoch_avail * 100 if node_epoch_avail > 0 else node_epoch_avail, 2)
+      self.node_epoch_avail.setText(f'Epoch avail: {prc}%')
+      self.node_epoch_avail.setStyleSheet(f'color: {color}')
+      
+      self.node_version.setText(f'Running ver: {ver}')
+      self.node_version.setStyleSheet(f'color: {color}')
+      
+      self.__display_uptime = uptime
+    return
+    
 
   def copy_address(self):
     clipboard = QApplication.clipboard()
@@ -498,14 +541,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
   def refresh_all(self):
     t0 = time()
-    self.refresh_local_address()
+    self.refresh_local_address()    
     t1 = time()
     self.plot_data()
     t2 = time()
     self.update_toggle_button_text()
     t3 = time()
-    if False:
-      self.add_log(f'Time taken: {t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text)')
+    self.maybe_refresh_uptime()
+    t4 = time()
+    if FULL_DEBUG:
+      self.add_log(f'{t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text), {t4 - t3:.2f}s (maybe_refresh_uptime)')
     
     if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
       verbose = self.__last_auto_update_check == 0

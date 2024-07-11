@@ -4,20 +4,26 @@ FULL_DEBUG = True
 
 # Constants Section
 ENV_FILE = '.env'
+
+# Docker
 DOCKER_VOLUME = 'naeural_vol'
 DOCKER_IMAGE = 'naeural/edge_node'
 DOCKER_TAG = 'develop'
 DOCKER_CONTAINER_NAME = 'edge_node_container'
+
+# Volume paths
 WINDOWS_VOLUME_PATH = f'\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
 LINUX_VOLUME_PATH = '/var/lib/docker/volumes/naeural_vol/_data'
 LOCAL_HISTORY_FILE = '_data/local_history.json'
 E2_PEM_FILE = '_data/e2.pem'
 LOCAL_ADDRESS_FILE = '_data/local_address.txt'
+CONFIG_STARTUP_FILE = 'config_startup.json'
+CONFIG_APP_FILE = '_data/box_configuration/config_app.txt'
+
+# titles, buttons, labels, captions
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
 EDIT_ENV_BUTTON_TEXT = 'Edit startup env'
 VIEW_CONFIGS_BUTTON_TEXT = 'View Configs'
-CONFIG_STARTUP_FILE = 'config_startup.json'
-CONFIG_APP_FILE = '_data/box_configuration/config_app.txt'
 LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Edge Node'
 STOP_CONTAINER_BUTTON_TEXT = 'Stop Edge Node'
 DAPP_BUTTON_TEXT = 'Launch dApp'
@@ -26,6 +32,10 @@ DELETE_AND_RESTART_BUTTON_TEXT = 'Reset Node Address'
 LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 REFRESH_LOCAL_ADDRESS_BUTTON_TEXT = 'Refresh Local Address'
 COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
+
+UPTIME_LABEL = 'Up Time:'
+EPOCH_LABEL = 'Epoch:'
+EPOCH_AVAIL_LABEL = 'Epochs avail:'
 
 REFRESH_TIME = 12_000
 MAX_HISTORY_QUEUE = 5 * 60 // 10 # 5 minutes @ 10 seconds each hb
