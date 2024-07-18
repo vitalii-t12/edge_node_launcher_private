@@ -1,7 +1,6 @@
 import sys
 import os
 import json
-import base64
 from datetime import datetime
 from time import time
 from copy import deepcopy
@@ -25,7 +24,6 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QPixmap, QIcon
 import pyqtgraph as pg
 
-from pyqtgraph import AxisItem
 
 from utils.const import *
 from utils.docker import _DockerUtilsMixin
@@ -33,21 +31,9 @@ from utils.updater import _UpdaterMixin
 
 from utils.icon import ICON_BASE64
 
+from app_forms.frm_utils import get_icon_from_base64, DateAxisItem, ToggleButtonApp1, ToggleButtonApp2, ToggleButtonApp3
+
 from ver import __VER__ as __version__
-
-def get_icon_from_base64(base64_str):
-  icon_data = base64.b64decode(base64_str)
-  pixmap = QPixmap()
-  pixmap.loadFromData(icon_data)
-  return QIcon(pixmap)
-
-class DateAxisItem(AxisItem):
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.setLabel(text='Time')
-
-  def tickStrings(self, values, scale, spacing):
-    return [datetime.fromtimestamp(value).strftime("%H:%M:%S") for value in values]
 
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def __init__(self):
@@ -126,6 +112,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.dapp_button = QPushButton(DAPP_BUTTON_TEXT)
     self.dapp_button.clicked.connect(self.dapp_button_clicked)
     top_button_area.addWidget(self.dapp_button)
+    
+    # b1 = ToggleButtonApp1()
+    # b2 = ToggleButtonApp1()
+    # b3 = ToggleButtonApp1()
+    # top_button_area.addWidget(b1)
+    # top_button_area.addWidget(b2)
+    # top_button_area.addWidget(b3)
+    
 
     self.explorer_button = QPushButton(EXPLORER_BUTTON_TEXT)
     self.explorer_button.clicked.connect(self.explorer_button_clicked)
@@ -196,7 +190,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     bottom_button_area.addWidget(self.deleteButton)
 
     # Toggle theme button
-    self.themeToggleButton = QPushButton('Switch to Light Theme')
+    self.themeToggleButton = QPushButton(LIGHT_DASHBOARD_BUTTON_TEXT)
+    # self.themeToggleButton.setCheckable(True)
     self.themeToggleButton.clicked.connect(self.toggle_theme)
     bottom_button_area.addWidget(self.themeToggleButton)    
 

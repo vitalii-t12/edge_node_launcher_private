@@ -138,6 +138,7 @@ class _DockerUtilsMixin:
     self.mqtt_host = DEFAULT_MQTT_HOST
     self.mqtt_user = DEFAULT_MQTT_USER
     self.mqtt_password = DEFAULT_MQTT_PASSWORD
+    self._dev_mode = False
     
     self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
     self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
@@ -151,16 +152,22 @@ class _DockerUtilsMixin:
     self.CMD_CLEAN = [
         'docker', 'rm', self.docker_container_name,
     ]
-    self.CMD = [
+    self.__CMD = [
         'docker', 'run', '--gpus=all',  # use all GPUs
         '--rm', # remove the container when it exits
         '--env-file', self.env_file,  # pass the .env file to the container
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
-        '--name', self.docker_container_name, '-d',  # name the container
-        self.docker_image
+        '--name', self.docker_container_name, '-d',  
     ]
     return
-
+  
+  def get_cmd(self):
+    if self._dev_mode:
+      result = self.__CMD + ['-p 80:80', self.docker_image]
+    else:
+      result = self.__CMD + [self.docker_image]
+    self.add_log('Docker command: {}'.format(result))
+    return result
 
   def __maybe_docker_pull(self):
     progress_dialog = ProgressBarWindow("Pulling Docker Image...", self._icon, self)
@@ -271,7 +278,8 @@ class _DockerUtilsMixin:
       self.__maybe_docker_pull()
       # first try to clean the container
       self.add_log("Attempting to clean up the container...")
-      subprocess.call(self.CMD_CLEAN, creationflags=subprocess.CREATE_NO_WINDOW)
+      run_cmd = self.get_cmd()
+      subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
       self.add_log('Starting Edge Node container...')
       subprocess.check_call(self.CMD, creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)

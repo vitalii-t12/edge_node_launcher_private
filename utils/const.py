@@ -32,6 +32,7 @@ DELETE_AND_RESTART_BUTTON_TEXT = 'Reset Node Address'
 LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 REFRESH_LOCAL_ADDRESS_BUTTON_TEXT = 'Refresh Local Address'
 COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
+LIGHT_DASHBOARD_BUTTON_TEXT = 'Switch to Light Theme'
 
 UPTIME_LABEL = 'Up Time:'
 EPOCH_LABEL = 'Epoch:'
