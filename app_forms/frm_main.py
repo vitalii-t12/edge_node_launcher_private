@@ -31,7 +31,9 @@ from utils.updater import _UpdaterMixin
 
 from utils.icon import ICON_BASE64
 
-from app_forms.frm_utils import get_icon_from_base64, DateAxisItem, ToggleButtonApp1, ToggleButtonApp2, ToggleButtonApp3
+from app_forms.frm_utils import (
+  get_icon_from_base64, DateAxisItem, ToggleButton1
+)
 
 from ver import __VER__ as __version__
 
@@ -113,9 +115,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.dapp_button.clicked.connect(self.dapp_button_clicked)
     top_button_area.addWidget(self.dapp_button)
     
-    # b1 = ToggleButtonApp1()
-    # b2 = ToggleButtonApp1()
-    # b3 = ToggleButtonApp1()
+    # b1 = ToggleButton1()
+    # b2 = ToggleButton1()
+    # b3 = ToggleButton1()
     # top_button_area.addWidget(b1)
     # top_button_area.addWidget(b2)
     # top_button_area.addWidget(b3)

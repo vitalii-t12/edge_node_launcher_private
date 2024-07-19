@@ -25,74 +25,9 @@ class DateAxisItem(AxisItem):
     return [datetime.fromtimestamp(value).strftime("%H:%M:%S") for value in values]
 
 
-class ToggleButtonApp1(QWidget):
-  def __init__(self):
-    super().__init__()
-
-    self.initUI()
-
-  def initUI(self):
-    self.setWindowTitle('Styled Toggle Button Example')
-
-    layout = QVBoxLayout()
-
-    self.toggle_button = QCheckBox('OFF')
-    self.toggle_button.setStyleSheet("""
-      QCheckBox::indicator { width: 40px; height: 20px; }
-      QCheckBox::indicator:unchecked { background-color: red; border-radius: 10px; }
-      QCheckBox::indicator:checked { background-color: green; border-radius: 10px; }
-      QCheckBox::indicator:unchecked:pressed { background-color: lightcoral; }
-      QCheckBox::indicator:checked:pressed { background-color: lightgreen; }
-    """)
-    self.toggle_button.setChecked(False)
-    self.toggle_button.toggled.connect(self.toggle_button_clicked)
-
-    layout.addWidget(self.toggle_button)
-
-    self.setLayout(layout)
-    self.show()
-
-  def toggle_button_clicked(self):
-    if self.toggle_button.isChecked():
-      self.toggle_button.setText('ON')
-    else:
-      self.toggle_button.setText('OFF')
+  
       
-      
-class ToggleButtonApp2(QWidget):
-  def __init__(self):
-    super().__init__()
-
-    self.initUI()
-
-  def initUI(self):
-    self.setWindowTitle('Styled Toggle Button Example')
-
-    layout = QVBoxLayout()
-
-    self.toggle_button = QRadioButton('OFF')
-    self.toggle_button.setStyleSheet("""
-      QRadioButton::indicator { width: 40px; height: 20px; }
-      QRadioButton::indicator:unchecked { background-color: red; border-radius: 10px; }
-      QRadioButton::indicator:checked { background-color: green; border-radius: 10px; }
-      QRadioButton::indicator:unchecked:pressed { background-color: lightcoral; }
-      QRadioButton::indicator:checked:pressed { background-color: lightgreen; }
-    """)
-    self.toggle_button.setChecked(False)
-    self.toggle_button.toggled.connect(self.toggle_button_clicked)
-
-    layout.addWidget(self.toggle_button)
-
-    self.setLayout(layout)
-    self.show()
-
-  def toggle_button_clicked(self):
-    if self.toggle_button.isChecked():
-      self.toggle_button.setText('ON')
-    else:
-      self.toggle_button.setText('OFF')      
-      
-class ToggleButton3(QAbstractButton):
+class ToggleButton1(QAbstractButton):
   def __init__(self, parent=None):
     super().__init__(parent)
     self.setCheckable(True)
