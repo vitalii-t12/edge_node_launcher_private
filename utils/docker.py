@@ -142,6 +142,7 @@ class _DockerUtilsMixin:
     
     self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
     self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
+    self.addrs_file = os.path.join(self.volume_path, ADDRS_FILE)
     
     self.__generate_env_file()
     self.__setup_docker_run()

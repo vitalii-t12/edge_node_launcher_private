@@ -180,6 +180,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.envEditButton = QPushButton(EDIT_ENV_BUTTON_TEXT)
     self.envEditButton.clicked.connect(self.edit_env_file)
     bottom_button_area.addWidget(self.envEditButton)
+
+    self.btn_edit_addrs = QPushButton(EDIT_AUTHORIZED_ADDRS)
+    self.btn_edit_addrs.clicked.connect(self.edit_addrs)
+    bottom_button_area.addWidget(self.btn_edit_addrs)
+
     
     # view_config_files
     self.btn_view_configs = QPushButton(VIEW_CONFIGS_BUTTON_TEXT)
@@ -278,24 +283,24 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
       self.toggleButton.setStyleSheet("background-color: green; color: white;")
     return
-
-  def edit_env_file(self):
+  
+  def edit_file(self, file_path, func, title='Edit File'):
     env_content = ''
     try:
-      with open(self.env_file, 'r') as file:
+      with open(file_path, 'r') as file:
         env_content = file.read()
     except FileNotFoundError:
-      pass
-
+      pass    
+    
     # Create the text edit widget with Courier New font and light font color
     text_edit = QTextEdit()
     text_edit.setText(env_content)
-    text_edit.setFont(QFont("Courier New", 12))
+    text_edit.setFont(QFont("Courier New", 14))
     text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
 
     # Create the dialog
     dialog = QDialog(self)
-    dialog.setWindowTitle('Edit .env File')
+    dialog.setWindowTitle(title)
     dialog.setGeometry(0, 0, 1000, 900)  # Enlarge the edit window
 
     # Center the dialog on the screen
@@ -309,15 +314,39 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Save button
     save_button = QPushButton('Save')
-    save_button.clicked.connect(lambda: self.save_env_file(text_edit.toPlainText(), dialog))
+    save_button.clicked.connect(lambda: func(text_edit.toPlainText(), dialog))
     dialog_layout.addWidget(save_button)
 
     dialog.setLayout(dialog_layout)
     dialog.exec_()
+    return    
+
+  def edit_env_file(self):
+    self.edit_file(
+      file_path=self.env_file, 
+      func=self.save_env_file, 
+      title='Edit .env file'
+    )
     return
   
   def save_env_file(self, content, dialog):
     with open(self.env_file, 'w') as file:
+      file.write(content)
+    dialog.accept()
+    return
+  
+  
+  def edit_addrs(self): 
+    self.edit_file(
+      file_path=self.addrs_file, 
+      func=self.save_addrs_file, 
+      title='Edit authorized addrs file'
+    )
+    return    
+  
+  
+  def save_addrs_file(self, content, dialog):
+    with open(self.addrs_file, 'w') as file:
       file.write(content)
     dialog.accept()
     return
@@ -533,7 +562,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def copy_address(self):
     clipboard = QApplication.clipboard()
-    clipboard.setText(self.addressDisplay.text())
+    clipboard.setText(self.node_addr)
     return
     
   def refresh_all(self):

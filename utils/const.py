@@ -19,10 +19,12 @@ E2_PEM_FILE = '_data/e2.pem'
 LOCAL_ADDRESS_FILE = '_data/local_address.txt'
 CONFIG_STARTUP_FILE = 'config_startup.json'
 CONFIG_APP_FILE = '_data/box_configuration/config_app.txt'
+ADDRS_FILE = 'authorized_addrs'
 
 # titles, buttons, labels, captions
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
 EDIT_ENV_BUTTON_TEXT = 'Edit startup env'
+EDIT_AUTHORIZED_ADDRS = 'Edit Authorized Addrs'
 VIEW_CONFIGS_BUTTON_TEXT = 'View Configs'
 LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Edge Node'
 STOP_CONTAINER_BUTTON_TEXT = 'Stop Edge Node'
