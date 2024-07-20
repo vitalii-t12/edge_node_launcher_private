@@ -117,7 +117,7 @@ DARK_STYLESHEET = """
   QTextEdit {
     background-color: #0D1F2D;
     color: white;
-    font-size: 12px;
+    font-size: 14px;
     border: 1px solid #1E90FF;
     border-radius: 5px;
   }
@@ -162,7 +162,7 @@ LIGHT_STYLESHEET = """
   QTextEdit {
     background-color: #FFFFFF;
     color: black;
-    font-size: 12px;
+    font-size: 14px;
     border: 1px solid #D3D3D3;
     border-radius: 5px;
   }
@@ -171,4 +171,8 @@ LIGHT_STYLESHEET = """
     background-color: #909090;
     border: 1px solid #A9A9A9;
   }
+
+  PlotWidget LabelItem {
+        color: #0F0F0F;  /* Set the desired font color here */
+  }  
 """

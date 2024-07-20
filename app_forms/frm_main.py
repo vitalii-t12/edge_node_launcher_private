@@ -295,8 +295,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Create the text edit widget with Courier New font and light font color
     text_edit = QTextEdit()
     text_edit.setText(env_content)
-    text_edit.setFont(QFont("Courier New", 14))
-    text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
+    # text_edit.setFont(QFont("Courier New", 14))
+    # text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
 
     # Create the dialog
     dialog = QDialog(self)
@@ -462,11 +462,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       plot.addLegend()
       if values:
         values = values[-limit:]
-        plot.plot(timestamps, values, pen=pg.mkPen(color=color, width=2), name=label)
+        plot.plot(timestamps, values, pen=pg.mkPen(color=color, width=2), name=label, color=color)
       else:
         plot.plot([0], [0], pen=None, symbol='o', symbolBrush=color, name='NO DATA')
-      plot.setLabel('left', text=label)
-      plot.setLabel('bottom', text='Time')
+      plot.setLabel('left', text=label, color=color)
+      plot.setLabel('bottom', text='Time', color=color)
       plot.getAxis('bottom').autoVisible = False
       return
 
@@ -475,7 +475,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.cpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.cpu_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
     self.cpu_plot.setTitle('CPU Load')
-    update_plot(self.cpu_plot, timestamps, data.get('cpu_load', []) if data else [], 'CPU Load', 'w' if self._current_stylesheet == DARK_STYLESHEET else 'k')
+    color = 'white' if self._current_stylesheet == DARK_STYLESHEET else 'black'
+    
+    self.add_log(f'Plotting data: {len(timestamps)} timestamps with color: {color}')
+    
+    update_plot(self.cpu_plot, timestamps, data.get('cpu_load', []) if data else [], 'CPU Load', color)
 
     # Plot Memory Load
     self.memory_plot.getAxis('bottom').setTickSpacing(60, 10)
@@ -483,14 +487,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.memory_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
     self.memory_plot.setTitle('Memory Load')
     # update_plot(self.memory_plot, timestamps, data.get('total_memory', []) if data else [], 'Total Memory', 'y')
-    update_plot(self.memory_plot, timestamps, data.get('occupied_memory', []) if data else [], 'Occupied Memory', 'w' if self._current_stylesheet == DARK_STYLESHEET else 'k')
+    update_plot(self.memory_plot, timestamps, data.get('occupied_memory', []) if data else [], 'Occupied Memory', color)
 
     # Plot GPU Load if available
     self.gpu_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.gpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.gpu_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
     self.gpu_plot.setTitle('GPU Load')
-    update_plot(self.gpu_plot, timestamps, data.get('gpu_load', []) if data else [], 'GPU Load', 'w' if self._current_stylesheet == DARK_STYLESHEET else 'k')
+    update_plot(self.gpu_plot, timestamps, data.get('gpu_load', []) if data else [], 'GPU Load', color)
 
     # Plot GPU Memory Load if available
     self.gpu_memory_plot.getAxis('bottom').setTickSpacing(60, 10)
@@ -498,7 +502,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.gpu_memory_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
     self.gpu_memory_plot.setTitle('GPU Memory Load')
     # update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_total_memory', []) if data else [], 'Total GPU Memory', 'y')
-    update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_occupied_memory', []) if data else [], 'Occupied GPU Memory', 'w' if self._current_stylesheet == DARK_STYLESHEET else 'k')
+    update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_occupied_memory', []) if data else [], 'Occupied GPU Memory', color)
     return
 
 
