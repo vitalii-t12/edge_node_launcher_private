@@ -457,9 +457,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       
     timestamps = [datetime.fromisoformat(ts).timestamp() for ts in data['timestamps'][-limit:]] if data and 'timestamps' in data else []
 
-    def update_plot(plot, timestamps, values, label, color):
+    def update_plot(plot, timestamps, values, label, color):      
       plot.clear()
       plot.addLegend()
+      values = [x for x in values if x is not None]
       if values:
         values = values[-limit:]
         plot.plot(timestamps, values, pen=pg.mkPen(color=color, width=2), name=label, color=color)
