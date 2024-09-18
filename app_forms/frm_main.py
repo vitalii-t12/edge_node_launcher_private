@@ -37,6 +37,27 @@ from app_forms.frm_utils import (
 
 from ver import __VER__ as __version__
 
+def log_with_color(message, color="gray"):
+  """
+    Log message with color in the terminal.
+    :param message: Message to log
+    :param color: Color of the message
+  """
+  color_codes = {
+    "yellow": "\033[93m",
+    "red": "\033[91m",
+    "gray": "\033[90m",
+    "light": "\033[97m",
+    "green": "\033[92m",
+    "blue" : "\033[94m",
+    "cyan" : "\033[96m",
+  }
+  timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+  start_color = color_codes.get(color, "\033[90m")
+  end_color = "\033[0m"
+  print(f"{start_color}{timestamp} {message}{end_color}", flush=True)
+  return
+
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def __init__(self):
     super().__init__()
@@ -55,6 +76,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.__last_timesteps = []
     self._icon = get_icon_from_base64(ICON_BASE64)
     
+    self.runs_in_production = self.is_running_in_production()
+    
     self.initUI()
 
     if not self.check_docker():
@@ -69,14 +92,50 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.showMaximized()
     self.update_toggle_button_text()
     
-    self.add_log(f'Edge Node Launcher v{self.__version__} started.')
+    self.add_log(f'Edge Node Launcher v{self.__version__} started. Running in production: {self.runs_in_production}, running with debugger: {self.runs_with_debugger()}, running in ipython: {self.runs_from_ipython()},  running from exe: {not self.not_running_from_exe()}')
     
     return
   
-  def add_log(self, line):
-    self.logView.append(line)
-    QApplication.processEvents()  # Flush the event queue
-    return
+  @staticmethod
+  def not_running_from_exe():
+    """
+    Checks if the script is running from a PyInstaller-generated executable.
+
+    Returns
+    -------
+    bool
+      True if running from a PyInstaller executable, False otherwise.
+    """
+    return not (hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'))
+  
+  @staticmethod
+  def runs_from_ipython():
+    try:
+      __IPYTHON__
+      return True
+    except NameError:
+      return False
+    
+  @staticmethod
+  def runs_with_debugger():
+    gettrace = getattr(sys, 'gettrace', None)
+    if gettrace is None:
+      return False
+    else:
+      return not gettrace() is None    
+    
+  def is_running_in_production(self):
+    return not (self.runs_from_ipython() or self.runs_with_debugger() or self.not_running_from_exe())
+  
+  
+  def add_log(self, line, debug=False):
+    show = (debug and not self.runs_in_production) or not debug
+    if show:
+      self.logView.append(line)
+      QApplication.processEvents()  # Flush the event queue
+      if debug:
+        log_with_color(line, flush=True)
+    return  
   
   def center(self):
     screen_geometry = QApplication.desktop().screenGeometry()
@@ -269,6 +328,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def toggle_container(self):
     if self.is_container_running():
+      self.add_log('Edge Node is running, user requested stopping the container...')
       self.stop_container()
     else:
       self.launch_container()
@@ -427,15 +487,19 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             data[key] = data[key][-MAX_HISTORY_QUEUE:]
         start_time = data['timestamps'][0] 
         end_time = data['timestamps'][-1]
-        if False:
-          self.add_log('Data loaded & cleaned: {} timestamps from {} to {}'.format(
-            len(data['timestamps']), start_time, end_time)
-          )
+        self.add_log('Data loaded & cleaned: {} timestamps from {} to {}'.format(
+          len(data['timestamps']), start_time, end_time), debug=True
+        )
         result = True
+      else:
+        self.add_log('Data already up-to-date. No new data.', debug=True)
+    else:
+      self.add_log('No timestamps data found in the file.', debug=True)
     return result
 
   def plot_data(self):
     data_path = os.path.join(self.volume_path, LOCAL_HISTORY_FILE)
+    self.add_log(f'Loading data from: {data_path}', debug=True) 
     try:
       if os.path.exists(data_path):
         with open(data_path, 'r') as file:
@@ -456,6 +520,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.__last_plot_data = deepcopy(data)
       
     timestamps = [datetime.fromisoformat(ts).timestamp() for ts in data['timestamps'][-limit:]] if data and 'timestamps' in data else []
+    start_time = datetime.fromtimestamp(timestamps[0]).strftime('%Y-%m-%d %H:%M:%S')
+    end_time = datetime.fromtimestamp(timestamps[-1]).strftime('%Y-%m-%d %H:%M:%S')
 
     def update_plot(plot, timestamps, values, label, color):      
       plot.clear()
@@ -468,42 +534,60 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         plot.plot([0], [0], pen=None, symbol='o', symbolBrush=color, name='NO DATA')
       plot.setLabel('left', text=label, color=color)
       plot.setLabel('bottom', text='Time', color=color)
+      if timestamps:
+        plot.setLabel('bottom', f"Time ({start_time} to {end_time})", color=color)      
       plot.getAxis('bottom').autoVisible = False
+      plot.getAxis('bottom').enableAutoSIPrefix(False)
       return
+    
 
     # Plot CPU Load
+    # Create the custom DateAxisItem
+    cpu_data = data.get('cpu_load', []) if data else []
+    cpu_date_axis = DateAxisItem(orientation='bottom')
+    cpu_date_axis.setTimestamps(timestamps, parent="cpu")  # Pass the actual timestamps    
     self.cpu_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.cpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
-    self.cpu_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.cpu_plot.setAxisItems({'bottom': cpu_date_axis})
     self.cpu_plot.setTitle('CPU Load')
-    color = 'white' if self._current_stylesheet == DARK_STYLESHEET else 'black'
-    
-    self.add_log(f'Plotting data: {len(timestamps)} timestamps with color: {color}')
-    
-    update_plot(self.cpu_plot, timestamps, data.get('cpu_load', []) if data else [], 'CPU Load', color)
+    color = 'white' if self._current_stylesheet == DARK_STYLESHEET else 'black'    
+    self.add_log(f'Plotting data: {len(timestamps)} timestamps with color: {color}')    
+    update_plot(self.cpu_plot, timestamps, cpu_data, 'CPU Load', color)
 
     # Plot Memory Load
+    # Create the custom DateAxisItem
+    mem_data = data.get('occupied_memory', []) if data else []
+    mem_date_axis = DateAxisItem(orientation='bottom')
+    mem_date_axis.setTimestamps(timestamps, parent="mem")  # Pass the actual timestamps    
     self.memory_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
-    self.memory_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.memory_plot.setAxisItems({'bottom': mem_date_axis})
     self.memory_plot.setTitle('Memory Load')
     # update_plot(self.memory_plot, timestamps, data.get('total_memory', []) if data else [], 'Total Memory', 'y')
-    update_plot(self.memory_plot, timestamps, data.get('occupied_memory', []) if data else [], 'Occupied Memory', color)
+    update_plot(self.memory_plot, timestamps, mem_data, 'Occupied Memory', color)
 
     # Plot GPU Load if available
+    # Create the custom DateAxisItem
+    gpu_data = data.get('gpu_load', []) if data else []
+    gpu_date_axis = DateAxisItem(orientation='bottom')
+    gpu_date_axis.setTimestamps(timestamps, parent="gpu")  # Pass the actual timestamps    
     self.gpu_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.gpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
-    self.gpu_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.gpu_plot.setAxisItems({'bottom': gpu_date_axis})
     self.gpu_plot.setTitle('GPU Load')
-    update_plot(self.gpu_plot, timestamps, data.get('gpu_load', []) if data else [], 'GPU Load', color)
+    update_plot(self.gpu_plot, timestamps, gpu_data, 'GPU Load', color)
 
     # Plot GPU Memory Load if available
+    # Create the custom DateAxisItem
+    gpu_mem_data = data.get('gpu_occupied_memory', []) if data else []
+    gpumem_date_axis = DateAxisItem(orientation='bottom')
+    gpumem_date_axis.setTimestamps(timestamps, parent="gpu_mem")  # Pass the actual timestamps    
     self.gpu_memory_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.gpu_memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
-    self.gpu_memory_plot.setAxisItems({'bottom': DateAxisItem(orientation='bottom')})
+    self.gpu_memory_plot.setAxisItems({'bottom': gpumem_date_axis})
     self.gpu_memory_plot.setTitle('GPU Memory Load')
     # update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_total_memory', []) if data else [], 'Total GPU Memory', 'y')
-    update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_occupied_memory', []) if data else [], 'Occupied GPU Memory', color)
+    update_plot(self.gpu_memory_plot, timestamps, gpu_mem_data, 'Occupied GPU Memory', color)
     return
 
 
@@ -545,7 +629,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       color = 'red'
     #end if overwrite if stopped      
     if uptime != self.__display_uptime:
-      if self.__display_uptime is not None and node_epoch_avail > 0:
+      if self.__display_uptime is not None and node_epoch_avail is not None and node_epoch_avail > 0:
         color = 'lightgreen'
         
       self.node_uptime.setText(f'Up Time: {uptime}')
@@ -580,8 +664,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     t3 = time()
     self.maybe_refresh_uptime()
     t4 = time()
-    if FULL_DEBUG:
-      self.add_log(f'{t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text), {t4 - t3:.2f}s (maybe_refresh_uptime)')
+    self.add_log(
+      f'{t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text), {t4 - t3:.2f}s (maybe_refresh_uptime)',
+      debug=True
+    )
     
     if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
       verbose = self.__last_auto_update_check == 0

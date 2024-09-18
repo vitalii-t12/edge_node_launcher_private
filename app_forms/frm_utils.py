@@ -1,6 +1,7 @@
 
 import sys
 import base64
+import traceback
 from datetime import datetime
 
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QAbstractButton, QCheckBox, QRadioButton
@@ -16,14 +17,56 @@ def get_icon_from_base64(base64_str):
   pixmap.loadFromData(icon_data)
   return QIcon(pixmap)
 
-class DateAxisItem(AxisItem):
+class DateAxisItem_OLD(AxisItem):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.setLabel(text='Time')
+    return
 
   def tickStrings(self, values, scale, spacing):
-    return [datetime.fromtimestamp(value).strftime("%H:%M:%S") for value in values]
+    ticks = [datetime.fromtimestamp(value).strftime("%H:%M:%S") for value in values]      
+    return ticks
 
+
+class DateAxisItem(AxisItem):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.setLabel(text='Time')  # Custom label without scientific notation
+    self.timestamps = None  # Store actual timestamps from the data
+    self.parent = None  # Store the parent widget for debugging
+    return
+
+  def setTimestamps(self, timestamps, parent):
+    """Store the actual timestamps from the data to map axis values."""
+    self.parent = parent
+    if isinstance(timestamps[0], str):
+      self.timestamps = [datetime.fromisoformat(ts).timestamp() for ts in timestamps]
+    else:
+      self.timestamps = timestamps
+    return
+
+  def tickStrings(self, values, scale, spacing):
+    if not self.timestamps or len(self.timestamps) == 0:
+      return [""] * len(values)  # Return empty labels if no timestamps available
+
+    # Get the range of actual timestamps
+    start_time = self.timestamps[0]
+    end_time = self.timestamps[-1]
+    time_range = end_time - start_time
+
+    # Map the axis values to actual timestamps
+    ticks = []
+    for value in values:
+      try:
+        # Scale the value if it's in the range of the timestamp indices
+        if start_time <= value <= end_time:
+          ticks.append(datetime.fromtimestamp(value).strftime("%H:%M:%S"))
+        else:
+          ticks.append("")  # Ignore out-of-range values
+      except Exception as e:
+        ticks.append("")  # Handle exceptions gracefully    
+    # print(f"Ticks for {self.parent}: {ticks}")
+    return ticks
 
   
       

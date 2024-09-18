@@ -140,6 +140,8 @@ class _DockerUtilsMixin:
     self.mqtt_password = DEFAULT_MQTT_PASSWORD
     self._dev_mode = False
     
+    self.run_with_sudo = False
+    
     self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
     self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
     self.addrs_file = os.path.join(self.volume_path, ADDRS_FILE)
@@ -150,7 +152,7 @@ class _DockerUtilsMixin:
   
   def __setup_docker_run(self):
     self.docker_image = DOCKER_IMAGE + ":" + self.docker_tag
-    self.CMD_CLEAN = [
+    self.__CMD_CLEAN = [
         'docker', 'rm', self.docker_container_name,
     ]
     self.__CMD = [
@@ -160,16 +162,43 @@ class _DockerUtilsMixin:
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
         '--name', self.docker_container_name, '-d',  
     ]
+    
+    self.__CMD_STOP = [
+        'docker', 'stop', self.docker_container_name,
+    ]
+    
+    self.__CMD_INSPECT = [
+        'docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name,
+    ]
+    if self.run_with_sudo:
+      self.__CMD.insert(0, 'sudo')
+      self.__CMD_CLEAN.insert(0, 'sudo')
+      self.__CMD_STOP.insert(0, 'sudo')
+      self.__CMD_INSPECT.insert(0, 'sudo')
     return
+  
   
   def get_cmd(self):
     if self._dev_mode:
       result = self.__CMD + ['-p 80:80', self.docker_image]
     else:
       result = self.__CMD + [self.docker_image]
-    self.add_log('Docker command: {}'.format(result))
+    self.add_log('Docker command: {}'.format(result), debug=True)
     return result
-
+  
+  
+  def get_clean_cmd(self):
+    return self.__CMD_CLEAN
+  
+  
+  def get_stop_command(self):
+    return self.__CMD_STOP
+  
+  
+  def get_inspect_command(self):
+    return self.__CMD_INSPECT
+  
+  
   def __maybe_docker_pull(self):
     progress_dialog = ProgressBarWindow("Pulling Docker Image...", self._icon, self)
     self.docker_pull_thread = DockerPullThread(self.docker_image)
@@ -254,8 +283,9 @@ class _DockerUtilsMixin:
 
   def is_container_running(self):
     try:
+      inspect_cmd = self.get_inspect_command()
       status = subprocess.check_output(
-        ['docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name],
+        inspect_cmd,
         stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW
       )
       status = status.strip()
@@ -279,10 +309,11 @@ class _DockerUtilsMixin:
       self.__maybe_docker_pull()
       # first try to clean the container
       self.add_log("Attempting to clean up the container...")
+      clean_cmd = self.get_clean_cmd()
+      subprocess.call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+      self.add_log('Starting Edge Node container...')
       run_cmd = self.get_cmd()
       subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
-      self.add_log('Starting Edge Node container...')
-      subprocess.check_call(self.CMD, creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)
       QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
       self.add_log('Edge Node container launched successfully.')
@@ -295,11 +326,18 @@ class _DockerUtilsMixin:
   def stop_container(self):
     try:
       self.add_log('Stopping Edge Node container...')
-      subprocess.check_call(['docker', 'stop', self.docker_container_name], creationflags=subprocess.CREATE_NO_WINDOW)
-      subprocess.check_call(['docker', 'rm', self.docker_container_name], creationflags=subprocess.CREATE_NO_WINDOW)
+      stop_cmd = self.get_stop_command()
+      subprocess.check_call(stop_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)
       QMessageBox.information(self, 'Container Stop', 'Container stopped successfully.')      
       self.add_log('Edge Node container stopped successfully.')
+      try:
+        self.add_log('Cleaning Edge Node container...')
+        clean_cmd = self.get_clean_cmd()  
+        subprocess.check_call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+        self.add_log('Edge Node container removed.')
+      except subprocess.CalledProcessError:
+        self.add_log('Edge Node container removal failed probably due to already being removed.')
     except subprocess.CalledProcessError:
       QMessageBox.warning(self, 'Container Stop', 'Failed to stop container.')
       self.add_log('Edge Node container stop failed.')

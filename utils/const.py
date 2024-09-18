@@ -40,7 +40,7 @@ UPTIME_LABEL = 'Up Time:'
 EPOCH_LABEL = 'Epoch:'
 EPOCH_AVAIL_LABEL = 'Epochs avail:'
 
-REFRESH_TIME = 12_000
+REFRESH_TIME = 20_000
 MAX_HISTORY_QUEUE = 5 * 60 // 10 # 5 minutes @ 10 seconds each hb
 
 AUTO_UPDATE_CHECK_INTERVAL = 60
