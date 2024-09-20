@@ -119,9 +119,9 @@ class ProgressBarWindow(QDialog):
       QMessageBox.information(self, 'Docker Pull', 'Docker image pulled successfully.')      
       self.sender.add_log('Docker image pulled successfully.')
     else:
-      QMessageBox.warning(self, 'Docker Pull', 'Failed to pull Docker image.')
+      QMessageBox.warning(self, 'Docker Pull', 'Failed to pull Docker image.\nCheck if Docker is running.')
     self.accept()  # Close the progress dialog
-    return  
+    return
 
 
 
@@ -315,8 +315,13 @@ class _DockerUtilsMixin:
       run_cmd = self.get_cmd()
       subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
       sleep(2)
-      QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
-      self.add_log('Edge Node container launched successfully.')
+      if self.is_container_running():
+        QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
+        self.add_log('Edge Node container launched successfully.')
+      else:
+        QMessageBox.warning(self, 'Container Launch', 'Failed to launch container.')
+        self.add_log('Edge Node container start failed.')
+      # endif container running
     except subprocess.CalledProcessError as e:
       QMessageBox.warning(self, 'Container Launch', 'Failed to launch container.')
       self.add_log('Edge Node container start failed: {}'.format(e))

@@ -37,7 +37,7 @@ from app_forms.frm_utils import (
 
 from ver import __VER__ as __version__
 
-def log_with_color(message, color="gray"):
+def log_with_color(message, color="gray", flush=True):
   """
     Log message with color in the terminal.
     :param message: Message to log
@@ -52,10 +52,10 @@ def log_with_color(message, color="gray"):
     "blue" : "\033[94m",
     "cyan" : "\033[96m",
   }
-  timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+  timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
   start_color = color_codes.get(color, "\033[90m")
   end_color = "\033[0m"
-  print(f"{start_color}{timestamp} {message}{end_color}", flush=True)
+  print(f"{start_color}{timestamp} {message}{end_color}", flush=flush)
   return
 
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
@@ -519,7 +519,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     else:
       self.__last_plot_data = deepcopy(data)
       
-    timestamps = [datetime.fromisoformat(ts).timestamp() for ts in data['timestamps'][-limit:]] if data and 'timestamps' in data else []
+    timestamps = [
+      datetime.fromisoformat(ts).timestamp() for ts in data['timestamps'][-limit:]
+    ] if data and 'timestamps' in data else [datetime.now().timestamp()]
     start_time = datetime.fromtimestamp(timestamps[0]).strftime('%Y-%m-%d %H:%M:%S')
     end_time = datetime.fromtimestamp(timestamps[-1]).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -638,7 +640,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.node_epoch.setText(f'Epoch: {node_epoch}')
       self.node_epoch.setStyleSheet(f'color: {color}')
       
-      prc = round(node_epoch_avail * 100 if node_epoch_avail > 0 else node_epoch_avail, 2)
+      prc = round(node_epoch_avail * 100 if node_epoch_avail > 0 else node_epoch_avail, 2) if node_epoch_avail is not None else 0
       self.node_epoch_avail.setText(f'Epoch avail: {prc}%')
       self.node_epoch_avail.setStyleSheet(f'color: {color}')
       
