@@ -313,9 +313,8 @@ class _DockerUtilsMixin:
       subprocess.call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
       self.add_log('Starting Edge Node container...')
       run_cmd = self.get_cmd()
-      subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
-      sleep(2)
-      if self.is_container_running():
+      rc = subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW, timeout=20)
+      if rc == 0:
         QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
         self.add_log('Edge Node container launched successfully.')
       else:
