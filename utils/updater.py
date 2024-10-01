@@ -90,7 +90,10 @@ class _UpdaterMixin:
         """)
 
       # Execute the batch script
-      subprocess.Popen(['cmd', '/c', 'start', '/min', script_path], shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+      if os.name == 'nt':
+        subprocess.Popen(['cmd', '/c', 'start', '/min', script_path], shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+      else:
+        subprocess.Popen(['cmd', '/c', 'start', '/min', script_path], shell=True)
       self.add_log(f'Batch script created and executed: {script_path}')
 
     else:

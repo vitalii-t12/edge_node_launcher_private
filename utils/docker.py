@@ -26,8 +26,11 @@ class DockerPullThread(QThread):
 
   def run(self):
     try:
-      process = subprocess.Popen(['docker', 'pull', self.image_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
-      
+      if os.name == 'nt':
+        process = subprocess.Popen(['docker', 'pull', self.image_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+      else:
+        process = subprocess.Popen(['docker', 'pull', self.image_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+
       for line in iter(process.stdout.readline, ''):
         self.parse_output(line)
         self.progress_update.emit(line.strip(), self.calculate_progress())
@@ -270,7 +273,10 @@ class _DockerUtilsMixin:
 
   def check_docker(self):
     try:
-      output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+      if os.name == 'nt':
+        output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+      else:
+        output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
       self.add_log("Docker status: " + output)
       return True
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -284,10 +290,11 @@ class _DockerUtilsMixin:
   def is_container_running(self):
     try:
       inspect_cmd = self.get_inspect_command()
-      status = subprocess.check_output(
-        inspect_cmd,
-        stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW
-      )
+      if os.name == 'nt':
+        status = subprocess.check_output(inspect_cmd, stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+      else:
+        status = subprocess.check_output(inspect_cmd, stderr=subprocess.STDOUT, universal_newlines=True)
+
       status = status.strip()
       container_running = status.split()[-1] == 'true'
       if container_running != self.container_last_run_status:
@@ -310,10 +317,16 @@ class _DockerUtilsMixin:
       # first try to clean the container
       self.add_log("Attempting to clean up the container...")
       clean_cmd = self.get_clean_cmd()
-      subprocess.call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+      if os.name == 'nt':
+        subprocess.call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+      else:
+        subprocess.call(clean_cmd)
       self.add_log('Starting Edge Node container...')
       run_cmd = self.get_cmd()
-      rc = subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW, timeout=20)
+      if os.name == 'nt':
+        rc = subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW, timeout=20)
+      else:
+        rc = subprocess.call(run_cmd, timeout=20)
       if rc == 0:
         QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
         self.add_log('Edge Node container launched successfully.')
@@ -331,14 +344,20 @@ class _DockerUtilsMixin:
     try:
       self.add_log('Stopping Edge Node container...')
       stop_cmd = self.get_stop_command()
-      subprocess.check_call(stop_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+      if os.name == 'nt':
+        subprocess.check_call(stop_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+      else:
+        subprocess.check_call(stop_cmd)
       sleep(2)
       QMessageBox.information(self, 'Container Stop', 'Container stopped successfully.')      
       self.add_log('Edge Node container stopped successfully.')
       try:
         self.add_log('Cleaning Edge Node container...')
         clean_cmd = self.get_clean_cmd()  
-        subprocess.check_call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+        if os.name == 'nt':
+          subprocess.check_call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+          subprocess.check_call(clean_cmd)
         self.add_log('Edge Node container removed.')
       except subprocess.CalledProcessError:
         self.add_log('Edge Node container removal failed probably due to already being removed.')
