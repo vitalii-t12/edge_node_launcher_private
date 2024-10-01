@@ -25,11 +25,20 @@ class DockerPullThread(QThread):
 
 
   def run(self):
+    import platform
+
+    architecture = platform.machine()
     try:
+
+      docker_pull_command = ['docker', 'pull', self.image_name]
+      if architecture == 'aarch64' or architecture == 'arm64':
+        docker_pull_command.insert(2, '--platform')
+        docker_pull_command.insert(3, 'linux/arm64')
+
       if os.name == 'nt':
-        process = subprocess.Popen(['docker', 'pull', self.image_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        process = subprocess.Popen(docker_pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
       else:
-        process = subprocess.Popen(['docker', 'pull', self.image_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        process = subprocess.Popen(docker_pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
       for line in iter(process.stdout.readline, ''):
         self.parse_output(line)
