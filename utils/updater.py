@@ -67,7 +67,8 @@ class _UpdaterMixin:
     
     if sys.platform == "win32":
       new_executable = os.path.join(extracted_dir, executable_name + '.exe')
-      temp_executable = os.path.join(extracted_dir, executable_name + '_new.exe')
+      current_folder = os.path.dirname(current_executable)
+      temp_executable = os.path.join(current_folder, executable_name + '_new.exe')
 
       # Copy the new executable to a temporary location
       shutil.copy(new_executable, temp_executable)
@@ -75,6 +76,8 @@ class _UpdaterMixin:
 
       # Create a batch script to replace the executable after the current process exits
       script_path = os.path.join(extracted_dir, 'replace_executable.bat')
+      move_cmd = f'move /Y "{temp_executable}" "{current_executable}"'
+      self.add_log("Move command: " + move_cmd, debug=True)
       with open(script_path, 'w') as script:
         script.write(f"""
         @echo off
@@ -84,9 +87,8 @@ class _UpdaterMixin:
             timeout /T 1 /NOBREAK >NUL
             goto loop
         )
-        move /Y "{temp_executable}" "{current_executable}"
+        {move_cmd}
         start "" "{current_executable}"
-        del "%~f0"
         """)
 
       # Execute the batch script

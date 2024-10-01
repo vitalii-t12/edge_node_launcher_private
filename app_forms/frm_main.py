@@ -18,7 +18,8 @@ from PyQt5.QtWidgets import (
   QDialog, 
   QHBoxLayout, 
   QSpacerItem, 
-  QSizePolicy
+  QSizePolicy,
+  QCheckBox
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QPixmap, QIcon
@@ -37,7 +38,7 @@ from app_forms.frm_utils import (
 
 from ver import __VER__ as __version__
 
-def log_with_color(message, color="gray", flush=True):
+def log_with_color(message, color="gray"):
   """
     Log message with color in the terminal.
     :param message: Message to log
@@ -52,10 +53,9 @@ def log_with_color(message, color="gray", flush=True):
     "blue" : "\033[94m",
     "cyan" : "\033[96m",
   }
-  timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
   start_color = color_codes.get(color, "\033[90m")
   end_color = "\033[0m"
-  print(f"{start_color}{timestamp} {message}{end_color}", flush=flush)
+  print(f"{start_color}{message}{end_color}", flush=True)
   return
 
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
@@ -67,6 +67,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.__current_node_epoch_avail = -1
     self.__current_node_ver = -1
     self.__display_uptime = None
+    
+    self.__force_debug = False
 
     self._current_stylesheet = DARK_STYLESHEET
     self.__last_plot_data = None
@@ -130,11 +132,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   
   def add_log(self, line, debug=False):
     show = (debug and not self.runs_in_production) or not debug
-    if show:
+    show = show or self.__force_debug
+    if show:      
+      timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+      line = f'{timestamp} {line}'
       self.logView.append(line)
       QApplication.processEvents()  # Flush the event queue
-      if debug:
-        log_with_color(line, flush=True)
+      if debug or self.__force_debug:
+        log_with_color(line)
     return  
   
   def center(self):
@@ -262,6 +267,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # self.themeToggleButton.setCheckable(True)
     self.themeToggleButton.clicked.connect(self.toggle_theme)
     bottom_button_area.addWidget(self.themeToggleButton)    
+    
+    # add a checkbox item to force debug
+    self.force_debug_checkbox = QCheckBox('Force Debug')
+    self.force_debug_checkbox.setChecked(False)
+    self.force_debug_checkbox.setFont(QFont("Courier New", 12, QFont.Bold, True))
+    self.force_debug_checkbox.setStyleSheet("color: white;")
+    self.force_debug_checkbox.stateChanged.connect(self.toggle_force_debug)
+    bottom_button_area.addWidget(self.force_debug_checkbox)
 
     bottom_button_area.addStretch()
     menu_layout.addLayout(bottom_button_area)
@@ -686,4 +699,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   
   
   def explorer_button_clicked(self):
+    return
+  
+  
+  def toggle_force_debug(self):
+    self.__force_debug = self.force_debug_checkbox.isChecked()
+    if self.__force_debug:
+      self.add_log('Force Debug enabled.')
+    else:
+      self.add_log('Force Debug disabled.')
     return
