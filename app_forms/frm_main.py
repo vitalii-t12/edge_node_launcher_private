@@ -60,6 +60,9 @@ def log_with_color(message, color="gray"):
 
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def __init__(self):
+    self.logView = None
+    self.log_buffer = []
+    self.__force_debug = False
     super().__init__()
 
     self.__current_node_uptime = -1
@@ -67,8 +70,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.__current_node_epoch_avail = -1
     self.__current_node_ver = -1
     self.__display_uptime = None
-    
-    self.__force_debug = False
+
 
     self._current_stylesheet = DARK_STYLESHEET
     self.__last_plot_data = None
@@ -93,11 +95,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.showMaximized()
     self.update_toggle_button_text()
-    
     self.add_log(f'Edge Node Launcher v{self.__version__} started. Running in production: {self.runs_in_production}, running with debugger: {self.runs_with_debugger()}, running in ipython: {self.runs_from_ipython()},  running from exe: {not self.not_running_from_exe()}')
     
     return
-  
+
   @staticmethod
   def not_running_from_exe():
     """
@@ -136,7 +137,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     if show:      
       timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
       line = f'{timestamp} {line}'
-      self.logView.append(line)
+      if self.logView is not None:
+        self.logView.append(line)
+      else:
+        self.log_buffer.append(line)
       QApplication.processEvents()  # Flush the event queue
       if debug or self.__force_debug:
         log_with_color(line)
@@ -308,7 +312,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.logView.setStyleSheet(self._current_stylesheet)
     self.logView.setFixedHeight(150)
     self.logView.setFont(QFont("Courier New"))
-    left_panel_layout.addWidget(self.logView)      
+    left_panel_layout.addWidget(self.logView)
+    if self.log_buffer:
+      for line in self.log_buffer:
+        self.add_log(line)
+      self.log_buffer = []
+    # endif log buffer is populated
     
     self.left_panel.setLayout(left_panel_layout)
     main_layout.addWidget(self.left_panel)
