@@ -269,9 +269,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     bottom_button_area.addWidget(self.themeToggleButton)    
     
     # add a checkbox item to force debug
-    self.force_debug_checkbox = QCheckBox('Force Debug')
+    self.force_debug_checkbox = QCheckBox('Force Debug Mode')
     self.force_debug_checkbox.setChecked(False)
-    self.force_debug_checkbox.setFont(QFont("Courier New", 12, QFont.Bold, True))
+    self.force_debug_checkbox.setFont(QFont("Courier New", 9, QFont.Bold))
     self.force_debug_checkbox.setStyleSheet("color: white;")
     self.force_debug_checkbox.stateChanged.connect(self.toggle_force_debug)
     bottom_button_area.addWidget(self.force_debug_checkbox)

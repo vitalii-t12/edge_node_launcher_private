@@ -143,6 +143,8 @@ class _DockerUtilsMixin:
     self.mqtt_password = DEFAULT_MQTT_PASSWORD
     self._dev_mode = False
     
+    self._use_gpus = True
+    
     self.run_with_sudo = False
     
     self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
@@ -158,8 +160,16 @@ class _DockerUtilsMixin:
     self.__CMD_CLEAN = [
         'docker', 'rm', self.docker_container_name,
     ]
+    if self._use_gpus:
+      str_gpus = '--gpus=all'
+      self.add_log('Using GPU.')
+    else:
+      str_gpus = ''
+      self.add_log('Not using GPU.')
+    #endif use GPU
     self.__CMD = [
-        'docker', 'run', '--gpus=all',  # use all GPUs
+        'docker', 'run', 
+        str_gpus,  # use all GPUs
         '--rm', # remove the container when it exits
         '--env-file', self.env_file,  # pass the .env file to the container
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
