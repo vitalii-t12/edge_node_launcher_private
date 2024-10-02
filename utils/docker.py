@@ -1,6 +1,8 @@
 import os
 import platform
 import subprocess
+import platform
+
 from collections import OrderedDict
 from time import sleep
 from uuid import uuid4
@@ -16,25 +18,17 @@ class DockerPullThread(QThread):
   progress_update = pyqtSignal(str, int)
   pull_finished = pyqtSignal(bool)
 
-  def __init__(self, image_name):
+  def __init__(self, docker_pull_command):
     super().__init__()
-    self.image_name = image_name
+    self.docker_pull_command = docker_pull_command
     self.total_layers = 0
-    self.pulled_layers = 0
+    self.pulled_layers = 0    
     return
 
 
   def run(self):
-    import platform
-
-    architecture = platform.machine()
     try:
-
-      docker_pull_command = ['docker', 'pull', self.image_name]
-      if architecture == 'aarch64' or architecture == 'arm64':
-        docker_pull_command.insert(2, '--platform')
-        docker_pull_command.insert(3, 'linux/arm64')
-
+      docker_pull_command = self.docker_pull_command    
       if os.name == 'nt':
         process = subprocess.Popen(docker_pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
       else:
@@ -150,21 +144,39 @@ class _DockerUtilsMixin:
     self.mqtt_host = DEFAULT_MQTT_HOST
     self.mqtt_user = DEFAULT_MQTT_USER
     self.mqtt_password = DEFAULT_MQTT_PASSWORD
-    self._dev_mode = False
-    
-    self._use_gpus = True
+    self._dev_mode = False    
     
     self.run_with_sudo = False
     
     self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
     self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
-    self.addrs_file = os.path.join(self.volume_path, ADDRS_FILE)
-    
+    self.addrs_file = os.path.join(self.volume_path, ADDRS_FILE)    
+    return
+  
+  def docker_initialize(self):
+    self._use_gpus = self.check_nvidia_gpu_available()
     self.__generate_env_file()
     self.__setup_docker_run()
     return
   
+  def check_nvidia_gpu_available(self):
+    result = False
+    try:
+      if os.name == 'nt':
+        output = subprocess.check_output(['nvidia-smi', '-L'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+      else:
+        output = subprocess.check_output(['nvidia-smi', '-L'], stderr=subprocess.STDOUT, universal_newlines=True)
+      result = 'GPU' in output
+    except Exception as exc:
+      result = False
+      output = str(exc)
+    output = output.replace('\n', '') 
+    self.add_log(f'NVIDIA GPU available: {result} ({output})')
+    return result
+  
+  
   def __setup_docker_run(self):
+    self.add_log('Setting up Docker run command...')
     self.docker_image = DOCKER_IMAGE + ":" + self.docker_tag
     self.__CMD_CLEAN = [
         'docker', 'rm', self.docker_container_name,
@@ -205,7 +217,7 @@ class _DockerUtilsMixin:
       result = self.__CMD + ['-p 80:80', self.docker_image]
     else:
       result = self.__CMD + [self.docker_image]
-    self.add_log('Docker command: {}'.format(result), debug=True)
+    self.add_log("Docker command: '{}'".format(" ".join(result)), debug=True)
     return result
   
   
@@ -222,10 +234,18 @@ class _DockerUtilsMixin:
   
   
   def __maybe_docker_pull(self):
-    progress_dialog = ProgressBarWindow("Pulling Docker Image...", self._icon, self)
-    self.docker_pull_thread = DockerPullThread(self.docker_image)
+    architecture = platform.machine()
+    docker_pull_command = ['docker', 'pull', self.docker_image]
+    if architecture == 'aarch64' or architecture == 'arm64':
+      docker_pull_command.insert(2, '--platform')
+      docker_pull_command.insert(3, 'linux/amd64')
+
+    str_docker_pull_command = ' '.join(docker_pull_command)
+    progress_dialog = ProgressBarWindow(f"Pulling Docker Image: '{str_docker_pull_command}'", self._icon, self)
+    self.docker_pull_thread = DockerPullThread(docker_pull_command=docker_pull_command)
     self.docker_pull_thread.progress_update.connect(progress_dialog.update_progress)
     self.docker_pull_thread.pull_finished.connect(progress_dialog.on_docker_pull_finished)
+    
     self.docker_pull_thread.start()
     
     self.progress_dialog = progress_dialog
@@ -270,6 +290,7 @@ class _DockerUtilsMixin:
     
     
   def __generate_env_file(self):
+    self.add_log('Generating .env file...')
     if os.path.exists(self.env_file):
       pass
     else:
@@ -290,7 +311,9 @@ class _DockerUtilsMixin:
     else:
       return LINUX_VOLUME_PATH
 
+
   def check_docker(self):
+    self.add_log('Checking Docker status...')
     try:
       if os.name == 'nt':
         output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -322,7 +345,7 @@ class _DockerUtilsMixin:
         ))
         self.container_last_run_status = container_running
       return container_running
-    except subprocess.CalledProcessError:
+    except:
       return False
 
 

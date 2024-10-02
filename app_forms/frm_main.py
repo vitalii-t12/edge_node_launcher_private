@@ -1,6 +1,10 @@
 import sys
 import os
 import json
+import platform
+import os
+
+
 from datetime import datetime
 from time import time
 from copy import deepcopy
@@ -37,6 +41,12 @@ from app_forms.frm_utils import (
 )
 
 from ver import __VER__ as __version__
+
+def get_platform_and_os_info():
+  platform_info = platform.platform()
+  os_name = platform.system()
+  os_version = platform.version()
+  return platform_info, os_name, os_version
 
 def log_with_color(message, color="gray"):
   """
@@ -84,19 +94,26 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.initUI()
 
-    if not self.check_docker():
-      sys.exit(1)
     
+    
+    self.showMaximized()
+    self.add_log(f'Edge Node Launcher v{self.__version__} started. Running in production: {self.runs_in_production}, running with debugger: {self.runs_with_debugger()}, running in ipython: {self.runs_from_ipython()},  running from exe: {not self.not_running_from_exe()}')
+
     self.timer = QTimer(self)
     self.timer.timeout.connect(self.refresh_all)
     self.timer.start(REFRESH_TIME)  # Refresh every 10 seconds
 
     self.plot_data()  # Initial plot
-    
-    self.showMaximized()
+
     self.update_toggle_button_text()
-    self.add_log(f'Edge Node Launcher v{self.__version__} started. Running in production: {self.runs_in_production}, running with debugger: {self.runs_with_debugger()}, running in ipython: {self.runs_from_ipython()},  running from exe: {not self.not_running_from_exe()}')
-    
+    platform_info, os_name, os_version = get_platform_and_os_info()
+    self.refresh_local_address()
+    self.add_log(f'Platform: {platform_info}')
+    self.add_log(f'OS: {os_name} {os_version}')
+
+    self.docker_initialize()
+    if not self.check_docker():
+      sys.exit(1)    
     return
 
   @staticmethod
@@ -315,7 +332,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     left_panel_layout.addWidget(self.logView)
     if self.log_buffer:
       for line in self.log_buffer:
-        self.add_log(line)
+        self.logView.append(line)
       self.log_buffer = []
     # endif log buffer is populated
     
@@ -323,11 +340,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     main_layout.addWidget(self.left_panel)
 
     self.setLayout(main_layout)
-    self.refresh_local_address()
     self.apply_stylesheet()
     
     self.setWindowIcon(self._icon)
     self.set_windows_taskbar_icon()
+
     return
   
   def toggle_theme(self):
