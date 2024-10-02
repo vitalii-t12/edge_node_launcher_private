@@ -12,7 +12,8 @@ DOCKER_TAG = 'develop'
 DOCKER_CONTAINER_NAME = 'edge_node_container'
 
 # Volume paths
-WINDOWS_VOLUME_PATH = f'\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
+WINDOWS_VOLUME_PATH1 = f'\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
+WINDOWS_VOLUME_PATH2 = f'\\\\wsl.localhost\\docker-desktop\\mnt\\docker-desktop-disk\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
 LINUX_VOLUME_PATH = '/var/lib/docker/volumes/naeural_vol/_data'
 LOCAL_HISTORY_FILE = '_data/local_history.json'
 E2_PEM_FILE = '_data/e2.pem'

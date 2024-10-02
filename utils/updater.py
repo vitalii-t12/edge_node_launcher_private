@@ -78,6 +78,7 @@ class _UpdaterMixin:
       script_path = os.path.join(extracted_dir, 'replace_executable.bat')
       move_cmd = f'move /Y "{temp_executable}" "{current_executable}"'
       self.add_log("Move command: " + move_cmd, debug=True)
+      self.add_log("Executing script: " + script_path, debug=True)
       with open(script_path, 'w') as script:
         script.write(f"""
         @echo off
@@ -88,6 +89,7 @@ class _UpdaterMixin:
             goto loop
         )
         {move_cmd}
+        timeout /T 5 /NOBREAK >NUL
         start "" "{current_executable}"
         """)
 

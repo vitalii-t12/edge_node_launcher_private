@@ -148,7 +148,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return not (self.runs_from_ipython() or self.runs_with_debugger() or self.not_running_from_exe())
   
   
-  def add_log(self, line, debug=False):
+  def add_log(self, line, debug=False, color="gray"):
     show = (debug and not self.runs_in_production) or not debug
     show = show or self.__force_debug
     if show:      
@@ -160,7 +160,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.log_buffer.append(line)
       QApplication.processEvents()  # Flush the event queue
       if debug or self.__force_debug:
-        log_with_color(line)
+        log_with_color(line, color=color)
     return  
   
   def center(self):

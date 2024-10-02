@@ -307,7 +307,12 @@ class _DockerUtilsMixin:
 
   def __get_volume_path(self):
     if platform.system() == 'Windows':
-      return WINDOWS_VOLUME_PATH
+      if os.path.isdir(WINDOWS_VOLUME_PATH1):
+        return WINDOWS_VOLUME_PATH1
+      elif os.path.isdir(WINDOWS_VOLUME_PATH2):
+        return WINDOWS_VOLUME_PATH2
+      else:
+        self.add_log('ERROR: Could not find any of the Windows volume paths.')
     else:
       return LINUX_VOLUME_PATH
 
