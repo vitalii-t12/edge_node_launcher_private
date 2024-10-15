@@ -99,21 +99,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.showMaximized()
     self.add_log(f'Edge Node Launcher v{self.__version__} started. Running in production: {self.runs_in_production}, running with debugger: {self.runs_with_debugger()}, running in ipython: {self.runs_from_ipython()},  running from exe: {not self.not_running_from_exe()}')
 
+
+    platform_info, os_name, os_version = get_platform_and_os_info()
+    self.add_log(f'Platform: {platform_info}')
+    self.add_log(f'OS: {os_name} {os_version}')
+
+    if not self.check_docker():
+      sys.exit(1)    
+
+    self.docker_initialize()
+      
+    if self.is_container_running():
+      self.post_launch_setup()
+      self.refresh_local_address()
+      self.plot_data()  # Initial plot
+
+    self.update_toggle_button_text()
+
     self.timer = QTimer(self)
     self.timer.timeout.connect(self.refresh_all)
     self.timer.start(REFRESH_TIME)  # Refresh every 10 seconds
 
-    self.plot_data()  # Initial plot
-
-    self.update_toggle_button_text()
-    platform_info, os_name, os_version = get_platform_and_os_info()
-    self.refresh_local_address()
-    self.add_log(f'Platform: {platform_info}')
-    self.add_log(f'OS: {os_name} {os_version}')
-
-    self.docker_initialize()
-    if not self.check_docker():
-      sys.exit(1)    
+      
     return
 
   @staticmethod
@@ -698,24 +705,30 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
     
   def refresh_all(self):
-    t0 = time()
-    self.refresh_local_address()    
-    t1 = time()
-    self.plot_data()
-    t2 = time()
+    t_t1 = time()
     self.update_toggle_button_text()
-    t3 = time()
-    self.maybe_refresh_uptime()
-    t4 = time()
-    self.add_log(
-      f'{t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t3 - t2:.2f}s (update_toggle_button_text), {t4 - t3:.2f}s (maybe_refresh_uptime)',
-      debug=True
-    )
-    
-    if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
-      verbose = self.__last_auto_update_check == 0
-      self.__last_auto_update_check = time()
-      self.check_for_updates(verbose=verbose or FULL_DEBUG)
+    t_te = time() - t_t1
+    if not self.is_container_running():
+      self.add_log('Edge Node is not running. Skipping refresh.')
+    else:
+      t0 = time()
+      self.refresh_local_address()    
+      t1 = time()
+      self.plot_data()
+      t2 = time()
+      #
+      t3 = time()
+      self.maybe_refresh_uptime()
+      t4 = time()
+      self.add_log(
+        f'{t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t_te:.2f}s (update_toggle_button_text), {t4 - t3:.2f}s (maybe_refresh_uptime)',
+        debug=True
+      )
+      
+      if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
+        verbose = self.__last_auto_update_check == 0
+        self.__last_auto_update_check = time()
+        self.check_for_updates(verbose=verbose or FULL_DEBUG)
     return    
 
 

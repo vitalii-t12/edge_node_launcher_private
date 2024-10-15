@@ -1,4 +1,5 @@
 import os
+import sys
 import platform
 import subprocess
 import platform
@@ -134,9 +135,14 @@ class ProgressBarWindow(QDialog):
 class _DockerUtilsMixin:
   def __init__(self):
     super().__init__()
+    
+    self.volume_path = None
+    self.config_startup_file = None
+    self.config_app_file = None
+    self.addrs_file = None
+
     self.node_addr = None
     self.container_last_run_status = None
-    self.volume_path = self.__get_volume_path()
     self.docker_container_name = DOCKER_CONTAINER_NAME
     self.docker_tag = DOCKER_TAG
     self.env_file = ENV_FILE
@@ -146,8 +152,13 @@ class _DockerUtilsMixin:
     self.mqtt_password = DEFAULT_MQTT_PASSWORD
     self._dev_mode = False    
     
-    self.run_with_sudo = False
+    self.run_with_sudo = False    
     
+    return
+  
+  
+  def post_launch_setup(self):
+    self.volume_path = self.__get_volume_path()
     self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
     self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
     self.addrs_file = os.path.join(self.volume_path, ADDRS_FILE)    
@@ -306,13 +317,18 @@ class _DockerUtilsMixin:
 
 
   def __get_volume_path(self):
+    docker_check = self.check_docker()
+    if not docker_check:
+      sys.exit(1)
     if platform.system() == 'Windows':
       if os.path.isdir(WINDOWS_VOLUME_PATH1):
         return WINDOWS_VOLUME_PATH1
       elif os.path.isdir(WINDOWS_VOLUME_PATH2):
         return WINDOWS_VOLUME_PATH2
       else:
-        self.add_log('ERROR: Could not find any of the Windows volume paths.')
+        msg = 'ERROR: Could not find any of the Windows volume paths.'
+        QMessageBox.information(self, 'Missing Docker or docker failed to start ', msg)        
+        sys.exit(1)
     else:
       return LINUX_VOLUME_PATH
 
@@ -377,6 +393,7 @@ class _DockerUtilsMixin:
       if rc == 0:
         QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
         self.add_log('Edge Node container launched successfully.')
+        self.post_launch_setup()
       else:
         QMessageBox.warning(self, 'Container Launch', 'Failed to launch container.')
         self.add_log('Edge Node container start failed.')
