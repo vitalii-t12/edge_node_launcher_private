@@ -225,7 +225,7 @@ class _DockerUtilsMixin:
 
     self.__CMD += [
         '--rm', # remove the container when it exits
-        '--env-file', '.env' #f'"{str(self.env_file)}"',  # pass the .env file to the container
+        '--env-file', '.env', #f'"{str(self.env_file)}"',  # pass the .env file to the container
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
         '--name', self.docker_container_name, '-d',  
     ]
