@@ -393,15 +393,15 @@ class _DockerUtilsMixin:
 
 
   def launch_container(self):
+    is_env_ok = self.__check_env_keys()
+    if not is_env_ok:
+      return
+    self.add_log('Updating image...')
+    self.__maybe_docker_pull()
+    # first try to clean the container
+    self.add_log("Attempting to clean up the container...")
+    clean_cmd = self.get_clean_cmd()
     try:
-      is_env_ok = self.__check_env_keys()
-      if not is_env_ok:
-        return
-      self.add_log('Updating image...')
-      self.__maybe_docker_pull()
-      # first try to clean the container
-      self.add_log("Attempting to clean up the container...")
-      clean_cmd = self.get_clean_cmd()
       if os.name == 'nt':
         # subprocess.call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
         output = subprocess.check_output(
@@ -417,6 +417,14 @@ class _DockerUtilsMixin:
         )
       # endif windows or not
       self.add_log('Container cleanup status: {}'.format(output))
+    except subprocess.CalledProcessError as e:
+      error_code = e.returncode
+      error_output = e.output
+      self.add_log('Edge Node container cleanup failed with code={}: {}'.format(error_code, error_output))
+    except Exception as e:
+      self.add_log('Edge Node container cleanup failed with unknown error: {}'.format(e))
+    
+    try:
       self.add_log('Starting Edge Node container...')
       run_cmd = self.get_cmd()
       if os.name == 'nt':
@@ -439,9 +447,14 @@ class _DockerUtilsMixin:
       self.add_log('Edge Node container launched successfully.')
       self.post_launch_setup()
       # endif container running
+    except subprocess.CalledProcessError as e:
+      error_code = e.returncode
+      error_output = e.output
+      QMessageBox.warning(self, 'Container Launch', 'Failed to launch container')
+      self.add_log('Edge Node container start failed with error code={}: {}'.format(error_code, error_output))
     except Exception as e:
       QMessageBox.warning(self, 'Container Launch', 'Failed to launch container')
-      self.add_log('Edge Node container start failed: {}'.format(e))
+      self.add_log('Edge Node container start failed with unknown error: {}'.format(e))
     return
 
 
