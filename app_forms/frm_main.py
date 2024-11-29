@@ -724,11 +724,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         f'{t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t_te:.2f}s (update_toggle_button_text), {t4 - t3:.2f}s (maybe_refresh_uptime)',
         debug=True
       )
-      
-      if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
-        verbose = self.__last_auto_update_check == 0
-        self.__last_auto_update_check = time()
-        self.check_for_updates(verbose=verbose or FULL_DEBUG)
+    #endif container is running
+    if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
+      verbose = self.__last_auto_update_check == 0
+      self.__last_auto_update_check = time()
+      self.check_for_updates(verbose=verbose or FULL_DEBUG)
     return    
 
 
