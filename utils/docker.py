@@ -220,6 +220,12 @@ class _DockerUtilsMixin:
       self.__CMD_CLEAN.insert(0, 'sudo')
       self.__CMD_STOP.insert(0, 'sudo')
       self.__CMD_INSPECT.insert(0, 'sudo')
+    
+    self.add_log('Docker run command setup complete:')
+    self.add_log(' - Run:     {}'.format(" ".join(self.__CMD)))
+    self.add_log(' - Clean:   {}'.format(" ".join(self.__CMD_CLEAN)))
+    self.add_log(' - Stop:    {}'.format(" ".join(self.__CMD_STOP)))
+    self.add_log(' - Inspect: {}'.format(" ".join(self.__CMD_INSPECT)))
     return
   
   
@@ -381,25 +387,44 @@ class _DockerUtilsMixin:
       self.add_log("Attempting to clean up the container...")
       clean_cmd = self.get_clean_cmd()
       if os.name == 'nt':
-        subprocess.call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+        # subprocess.call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+        output = subprocess.check_output(
+          clean_cmd, 
+          stderr=subprocess.STDOUT, 
+          universal_newlines=True, 
+          creationflags=subprocess.CREATE_NO_WINDOW
+        )
       else:
-        subprocess.call(clean_cmd)
+        output = subprocess.check_output(
+          clean_cmd, 
+          stderr=subprocess.STDOUT
+        )
+      # endif windows or not
+      self.add_log('Container cleanup status: {}'.format(output))
       self.add_log('Starting Edge Node container...')
       run_cmd = self.get_cmd()
       if os.name == 'nt':
-        rc = subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW, timeout=20)
+        # rc = subprocess.call(run_cmd, creationflags=subprocess.CREATE_NO_WINDOW, timeout=20)
+        output = subprocess.check_output(
+          run_cmd, 
+          stderr=subprocess.STDOUT, 
+          universal_newlines=True, 
+          creationflags=subprocess.CREATE_NO_WINDOW
+        )
       else:
-        rc = subprocess.call(run_cmd, timeout=20)
-      if rc == 0:
-        QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
-        self.add_log('Edge Node container launched successfully.')
-        self.post_launch_setup()
-      else:
-        QMessageBox.warning(self, 'Container Launch', 'Failed to launch container.')
-        self.add_log('Edge Node container start failed.')
+        # rc = subprocess.call(run_cmd, timeout=20)
+        output = subprocess.check_output(
+          run_cmd, 
+          stderr=subprocess.STDOUT, 
+        )
+      # endif windows or not
+      self.add_log('Container start status: {}'.format(output))
+      QMessageBox.information(self, 'Container Launch', 'Container launched successfully.')
+      self.add_log('Edge Node container launched successfully.')
+      self.post_launch_setup()
       # endif container running
-    except subprocess.CalledProcessError as e:
-      QMessageBox.warning(self, 'Container Launch', 'Failed to launch container.')
+    except Exception as e:
+      QMessageBox.warning(self, 'Container Launch', 'Failed to launch container')
       self.add_log('Edge Node container start failed: {}'.format(e))
     return
 
