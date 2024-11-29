@@ -171,6 +171,7 @@ class _DockerUtilsMixin:
   
   
   def post_launch_setup(self):
+    self.add_log('Executing post-launch setup...')
     self.volume_path = self.__get_volume_path()
     self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
     self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
@@ -384,6 +385,8 @@ class _DockerUtilsMixin:
           self.container_last_run_status, container_running, status
         ))
         self.container_last_run_status = container_running
+        if container_running:
+          self.post_launch_setup()
       return container_running
     except:
       return False
