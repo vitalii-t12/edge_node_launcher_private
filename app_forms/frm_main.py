@@ -94,10 +94,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.initUI()
 
-    
+    self.__cwd = os.getcwd()
     
     self.showMaximized()
     self.add_log(f'Edge Node Launcher v{self.__version__} started. Running in production: {self.runs_in_production}, running with debugger: {self.runs_with_debugger()}, running in ipython: {self.runs_from_ipython()},  running from exe: {not self.not_running_from_exe()}')
+    self.add_log(f'Running from: {self.__cwd}')
 
 
     platform_info, os_name, os_version = get_platform_and_os_info()

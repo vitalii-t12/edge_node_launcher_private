@@ -63,7 +63,7 @@ class _UpdaterMixin:
     if current_executable.endswith('python.exe'):
       raise Exception('Cannot replace the current executable as it is running in a virtual environment.')
     
-    self.add_log(f'Preparing executable replacement: {current_executable}')
+    self.add_log(f'Preparing executable replacement of: {current_executable}')
     
     if sys.platform == "win32":
       new_executable = os.path.join(extracted_dir, executable_name + '.exe')
@@ -157,7 +157,7 @@ class _UpdaterMixin:
             QMessageBox.information(None, 'Update Not Available', f'No update available for your OS: {platform_system}.')
             return
           download_dir = os.path.join(os.getcwd(), DOWNLOAD_DIR)
-          self.add_log(f'Downloading update from {download_url}...'                       )
+          self.add_log(f'Downloading update from {download_url} to {download_dir}...'                       )
           zip_path = self._download_update(download_url, download_dir)
           self.add_log(f'Extracting update from {zip_path}...')
           self._extract_zip(zip_path, download_dir)
