@@ -217,7 +217,7 @@ class _DockerUtilsMixin:
         'docker', 'run', 
         str_gpus,  # use all GPUs
         '--rm', # remove the container when it exits
-        '--env-file', str(self.env_file),  # pass the .env file to the container
+        '--env-file', f'"{str(self.env_file)}"',  # pass the .env file to the container
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
         '--name', self.docker_container_name, '-d',  
     ]
@@ -236,7 +236,7 @@ class _DockerUtilsMixin:
       self.__CMD_INSPECT.insert(0, 'sudo')
     
     self.add_log('Docker run command setup complete:')
-    self.add_log(' - Run:     {}'.format(" ".join(self.__CMD)))
+    self.add_log(' - Run:     {}'.format(" ".join(self.get_cmd())))
     self.add_log(' - Clean:   {}'.format(" ".join(self.__CMD_CLEAN)))
     self.add_log(' - Stop:    {}'.format(" ".join(self.__CMD_STOP)))
     self.add_log(' - Inspect: {}'.format(" ".join(self.__CMD_INSPECT)))
@@ -245,7 +245,7 @@ class _DockerUtilsMixin:
   
   def get_cmd(self):
     if self._dev_mode:
-      result = self.__CMD + ['-p 80:80', self.docker_image]
+      result = self.__CMD + ['-p', '80:80', self.docker_image]
     else:
       result = self.__CMD + [self.docker_image]
     self.add_log("Docker command: '{}'".format(" ".join(result)), debug=True)
