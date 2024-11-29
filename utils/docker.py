@@ -213,9 +213,15 @@ class _DockerUtilsMixin:
       str_gpus = ''
       self.add_log('Not using GPU.')
     #endif use GPU
+    
     self.__CMD = [
-        'docker', 'run', 
-        str_gpus,  # use all GPUs
+        'docker', 'run',
+    ]
+
+    if len(str_gpus) > 0:
+      self.__CMD += [str_gpus]
+
+    self.__CMD += [
         '--rm', # remove the container when it exits
         '--env-file', f'"{str(self.env_file)}"',  # pass the .env file to the container
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
