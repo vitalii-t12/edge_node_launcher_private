@@ -2,8 +2,8 @@ from ver import __VER__
 
 FULL_DEBUG = True
 
-# Constants Section
-ENV_FILE = '.env'
+
+HOME_SUBFOLDER = ".naeural_launcher"
 
 # Docker
 DOCKER_VOLUME = 'naeural_vol'

@@ -4,6 +4,7 @@ import platform
 import subprocess
 import platform
 
+from pathlib import Path
 from collections import OrderedDict
 from time import sleep
 from uuid import uuid4
@@ -14,6 +15,11 @@ from PyQt5.QtWidgets import (QApplication, QDialog, QInputDialog, QLabel,
 
 from .const import *
 
+def get_user_folder():
+  """
+  Returns the user folder.
+  """
+  return Path.home() / HOME_SUBFOLDER
 
 class DockerPullThread(QThread):
   progress_update = pyqtSignal(str, int)
@@ -136,6 +142,8 @@ class _DockerUtilsMixin:
   def __init__(self):
     super().__init__()
     
+    self.init_directories()
+    
     self.volume_path = None
     self.config_startup_file = None
     self.config_app_file = None
@@ -145,7 +153,6 @@ class _DockerUtilsMixin:
     self.container_last_run_status = None
     self.docker_container_name = DOCKER_CONTAINER_NAME
     self.docker_tag = DOCKER_TAG
-    self.env_file = ENV_FILE
     self.node_id = self.get_node_id()
     self.mqtt_host = DEFAULT_MQTT_HOST
     self.mqtt_user = DEFAULT_MQTT_USER
@@ -154,6 +161,12 @@ class _DockerUtilsMixin:
     
     self.run_with_sudo = False    
     
+    return
+  
+  def init_directories(self):
+    path = get_user_folder()
+    path.mkdir(exist_ok=True)
+    self.env_file = path / '.env'
     return
   
   
@@ -203,7 +216,7 @@ class _DockerUtilsMixin:
         'docker', 'run', 
         str_gpus,  # use all GPUs
         '--rm', # remove the container when it exits
-        '--env-file', self.env_file,  # pass the .env file to the container
+        '--env-file', str(self.env_file),  # pass the .env file to the container
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
         '--name', self.docker_container_name, '-d',  
     ]
@@ -307,7 +320,7 @@ class _DockerUtilsMixin:
     
     
   def __generate_env_file(self):
-    self.add_log('Generating .env file...')
+    self.add_log(f'Checking {self.env_file} file...')
     if os.path.exists(self.env_file):
       pass
     else:
