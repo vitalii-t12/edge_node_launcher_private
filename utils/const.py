@@ -52,7 +52,7 @@ ENV_TEMPLATE = '''
 
 # admin
 EE_ID={}
-EE_SUPERVISOR=true
+EE_SUPERVISOR=false
 EE_DEVICE=cuda:0
 
 
