@@ -75,10 +75,3 @@ class DockerCommandHandler:
                 error_callback(f"Failed to process metrics: {str(e)}")
 
         self._execute_threaded('get_node_history', process_metrics, error_callback)
-
-    def get_pull_command(self, image: str, architecture: str = None) -> list:
-        docker_pull_command = ['docker', 'pull', image]
-        if architecture in ['aarch64', 'arm64']:
-            docker_pull_command.insert(2, '--platform')
-            docker_pull_command.insert(3, 'linux/amd64')
-        return docker_pull_command
