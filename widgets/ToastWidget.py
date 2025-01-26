@@ -41,9 +41,13 @@ class ToastWidget(QWidget):
         }
     }
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, bottom_margin=20):
         super().__init__(parent)
+        self.bottom_margin = bottom_margin
         self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.raise_()  # Bring to front
         self.fade_animation = None
         self._setup_ui()
         self.hide()
@@ -96,6 +100,7 @@ class ToastWidget(QWidget):
         """)
 
     def show_notification(self, notification_type: NotificationType, message: str, duration: int = 2000):
+        self.raise_()  # Ensure toast is on top when shown
         style = self.STYLES[notification_type]
         self.icon.setText(style['icon'])
         self.title.setText(style['title'])
@@ -109,10 +114,11 @@ class ToastWidget(QWidget):
         self._position_toast()
         self._start_fade_in(duration)
 
+
     def _position_toast(self):
         parent_rect = self.parentWidget().rect()
         x = parent_rect.width() - self.width() - 20
-        y = parent_rect.height() - self.height() - 20
+        y = parent_rect.height() - self.height() - self.bottom_margin
         self.move(x, y)
 
     def _start_fade_in(self, duration: int):

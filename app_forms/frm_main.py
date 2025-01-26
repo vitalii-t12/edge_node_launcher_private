@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from time import time
 from typing import Optional
+import re
 
 from PyQt5.QtWidgets import (
   QApplication, 
@@ -457,7 +458,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   #   return
 
   def edit_addrs(self):
-    dialog = AuthorizedAddressesDialog(self)
+    dialog = AuthorizedAddressesDialog(self, on_save_callback=self.save_addrs_file)
 
     # Load existing data
     current_data = []
@@ -465,27 +466,24 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       with open(self.addrs_file, 'r') as file:
         lines = file.readlines()
         for line in lines:
-          parts = line.strip().split(',')
-          if len(parts) >= 2:
-            current_data.append({
-              'address': parts[0],
-              'alias': parts[1]
-            })
+          parts = re.split(r'\s+', line.strip())
+          current_data.append({
+            'address': parts[0],
+            'alias': parts[1]
+          })
     except FileNotFoundError:
       pass
 
     dialog.load_data(current_data)
 
     if dialog.exec_() == QDialog.Accepted:
-      new_data = dialog.get_data()
-      with open(self.addrs_file, 'w') as file:
-        for item in new_data:
-          file.write(f"{item['address']},{item['alias']}\n")
-  
-  def save_addrs_file(self, content, dialog):
+      self.toast.show_notification(NotificationType.SUCCESS, 'Authorized addresses updates successfully')
+
+
+  def save_addrs_file(self, content):
+    print(content)
     with open(self.addrs_file, 'w') as file:
       file.write(content)
-    dialog.accept()
     return
   
   

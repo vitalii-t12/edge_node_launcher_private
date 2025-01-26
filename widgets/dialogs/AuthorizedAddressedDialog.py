@@ -2,10 +2,14 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QLineEdit, QScrollArea, QWidget, QApplication, QMessageBox)
 from PyQt5.QtCore import Qt
 
+from widgets.ToastWidget import ToastWidget, NotificationType
+
 
 class AddressRow(QWidget):
     def __init__(self, parent=None, address="", alias="", on_delete=None):
         super().__init__(parent)
+        self.parent_dialog = parent
+
         self.layout = QHBoxLayout()
         self.layout.setContentsMargins(0, 5, 0, 5)
 
@@ -62,14 +66,18 @@ class AddressRow(QWidget):
 
     def copy_address(self):
         clipboard = QApplication.clipboard()
-        clipboard.setText(self.address_input.text())
+        text = self.address_input.text()
+        clipboard.setText(text)
+        if hasattr(self.parent_dialog, 'toast'):
+            self.parent_dialog.toast.show_notification(NotificationType.SUCCESS,
+                                                       f"Address copied: {text[:8]}...{text[-8:]}")
 
     def copy_alias(self):
         clipboard = QApplication.clipboard()
-        clipboard.setText(self.alias_input.text())
-    # def copy_address(self):
-    #     clipboard = QApplication.clipboard()
-    #     clipboard.setText(self.address_input.text())
+        text = self.alias_input.text()
+        clipboard.setText(text)
+        if hasattr(self.parent_dialog, 'toast'):
+            self.parent_dialog.toast.show_notification(NotificationType.SUCCESS, f"Alias copied: {text}")
 
     def get_data(self):
         return {
@@ -84,6 +92,8 @@ class AddressRow(QWidget):
 class AuthorizedAddressesDialog(QDialog):
     def __init__(self, parent=None, on_save_callback=None):
         super().__init__(parent)
+        self.toast = ToastWidget(self, bottom_margin=80)  # Position above buttons
+
         self.on_save_callback = on_save_callback
         self.setWindowTitle("Edit Authorized Addresses")
         self.setMinimumWidth(800)
@@ -146,12 +156,14 @@ class AuthorizedAddressesDialog(QDialog):
 
     def save_changes(self):
         if not self.validate_data():
+            self.toast.show_notification(NotificationType.ERROR, "Please fill in all addresses")
             return
 
         if self.on_save_callback:
             data = self.get_data()
+            processed_data = "\n".join(f"{item['address']} {item['alias']}" for item in data)
             try:
-                self.on_save_callback(data)
+                self.on_save_callback(processed_data)
                 self.accept()
             except Exception as e:
                 QMessageBox.critical(self, "Save Error", f"Failed to save changes: {str(e)}")
@@ -186,7 +198,7 @@ class AuthorizedAddressesDialog(QDialog):
         dialog.exec_()
 
     def add_row(self, address="", alias=""):
-        row = AddressRow(address=address, alias=alias, on_delete=self.delete_row)
+        row = AddressRow(parent=self, address=address, alias=alias, on_delete=self.delete_row)
         self.rows.append(row)
         self.rows_layout.addWidget(row)
 
