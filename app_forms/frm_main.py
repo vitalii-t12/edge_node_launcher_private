@@ -30,8 +30,10 @@ from PyQt5.QtGui import QFont, QPixmap, QIcon
 import pyqtgraph as pg
 
 import services.messaging_service as messaging_service
+from models.NodeInfo import NodeInfo
 from utils.const import *
 from utils.docker import _DockerUtilsMixin
+from utils.docker_commands import DockerCommandHandler
 from utils.updater import _UpdaterMixin
 
 from utils.icon import ICON_BASE64
@@ -109,7 +111,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       sys.exit(1)    
 
     self.docker_initialize()
-      
+    self.docker_handler = DockerCommandHandler(DOCKER_CONTAINER_NAME)
+
     if self.is_container_running():
       self.post_launch_setup()
       self.refresh_local_address()
@@ -643,37 +646,30 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
 
 
-
   def refresh_local_address(self):
-    address_path = os.path.join(self.volume_path, LOCAL_ADDRESS_FILE)
-    try:
-      with open(address_path, 'r') as file:
-        data = json.load(file)
-        node_addr = data['address']
-        node_alias= data.get('alias', '')
-        node_eth_addr = data.get('eth_address', '')
-        node_signature = data.get('signature', '')
-        self.node_eth_addr = node_eth_addr
-        self.node_signature = node_signature
-        if node_addr != self.node_addr:
-          self.node_addr = node_addr
-          self.node_name = node_alias
-          str_display = node_addr[:8] + '...' + node_addr[-8:]
-          self.addressDisplay.setText('Addr: ' + str_display)
-          self.nameDisplay.setText('Name: ' + node_alias)
-          self.add_log(f'Local address updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_addr}')
-        # endif new address
-      # endwith open                    
-    except FileNotFoundError:
-      self.addressDisplay.setText('Address file not found.')
+    if not self.is_container_running():
+      self.addressDisplay.setText('Node not running')
       self.nameDisplay.setText('')
-    except PermissionError as e:
-      messaging_service.show_critical_message(self, "Permission Denied",
-                           f"Unable to read the file at {address_path}. Please change the file permissions.")
-    except Exception as e:
-      self.add_log(f'Error loading address: {e}', debug=True)
-    return
-  
+      return
+
+    def on_success(node_info: NodeInfo) -> None:
+      if node_info.address != self.node_addr:
+        self.node_name = node_info.alias
+        self.node_eth_addr = node_info.eth_address
+
+        str_display = f"{node_info.address[:8]}...{node_info.address[-8:]}"
+        self.addressDisplay.setText('Addr: ' + str_display)
+        self.nameDisplay.setText('Name: ' + node_info.alias)
+        self.add_log(f'Node info updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_addr}')
+
+    def on_error(error):
+      self.add_log(f'Error getting node info: {error}', debug=True)
+      self.addressDisplay.setText('Error getting node info')
+      self.nameDisplay.setText('')
+
+    self.docker_handler.get_node_info(on_success, on_error)
+
+
   def maybe_refresh_uptime(self):
     # update uptime, epoch and epoch avail
     uptime = self.__current_node_uptime
