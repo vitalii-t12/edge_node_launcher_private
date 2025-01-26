@@ -15,6 +15,8 @@ from PyQt5.QtWidgets import (QApplication, QDialog, QInputDialog, QLabel,
                              QMessageBox, QProgressBar, QTextEdit, QVBoxLayout)
 
 from .const import *
+from .docker_commands import DockerCommandHandler
+
 
 def get_user_folder():
   """
@@ -143,6 +145,8 @@ class _DockerUtilsMixin:
   def __init__(self):
     super().__init__()
     
+    super().__init__()
+    self.docker_handler = DockerCommandHandler(DOCKER_CONTAINER_NAME)
     self.init_directories()
     
     self.volume_path = None
@@ -268,28 +272,26 @@ class _DockerUtilsMixin:
   
   def get_inspect_command(self):
     return self.__CMD_INSPECT
-  
-  
+
   def __maybe_docker_pull(self):
     architecture = platform.machine()
-    docker_pull_command = ['docker', 'pull', self.docker_image]
-    if architecture == 'aarch64' or architecture == 'arm64':
-      docker_pull_command.insert(2, '--platform')
-      docker_pull_command.insert(3, 'linux/amd64')
+    pull_command = self.docker_handler.get_pull_command(self.docker_image, architecture)
+    str_pull_command = ' '.join(pull_command)
 
-    str_docker_pull_command = ' '.join(docker_pull_command)
-    progress_dialog = ProgressBarWindow(f"Pulling Docker Image: '{str_docker_pull_command}'", self._icon, self)
-    self.docker_pull_thread = DockerPullThread(docker_pull_command=docker_pull_command)
+    progress_dialog = ProgressBarWindow(
+      f"Pulling Docker Image: '{str_pull_command}'",
+      self._icon,
+      self
+    )
+
+    self.docker_pull_thread = DockerPullThread(pull_command)
     self.docker_pull_thread.progress_update.connect(progress_dialog.update_progress)
     self.docker_pull_thread.pull_finished.connect(progress_dialog.on_docker_pull_finished)
-    
     self.docker_pull_thread.start()
-    
+
     self.progress_dialog = progress_dialog
     self.progress_dialog.exec_()
-    return
-  
-  
+
   def get_node_id(self):
     return 'naeural_' + str(uuid4())[:8]
   
