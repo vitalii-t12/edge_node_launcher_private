@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from time import time
 from copy import deepcopy
+from typing import Optional
 
 from PyQt5.QtWidgets import (
   QApplication, 
@@ -31,6 +32,7 @@ import pyqtgraph as pg
 
 import services.messaging_service as messaging_service
 from models.NodeInfo import NodeInfo
+from models.NodeHistory import NodeHistory
 from utils.const import *
 from utils.docker import _DockerUtilsMixin
 from utils.docker_commands import DockerCommandHandler
@@ -551,100 +553,106 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return result
 
   def plot_data(self):
-    data_path = os.path.join(self.volume_path, LOCAL_HISTORY_FILE)
-    self.add_log(f'Loading data from: {data_path}', debug=True) 
-    try:
-      if os.path.exists(data_path):
-        with open(data_path, 'r') as file:
-          data = json.load(file)
-        if self.check_data(data):
-          self.plot_graphs(data)
+    def on_success(history: NodeHistory) -> None:
+      self.__current_node_epoch = history.epoch
+      self.__current_node_epoch_avail = history.epoch_avail
+      self.__current_node_uptime = history.uptime
+      self.__current_node_ver = history.version
+
+      if history.timestamps != self.__last_timesteps:
+        self.__last_timesteps = history.timestamps.copy()
+        if len(history.timestamps) > MAX_HISTORY_QUEUE:
+          history.timestamps = history.timestamps[-MAX_HISTORY_QUEUE:]
+          history.cpu_load = history.cpu_load[-MAX_HISTORY_QUEUE:]
+          history.occupied_memory = history.occupied_memory[-MAX_HISTORY_QUEUE:]
+          if history.gpu_load:
+            history.gpu_load = history.gpu_load[-MAX_HISTORY_QUEUE:]
+          if history.gpu_occupied_memory:
+            history.gpu_occupied_memory = history.gpu_occupied_memory[-MAX_HISTORY_QUEUE:]
+
+        self.add_log(f'Data loaded & cleaned: {len(history.timestamps)} timestamps', debug=True)
+        self.plot_graphs(history)
       else:
-        self.plot_graphs(None)
-    except FileNotFoundError:
+        self.add_log('Data already up-to-date. No new data.', debug=True)
+
+    def on_error(error: str) -> None:
+      self.add_log(f'Error getting history: {error}', debug=True)
       self.plot_graphs(None)
-    return  
 
+    self.docker_handler.get_node_history(on_success, on_error)
 
-  def plot_graphs(self, data=None, limit=100):
-    if data is None:
+  def plot_graphs(self, history: Optional[NodeHistory] = None, limit: int = 100) -> None:
+    if history is None:
       data = self.__last_plot_data
     else:
-      self.__last_plot_data = deepcopy(data)
-      
+      self.__last_plot_data = history
+
     timestamps = [
-      datetime.fromisoformat(ts).timestamp() for ts in data['timestamps'][-limit:]
-    ] if data and 'timestamps' in data else [datetime.now().timestamp()]
+      datetime.fromisoformat(ts).timestamp()
+      for ts in history.timestamps[-limit:]
+    ] if history else [datetime.now().timestamp()]
+
     start_time = datetime.fromtimestamp(timestamps[0]).strftime('%Y-%m-%d %H:%M:%S')
     end_time = datetime.fromtimestamp(timestamps[-1]).strftime('%Y-%m-%d %H:%M:%S')
 
-    def update_plot(plot, timestamps, values, label, color):      
+    def update_plot(plot, timestamps, values, label, color):
       plot.clear()
       plot.addLegend()
       values = [x for x in values if x is not None]
       if values:
         values = values[-limit:]
-        plot.plot(timestamps, values, pen=pg.mkPen(color=color, width=2), name=label, color=color)
+        plot.plot(timestamps, values, pen=pg.mkPen(color=color, width=2), name=label)
       else:
         plot.plot([0], [0], pen=None, symbol='o', symbolBrush=color, name='NO DATA')
       plot.setLabel('left', text=label, color=color)
       plot.setLabel('bottom', text='Time', color=color)
       if timestamps:
-        plot.setLabel('bottom', f"Time ({start_time} to {end_time})", color=color)      
+        plot.setLabel('bottom', f"Time ({start_time} to {end_time})", color=color)
       plot.getAxis('bottom').autoVisible = False
       plot.getAxis('bottom').enableAutoSIPrefix(False)
-      return
-    
 
-    # Plot CPU Load
-    # Create the custom DateAxisItem
-    cpu_data = data.get('cpu_load', []) if data else []
+    color = 'white' if self._current_stylesheet == DARK_STYLESHEET else 'black'
+    self.add_log(f'Plotting data: {len(timestamps)} timestamps with color: {color}')
+
+    # CPU Load
+    cpu_data = history.cpu_load if history else []
     cpu_date_axis = DateAxisItem(orientation='bottom')
-    cpu_date_axis.setTimestamps(timestamps, parent="cpu")  # Pass the actual timestamps    
+    cpu_date_axis.setTimestamps(timestamps, parent="cpu")
     self.cpu_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.cpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.cpu_plot.setAxisItems({'bottom': cpu_date_axis})
     self.cpu_plot.setTitle('CPU Load')
-    color = 'white' if self._current_stylesheet == DARK_STYLESHEET else 'black'    
-    self.add_log(f'Plotting data: {len(timestamps)} timestamps with color: {color}')    
     update_plot(self.cpu_plot, timestamps, cpu_data, 'CPU Load', color)
 
-    # Plot Memory Load
-    # Create the custom DateAxisItem
-    mem_data = data.get('occupied_memory', []) if data else []
+    # Memory Load
+    mem_data = history.occupied_memory if history else []
     mem_date_axis = DateAxisItem(orientation='bottom')
-    mem_date_axis.setTimestamps(timestamps, parent="mem")  # Pass the actual timestamps    
+    mem_date_axis.setTimestamps(timestamps, parent="mem")
     self.memory_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.memory_plot.setAxisItems({'bottom': mem_date_axis})
     self.memory_plot.setTitle('Memory Load')
-    # update_plot(self.memory_plot, timestamps, data.get('total_memory', []) if data else [], 'Total Memory', 'y')
     update_plot(self.memory_plot, timestamps, mem_data, 'Occupied Memory', color)
 
-    # Plot GPU Load if available
-    # Create the custom DateAxisItem
-    gpu_data = data.get('gpu_load', []) if data else []
-    gpu_date_axis = DateAxisItem(orientation='bottom')
-    gpu_date_axis.setTimestamps(timestamps, parent="gpu")  # Pass the actual timestamps    
-    self.gpu_plot.getAxis('bottom').setTickSpacing(60, 10)
-    self.gpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
-    self.gpu_plot.setAxisItems({'bottom': gpu_date_axis})
-    self.gpu_plot.setTitle('GPU Load')
-    update_plot(self.gpu_plot, timestamps, gpu_data, 'GPU Load', color)
+    # GPU Load if available
+    if history and history.gpu_load:
+      gpu_date_axis = DateAxisItem(orientation='bottom')
+      gpu_date_axis.setTimestamps(timestamps, parent="gpu")
+      self.gpu_plot.getAxis('bottom').setTickSpacing(60, 10)
+      self.gpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
+      self.gpu_plot.setAxisItems({'bottom': gpu_date_axis})
+      self.gpu_plot.setTitle('GPU Load')
+      update_plot(self.gpu_plot, timestamps, history.gpu_load, 'GPU Load', color)
 
-    # Plot GPU Memory Load if available
-    # Create the custom DateAxisItem
-    gpu_mem_data = data.get('gpu_occupied_memory', []) if data else []
-    gpumem_date_axis = DateAxisItem(orientation='bottom')
-    gpumem_date_axis.setTimestamps(timestamps, parent="gpu_mem")  # Pass the actual timestamps    
-    self.gpu_memory_plot.getAxis('bottom').setTickSpacing(60, 10)
-    self.gpu_memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
-    self.gpu_memory_plot.setAxisItems({'bottom': gpumem_date_axis})
-    self.gpu_memory_plot.setTitle('GPU Memory Load')
-    # update_plot(self.gpu_memory_plot, timestamps, data.get('gpu_total_memory', []) if data else [], 'Total GPU Memory', 'y')
-    update_plot(self.gpu_memory_plot, timestamps, gpu_mem_data, 'Occupied GPU Memory', color)
-    return
-
+    # GPU Memory if available
+    if history and history.gpu_occupied_memory:
+      gpumem_date_axis = DateAxisItem(orientation='bottom')
+      gpumem_date_axis.setTimestamps(timestamps, parent="gpu_mem")
+      self.gpu_memory_plot.getAxis('bottom').setTickSpacing(60, 10)
+      self.gpu_memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
+      self.gpu_memory_plot.setAxisItems({'bottom': gpumem_date_axis})
+      self.gpu_memory_plot.setTitle('GPU Memory Load')
+      update_plot(self.gpu_memory_plot, timestamps, history.gpu_occupied_memory, 'Occupied GPU Memory', color)
 
   def refresh_local_address(self):
     if not self.is_container_running():

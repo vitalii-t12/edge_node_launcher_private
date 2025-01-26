@@ -4,6 +4,7 @@ import subprocess
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from models.NodeInfo import NodeInfo
+from models.NodeHistory import NodeHistory
 
 
 class DockerCommandThread(QThread):
@@ -64,3 +65,13 @@ class DockerCommandHandler:
                 error_callback(f"Failed to process node info: {str(e)}")
 
         self._execute_threaded('get_node_info', process_node_info, error_callback)
+
+    def get_node_history(self, callback, error_callback) -> None:
+        def process_metrics(data: dict):
+            try:
+                metrics = NodeHistory.from_dict(data)
+                callback(metrics)
+            except Exception as e:
+                error_callback(f"Failed to process metrics: {str(e)}")
+
+        self._execute_threaded('get_node_history', process_metrics, error_callback)
