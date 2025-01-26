@@ -41,6 +41,8 @@ from app_forms.frm_utils import (
 )
 
 from ver import __VER__ as __version__
+from widgets.dialogs.AuthorizedAddressedDialog import AuthorizedAddressesDialog
+
 
 def get_platform_and_os_info():
   platform_info = platform.platform()
@@ -446,14 +448,39 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
   
   
-  def edit_addrs(self): 
-    self.edit_file(
-      file_path=self.addrs_file, 
-      func=self.save_addrs_file, 
-      title='Edit authorized addrs file'
-    )
-    return    
-  
+  # def edit_addrs(self):
+  #   self.edit_file(
+  #     file_path=self.addrs_file,
+  #     func=self.save_addrs_file,
+  #     title='Edit authorized addrs file'
+  #   )
+  #   return
+
+  def edit_addrs(self):
+    dialog = AuthorizedAddressesDialog(self)
+
+    # Load existing data
+    current_data = []
+    try:
+      with open(self.addrs_file, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+          parts = line.strip().split(',')
+          if len(parts) >= 2:
+            current_data.append({
+              'address': parts[0],
+              'alias': parts[1]
+            })
+    except FileNotFoundError:
+      pass
+
+    dialog.load_data(current_data)
+
+    if dialog.exec_() == QDialog.Accepted:
+      new_data = dialog.get_data()
+      with open(self.addrs_file, 'w') as file:
+        for item in new_data:
+          file.write(f"{item['address']},{item['alias']}\n")
   
   def save_addrs_file(self, content, dialog):
     with open(self.addrs_file, 'w') as file:
