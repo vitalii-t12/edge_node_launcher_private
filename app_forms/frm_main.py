@@ -1,13 +1,10 @@
 import sys
-import os
-import json
 import platform
 import os
 
 
 from datetime import datetime
 from time import time
-from copy import deepcopy
 from typing import Optional
 
 from PyQt5.QtWidgets import (
@@ -17,9 +14,8 @@ from PyQt5.QtWidgets import (
   QPushButton, 
   QLabel, 
   QGridLayout,
-  QFrame, 
-  QMessageBox, 
-  QTextEdit, 
+  QFrame,
+  QTextEdit,
   QDialog, 
   QHBoxLayout, 
   QSpacerItem, 
@@ -27,12 +23,12 @@ from PyQt5.QtWidgets import (
   QCheckBox
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont, QPixmap, QIcon
+from PyQt5.QtGui import QFont
 import pyqtgraph as pg
 
-import services.messaging_service as messaging_service
 from models.NodeInfo import NodeInfo
 from models.NodeHistory import NodeHistory
+from widgets.ToastWidget import ToastWidget, NotificationType
 from utils.const import *
 from utils.docker import _DockerUtilsMixin
 from utils.docker_commands import DockerCommandHandler
@@ -41,7 +37,7 @@ from utils.updater import _UpdaterMixin
 from utils.icon import ICON_BASE64
 
 from app_forms.frm_utils import (
-  get_icon_from_base64, DateAxisItem, ToggleButton1
+  get_icon_from_base64, DateAxisItem
 )
 
 from ver import __VER__ as __version__
@@ -125,8 +121,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.timer = QTimer(self)
     self.timer.timeout.connect(self.refresh_all)
     self.timer.start(REFRESH_TIME)  # Refresh every 10 seconds
+    self.toast = ToastWidget(self)
 
-      
     return
 
   @staticmethod
@@ -662,6 +658,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     def on_success(node_info: NodeInfo) -> None:
       if node_info.address != self.node_addr:
+        self.node_addr = node_info.address
         self.node_name = node_info.alias
         self.node_eth_addr = node_info.eth_address
 
@@ -711,11 +708,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       
       self.__display_uptime = uptime
     return
-    
 
   def copy_address(self):
+    if not self.node_addr:
+      self.toast.show_notification(NotificationType.ERROR, NOTIFICATION_ADDRESS_COPY_FAILED)
+      return
+
     clipboard = QApplication.clipboard()
     clipboard.setText(self.node_addr)
+    self.toast.show_notification(NotificationType.SUCCESS, NOTIFICATION_ADDRESS_COPIED.format(address=self.node_addr))
     return
     
   def refresh_all(self):

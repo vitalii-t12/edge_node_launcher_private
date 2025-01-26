@@ -46,6 +46,16 @@ MAX_HISTORY_QUEUE = 5 * 60 // 10 # 5 minutes @ 10 seconds each hb
 
 AUTO_UPDATE_CHECK_INTERVAL = 60
 
+# Notification messages
+NOTIFICATION_TITLE_STRINGS_ENUM = {
+    'success': 'Success',
+    'error': 'Error',
+    'warning': 'Warning',
+    'info': 'Information'
+}
+
+NOTIFICATION_ADDRESS_COPIED = "Address {address} copied to clipboard"
+NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again a bit later"
 
 ENV_TEMPLATE = '''
 # LOCAL FILE TEMPLATE
