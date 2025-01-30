@@ -120,9 +120,9 @@ jobs:
 
 
 
-        run: |
-          $filePath = "utils/const.py"
-          (Get-Content $filePath) -replace '\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*', "${{ env.MQTT_K }}" | Set-Content $filePath
+#        run: |
+#          $filePath = "utils/const.py"
+#          (Get-Content $filePath) -replace '\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*', "${{ env.MQTT_K }}" | Set-Content $filePath
 
       - name: Save build artifacts
         uses: actions/upload-artifact@v3
