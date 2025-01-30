@@ -11,7 +11,7 @@ jobs:
       should-run: ${{ steps.check-version.outputs.should-run }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetches all history for all branches and tags
 
@@ -136,7 +136,7 @@ jobs:
 #          (Get-Content $filePath) -replace '\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*', "${{ env.MQTT_K }}" | Set-Content $filePath
 
       - name: Save build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: dist/*
@@ -148,25 +148,25 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-WIN32-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-WIN32-signed
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-LINUX_Ubuntu-24.04-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-LINUX_Ubuntu-24.04
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-LINUX_Ubuntu-22.04-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-LINUX_Ubuntu-22.04
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-LINUX_Ubuntu-20.04-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-LINUX_Ubuntu-20.04
