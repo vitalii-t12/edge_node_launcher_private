@@ -92,9 +92,9 @@ jobs:
       - name: Check path
         if: runner.os == 'Windows'
         run: |
-          ls -la        
+          ls         
           pwd
-          ls -la ./all-builds/EdgeNodeLauncher-WIN32
+          ls  ./all-builds/EdgeNodeLauncher-WIN32
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
