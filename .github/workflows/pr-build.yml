@@ -89,6 +89,41 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
+      - name: Sign Windows app
+        if: runner.os == 'Windows'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          # Sign and timestamp code object.
+          command: sign
+          # SSL.com account username
+          username: "Naeural999"
+          # SSL.com account password.
+          password: "romaniaA1!@"
+          # Credential ID for signing certificate.
+          credential_id: "55b014a8-ddf1-4a1e-90e5-30205fa03f1c"
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
+          totp_secret: "1KxhDbtPxQXd1zbm8q0BCWmhrfV/Va+zq7s+bG54fDU="
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
+          file_path: ${GITHUB_WORKSPACE}/all-builds/EdgeNodeLauncher-WIN32/EdgeNodeLauncher.exe
+          # Directory where signed code object(s) will be written.
+          output_path: ${GITHUB_WORKSPACE}/all-builds/EdgeNodeLauncher-WIN32-signed/EdgeNodeLauncher.exe
+          # Scan code before sign
+          malware_block: false
+          # Environment Name, For Production 'PROD' or For Staging 'TEST'
+          environment_name: PROD
+
+#        env:
+#          ES_USERNAME: "Naeural999"
+#          ES_PASSWORD: "romaniaA1!@"
+#          CREDENTIAL_ID: ""
+#          ES_TOTP_SECRET: ""
+
+
+
+        run: |
+          $filePath = "utils/const.py"
+          (Get-Content $filePath) -replace '\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*', "${{ env.MQTT_K }}" | Set-Content $filePath
+
       - name: Save build artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -105,7 +140,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: EdgeNodeLauncher-WIN32-build-${{ github.event.pull_request.number }}-${{ github.sha }}
-          path: ./all-builds/EdgeNodeLauncher-WIN32
+          path: ./all-builds/EdgeNodeLauncher-WIN32-signed
 
       - name: Download build artifacts
         uses: actions/download-artifact@v3
