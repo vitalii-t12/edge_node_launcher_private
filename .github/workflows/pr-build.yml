@@ -91,6 +91,13 @@ jobs:
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
+        run: |
+          ls -la        
+          pwd
+          ls -la ./all-builds/EdgeNodeLauncher-WIN32
+
+      - name: Sign Windows app
+        if: runner.os == 'Windows'
         uses: sslcom/esigner-codesign@develop
         with:
           # Sign and timestamp code object.
