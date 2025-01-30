@@ -89,7 +89,7 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
-      - name: Sign Windows app
+      - name: Check path
         if: runner.os == 'Windows'
         run: |
           ls -la        
