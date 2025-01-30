@@ -94,7 +94,8 @@ jobs:
         run: |
           ls         
           pwd
-          ls  ./all-builds/EdgeNodeLauncher-WIN32
+          ls  ${GITHUB_WORKSPACE}/all-builds/
+          ls ${GITHUB_WORKSPACE}/all-builds/EdgeNodeLauncher-WIN32-signed/EdgeNodeLauncher.exe
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
