@@ -114,7 +114,7 @@ jobs:
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ./build/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
-          output_path: ./build/EdgeNodeLauncher-WIN32-signed/EdgeNodeLauncher.exe
+          output_path: ./build/EdgeNodeLauncher-signed.exe
           # Scan code before sign
           malware_block: false
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
