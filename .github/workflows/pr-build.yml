@@ -97,6 +97,7 @@ jobs:
           ls  dist
           ls build
           mv ./build/EdgeNodeLauncher ./build/EdgeNodeLauncher.exe
+          chmod 777 ./build/EdgeNodeLauncher.exe
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
