@@ -98,6 +98,7 @@ jobs:
           ls build
           mv ./build/EdgeNodeLauncher ./build/EdgeNodeLauncher.exe
           chmod 777 ./build/EdgeNodeLauncher.exe
+          mkdir -p ./build/signed
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
@@ -116,7 +117,7 @@ jobs:
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ./build/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
-          output_path: ./build/EdgeNodeLauncher-signed.exe
+          output_path: ./build/signed
           # Scan code before sign
           malware_block: false
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
