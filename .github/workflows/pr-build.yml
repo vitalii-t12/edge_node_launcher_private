@@ -152,6 +152,7 @@ jobs:
       - name: Set Permissions for Signing
         if: runner.os == 'Windows'
         run: |
+          rm dist/EdgeNodeLauncher.exe
           mv signed/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
 
 
