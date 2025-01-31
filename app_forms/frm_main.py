@@ -43,6 +43,7 @@ from app_forms.frm_utils import (
 
 from ver import __VER__ as __version__
 from widgets.dialogs.AuthorizedAddressedDialog import AuthorizedAddressesDialog
+from models.AllowedAddress import AllowedAddress, AllowedAddressList
 
 
 def get_platform_and_os_info():
@@ -457,18 +458,31 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   #   )
   #   return
 
+
   def edit_addrs(self):
-    dialog = AuthorizedAddressesDialog(self, on_save_callback=self.save_addrs_file)
+    dialog = AuthorizedAddressesDialog(self, on_save_callback=None)
 
     def on_success(data: dict) -> None:
-        current_data = []
-        for address, alias in data.items():
-            current_data.append({
-                'address': address,
-                'alias': alias
-            })
-        dialog.load_data(current_data)
+        allowed_list = AllowedAddressList.from_dict(data)
+        dialog.load_data(allowed_list.to_batch_format())
         dialog.exec_()
+
+        if dialog.result() == QDialog.Accepted:
+            def save_success(data: dict) -> None:
+                self.add_log('Successfully updated authorized addresses', debug=True)
+                self.toast.show_notification(
+                    NotificationType.SUCCESS, 
+                    'Authorized addresses updated successfully'
+                )
+
+            def save_error(error: str) -> None:
+                self.add_log(f'Error updating authorized addresses: {error}', debug=True)
+                self.toast.show_notification(
+                    NotificationType.ERROR, 
+                    'Failed to update authorized addresses'
+                )
+
+            self.docker_handler.update_allowed_batch(dialog.get_data(), save_success, save_error)
 
     def on_error(error: str) -> None:
         self.add_log(f'Error getting allowed addresses: {error}', debug=True)
@@ -480,16 +494,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     else:
         on_error("Container not running")
 
-    if dialog.result() == QDialog.Accepted:
-        self.toast.show_notification(NotificationType.SUCCESS, 'Authorized addresses updated successfully')
 
-  def save_addrs_file(self, content):
-    print(content)
-    with open(self.addrs_file, 'w') as file:
-      file.write(content)
-    return
-  
-  
   def view_config_files(self):
     config_startup_content = ''
     config_app_content = ''
