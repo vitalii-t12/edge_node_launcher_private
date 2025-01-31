@@ -96,8 +96,7 @@ jobs:
           pwd
           ls  dist
           ls build
-          mkdir -p ./dist/signed
-          chmod 777 ./dist/EdgeNodeLauncher.exe
+          mkdir -p ./signed
           ls  ${{ github.workspace }}/dist
 #          dir  ${{ github.workspace }}/dist
 
@@ -106,27 +105,27 @@ jobs:
 #        run: |
 #          tasklist | findstr /I "EdgeNodeLauncher.exe" && taskkill /F /IM EdgeNodeLauncher.exe || echo "No process running"
 
-      - name: Set Permissions for Signing
-        if: runner.os == 'Windows'
-        run: |
-          icacls build\EdgeNodeLauncher.exe /grant Everyone:F /T /C
-
+#      - name: Set Permissions for Signing
+#        if: runner.os == 'Windows'
+#        run: |
+#          icacls build\EdgeNodeLauncher.exe /grant Everyone:F /T /C
+#
 
 #      - name: Wait for File Unlock
 #        if: runner.os == 'Windows'
 #        run: timeout /t 5
 
-      - name: Debug File Path
-        if: runner.os == 'Windows'
-        run: |
-          echo "Checking file path..."
-          dir build
-          dir ${{ github.workspace }}/build
-      - name: Set Permissions for Signing
-        if: runner.os == 'Windows'
-        run: |
-          icacls build\EdgeNodeLauncher.exe /grant Everyone:F /T /C
-          attrib -r build\EdgeNodeLauncher.exe
+#      - name: Debug File Path
+#        if: runner.os == 'Windows'
+#        run: |
+#          echo "Checking file path..."
+#          dir build
+#          dir ${{ github.workspace }}/build
+#      - name: Set Permissions for Signing
+#        if: runner.os == 'Windows'
+#        run: |
+#          icacls build\EdgeNodeLauncher.exe /grant Everyone:F /T /C
+#          attrib -r build\EdgeNodeLauncher.exe
       - name: Sign Windows app
         if: runner.os == 'Windows'
         uses: sslcom/esigner-codesign@develop
@@ -144,11 +143,17 @@ jobs:
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
-          output_path: ${{ github.workspace }}/dist/
+          output_path: ${{ github.workspace }}/signed
           # Scan code before sign
           malware_block: false
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
           environment_name: PROD
+
+      - name: Set Permissions for Signing
+        if: runner.os == 'Windows'
+        run: |
+          mv signed/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
+
 
 #        env:
 #          ES_USERNAME: "Naeural999"
