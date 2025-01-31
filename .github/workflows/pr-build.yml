@@ -96,9 +96,8 @@ jobs:
           pwd
           ls  dist
           ls build
-          mv ./build/EdgeNodeLauncher ./build/EdgeNodeLauncher.exe
-          chmod 777 ./build/EdgeNodeLauncher.exe
           mkdir -p ./build/signed
+          chmod 777 ./build/EdgeNodeLauncher.exe
           ls  ${{ github.workspace }}/build
           dir  ${{ github.workspace }}/build
 
@@ -123,7 +122,11 @@ jobs:
           echo "Checking file path..."
           dir build
           dir ${{ github.workspace }}/build
-
+      - name: Set Permissions for Signing
+        if: runner.os == 'Windows'
+        run: |
+          icacls build\EdgeNodeLauncher.exe /grant Everyone:F /T /C
+          attrib -r build\EdgeNodeLauncher.exe
       - name: Sign Windows app
         if: runner.os == 'Windows'
         uses: sslcom/esigner-codesign@develop
