@@ -133,13 +133,13 @@ jobs:
           # Sign and timestamp code object.
           command: sign
           # SSL.com account username
-          username: "Naeural999"
+          username: {{ secrets.SSL_USERNAME }}
           # SSL.com account password.
-          password: "romaniaA1!@"
+          password: {{ secrets.SSL_PASSWORD }}
           # Credential ID for signing certificate.
-          credential_id: "55b014a8-ddf1-4a1e-90e5-30205fa03f1c"
+          credential_id: {{ secrets.SSL_CREDENTIAL_ID }}
           # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
-          totp_secret: "1KxhDbtPxQXd1zbm8q0BCWmhrfV/Va+zq7s+bG54fDU="
+          totp_secret: {{ secrets.SSL_TOTP_SECRET }}
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
@@ -149,7 +149,7 @@ jobs:
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
           environment_name: PROD
 
-      - name: Set Permissions for Signing
+      - name: Replace non-signed version with signed one
         if: runner.os == 'Windows'
         run: |
           rm dist/EdgeNodeLauncher.exe
