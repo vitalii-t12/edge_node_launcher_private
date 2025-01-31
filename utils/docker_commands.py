@@ -47,6 +47,13 @@ class DockerCommandThread(QThread):
                 self.command_error.emit(f"Command failed: {result.stderr}\nCommand: {' '.join(full_command)}\nInput data: {self.input_data}")
                 return
 
+            # TODO: Imrove output handling.
+            # Maybe implement it in a way that the command itself can specify the output format.
+            # For delete_e2_pem_file command, treat output as plain text
+            if self.command == 'delete_e2_pem_file':
+                self.command_finished.emit({'message': result.stdout.strip()})
+                return
+
             try:
                 data = json.loads(result.stdout)
                 self.command_finished.emit(data)
@@ -163,3 +170,20 @@ class DockerCommandHandler:
                 error_callback(f"Failed to process config app: {str(e)}")
 
         self._execute_threaded('get_config_app', process_config_app, error_callback)
+
+    def delete_e2_pem_file(self, callback, error_callback) -> None:
+        """Deletes the E2 PEM file using a Docker command
+        
+        Args:
+            callback: Success callback
+            error_callback: Error callback
+        """
+        def process_response(data: dict):
+            try:
+                # Extract the message from stdout
+                message = data.get('stdout', '').strip()
+                callback(message)
+            except Exception as e:
+                error_callback(f"Failed to process response: {str(e)}")
+
+        self._execute_threaded('delete_e2_pem_file', process_response, error_callback)

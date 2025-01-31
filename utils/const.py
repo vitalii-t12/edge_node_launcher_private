@@ -11,13 +11,8 @@ DOCKER_IMAGE = 'naeural/edge_node'
 DOCKER_TAG = 'develop'
 DOCKER_CONTAINER_NAME = 'edge_node_container'
 
-# Volume paths
-WINDOWS_VOLUME_PATH1 = f'\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
-WINDOWS_VOLUME_PATH2 = f'\\\\wsl.localhost\\docker-desktop\\mnt\\docker-desktop-disk\\data\\docker\\volumes\\{DOCKER_VOLUME}\\_data'
-LINUX_VOLUME_PATH = '/var/lib/docker/volumes/naeural_vol/_data'
-LOCAL_HISTORY_FILE = '_data/local_history.json'
-E2_PEM_FILE = '_data/e2.pem'
-LOCAL_ADDRESS_FILE = '_data/local_address.json'
+# Files names
+E2_PEM_FILE = 'e2.pem'
 
 # titles, buttons, labels, captions
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
