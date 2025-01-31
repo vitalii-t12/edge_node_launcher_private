@@ -75,3 +75,12 @@ class DockerCommandHandler:
                 error_callback(f"Failed to process metrics: {str(e)}")
 
         self._execute_threaded('get_node_history', process_metrics, error_callback)
+
+    def get_allowed_addresses(self, callback, error_callback) -> None:
+        def process_allowed_addresses(data: dict):
+            try:
+                callback(data)
+            except Exception as e:
+                error_callback(f"Failed to process allowed addresses: {str(e)}")
+
+        self._execute_threaded('get_allowed', process_allowed_addresses, error_callback)

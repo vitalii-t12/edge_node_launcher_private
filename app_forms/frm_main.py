@@ -460,25 +460,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def edit_addrs(self):
     dialog = AuthorizedAddressesDialog(self, on_save_callback=self.save_addrs_file)
 
-    # Load existing data
-    current_data = []
-    try:
-      with open(self.addrs_file, 'r') as file:
-        lines = file.readlines()
-        for line in lines:
-          parts = re.split(r'\s+', line.strip())
-          current_data.append({
-            'address': parts[0],
-            'alias': parts[1]
-          })
-    except FileNotFoundError:
-      pass
+    def on_success(data: dict) -> None:
+        current_data = []
+        for address, alias in data.items():
+            current_data.append({
+                'address': address,
+                'alias': alias
+            })
+        dialog.load_data(current_data)
+        dialog.exec_()
 
-    dialog.load_data(current_data)
+    def on_error(error: str) -> None:
+        self.add_log(f'Error getting allowed addresses: {error}', debug=True)
+        dialog.load_data([])
+        dialog.exec_()
 
-    if dialog.exec_() == QDialog.Accepted:
-      self.toast.show_notification(NotificationType.SUCCESS, 'Authorized addresses updates successfully')
+    if self.is_container_running():
+        self.docker_handler.get_allowed_addresses(on_success, on_error)
+    else:
+        on_error("Container not running")
 
+    if dialog.result() == QDialog.Accepted:
+        self.toast.show_notification(NotificationType.SUCCESS, 'Authorized addresses updated successfully')
 
   def save_addrs_file(self, content):
     print(content)
