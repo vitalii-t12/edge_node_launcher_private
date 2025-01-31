@@ -115,9 +115,9 @@ jobs:
           # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
           totp_secret: "1KxhDbtPxQXd1zbm8q0BCWmhrfV/Va+zq7s+bG54fDU="
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
-          file_path: ./build/EdgeNodeLauncher.exe
+          file_path: $GITHUB_WORKSPACE/build/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
-          output_path: ./build/signed
+          output_path: $GITHUB_WORKSPACE/build/signed
           # Scan code before sign
           malware_block: false
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
