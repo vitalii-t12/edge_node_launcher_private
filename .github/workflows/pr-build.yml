@@ -89,15 +89,15 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
-      - name: Check path
-        if: runner.os == 'Windows'
-        run: |
-          ls         
-          pwd
-          ls  dist
-          ls build
-          mkdir -p ./signed
-          ls  ${{ github.workspace }}/dist
+      # - name: Check path
+      #   if: runner.os == 'Windows'
+      #   run: |
+      #     ls         
+      #     pwd
+      #     ls  dist
+      #     ls build
+      #     mkdir -p ./signed
+      #     ls  ${{ github.workspace }}/dist
 #          dir  ${{ github.workspace }}/dist
 
 #      - name: Unlock Windows Executable
