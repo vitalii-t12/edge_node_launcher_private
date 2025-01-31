@@ -100,6 +100,7 @@ jobs:
           chmod 777 ./build/EdgeNodeLauncher.exe
           mkdir -p ./build/signed
           ls  ${{ github.workspace }}/build
+          dir  ${{ github.workspace }}/build
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
