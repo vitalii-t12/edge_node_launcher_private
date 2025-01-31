@@ -133,13 +133,13 @@ jobs:
           # Sign and timestamp code object.
           command: sign
           # SSL.com account username
-          username: {{ secrets.SSL_USERNAME }}
+          username: ${{ secrets.SSL_USERNAME }}
           # SSL.com account password.
-          password: {{ secrets.SSL_PASSWORD }}
+          password: ${{ secrets.SSL_PASSWORD }}
           # Credential ID for signing certificate.
-          credential_id: {{ secrets.SSL_CREDENTIAL_ID }}
+          credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
           # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
-          totp_secret: {{ secrets.SSL_TOTP_SECRET }}
+          totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
