@@ -99,7 +99,7 @@ jobs:
           mkdir -p ./dist/signed
           chmod 777 ./dist/EdgeNodeLauncher.exe
           ls  ${{ github.workspace }}/dist
-          dir  ${{ github.workspace }}/dist
+#          dir  ${{ github.workspace }}/dist
 
 #      - name: Unlock Windows Executable
 #        if: runner.os == 'Windows'
