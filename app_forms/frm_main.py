@@ -578,8 +578,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def plot_data(self):
     def on_success(history: NodeHistory) -> None:
-      self.__current_node_epoch = history.epoch
-      self.__current_node_epoch_avail = history.epoch_avail
+      self.__current_node_epoch = history.current_epoch
+      self.__current_node_epoch_avail = history.current_epoch_avail
       self.__current_node_uptime = history.uptime
       self.__current_node_ver = history.version
 

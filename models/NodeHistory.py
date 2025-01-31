@@ -3,22 +3,27 @@ from typing import List, Optional
 
 @dataclass
 class NodeHistory:
-    timestamps: List[str]
+    address: str
+    alias: str
     cpu_load: List[float]
+    cpu_temp: List[float]
+    current_epoch: int
+    current_epoch_avail: float
+    eth_address: str
+    gpu_load: Optional[List[float]]
+    gpu_occupied_memory: Optional[List[float]]
+    gpu_temp: Optional[List[float]]
+    gpu_total_memory: Optional[List[float]]
+    last_epochs: List[int]
+    last_save_time: str
     occupied_memory: List[float]
+    timestamps: List[str]
     total_memory: List[float]
-    epoch: int
-    epoch_avail: float
     uptime: str
     version: str
-    cpu_temp: Optional[List[float]] = None
-    gpu_load: Optional[List[float]] = None
-    gpu_occupied_memory: Optional[List[float]] = None
-    gpu_total_memory: Optional[List[float]] = None
-    gpu_temp: Optional[List[float]] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'NodeMetrics':
+    def from_dict(cls, data: dict) -> 'NodeHistory':
         # Clean up GPU-related lists - if all values are None, set the whole list to None
         gpu_fields = ['gpu_load', 'gpu_occupied_memory', 'gpu_total_memory', 'gpu_temp']
         for field in gpu_fields:
@@ -26,17 +31,22 @@ class NodeHistory:
                 data[field] = None
 
         return cls(
-            timestamps=data['timestamps'],
+            address=data['address'],
+            alias=data['alias'],
             cpu_load=data['cpu_load'],
-            occupied_memory=data['occupied_memory'],
-            total_memory=data['total_memory'],
-            epoch=data['epoch'],
-            epoch_avail=data['epoch_avail'],
-            uptime=data['uptime'],
-            version=data['version'],
-            cpu_temp=data.get('cpu_temp'),
+            cpu_temp=data['cpu_temp'],
+            current_epoch=data['current_epoch'],
+            current_epoch_avail=data['current_epoch_avail'],
+            eth_address=data['eth_address'],
             gpu_load=data.get('gpu_load'),
             gpu_occupied_memory=data.get('gpu_occupied_memory'),
+            gpu_temp=data.get('gpu_temp'),
             gpu_total_memory=data.get('gpu_total_memory'),
-            gpu_temp=data.get('gpu_temp')
+            last_epochs=data['last_epochs'],
+            last_save_time=data['last_save_time'],
+            occupied_memory=data['occupied_memory'],
+            timestamps=data['timestamps'],
+            total_memory=data['total_memory'],
+            uptime=data['uptime'],
+            version=data['version']
         )
