@@ -18,8 +18,6 @@ LINUX_VOLUME_PATH = '/var/lib/docker/volumes/naeural_vol/_data'
 LOCAL_HISTORY_FILE = '_data/local_history.json'
 E2_PEM_FILE = '_data/e2.pem'
 LOCAL_ADDRESS_FILE = '_data/local_address.json'
-CONFIG_STARTUP_FILE = 'config_startup.json'
-CONFIG_APP_FILE = '_data/box_configuration/config_app.txt'
 
 # titles, buttons, labels, captions
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'

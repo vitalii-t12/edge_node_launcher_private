@@ -5,6 +5,8 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 from models.NodeInfo import NodeInfo
 from models.NodeHistory import NodeHistory
+from models.StartupConfig import StartupConfig
+from models.ConfigApp import ConfigApp
 
 
 class DockerCommandThread(QThread):
@@ -141,3 +143,23 @@ class DockerCommandHandler:
             error_callback,
             input_data=batch_input
         )
+
+    def get_startup_config(self, callback, error_callback) -> None:
+        def process_startup_config(data: dict):
+            try:
+                startup_config = StartupConfig.from_dict(data)
+                callback(startup_config)
+            except Exception as e:
+                error_callback(f"Failed to process startup config: {str(e)}")
+
+        self._execute_threaded('get_startup_config', process_startup_config, error_callback)
+
+    def get_config_app(self, callback, error_callback) -> None:
+        def process_config_app(data: dict):
+            try:
+                config_app = ConfigApp.from_dict(data)
+                callback(config_app)
+            except Exception as e:
+                error_callback(f"Failed to process config app: {str(e)}")
+
+        self._execute_threaded('get_config_app', process_config_app, error_callback)

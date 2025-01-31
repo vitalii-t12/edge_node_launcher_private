@@ -1,7 +1,8 @@
 import sys
 import platform
 import os
-
+import json
+import dataclasses
 
 from datetime import datetime
 from time import time
@@ -44,6 +45,8 @@ from app_forms.frm_utils import (
 from ver import __VER__ as __version__
 from widgets.dialogs.AuthorizedAddressedDialog import AuthorizedAddressesDialog
 from models.AllowedAddress import AllowedAddress, AllowedAddressList
+from models.StartupConfig import StartupConfig
+from models.ConfigApp import ConfigApp
 
 
 def get_platform_and_os_info():
@@ -496,28 +499,62 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
 
   def view_config_files(self):
-    config_startup_content = ''
-    config_app_content = ''
-    try:
-      with open(self.config_startup_file, 'r') as file:
-        config_startup_content = file.read()
-      
-      with open(self.config_app_file, 'r') as file:
-        config_app_content = file.read()
-    except FileNotFoundError:
-      return
+    startup_config = None
+    config_app = None
+    error_occurred = False
 
-    # Create the text edit widget with Courier New font and light font color
-    startup_text_edit = QTextEdit()
-    startup_text_edit.setText(config_startup_content)
-    startup_text_edit.setFont(QFont("Courier New", 11))
-    startup_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
+    def check_and_show_configs():
+        if error_occurred:
+            return
+        if startup_config is not None and config_app is not None:
+            # Both configs are loaded, show them
+            config_startup_content = json.dumps(dataclasses.asdict(startup_config), indent=2)
+            config_app_content = json.dumps(dataclasses.asdict(config_app), indent=2)
 
-    app_text_edit = QTextEdit()
-    app_text_edit.setText(config_app_content)
-    app_text_edit.setFont(QFont("Courier New", 11))
-    app_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
+            # Create the text edit widgets
+            startup_text_edit = QTextEdit()
+            startup_text_edit.setText(config_startup_content)
+            startup_text_edit.setFont(QFont("Courier New", 11))
+            startup_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
 
+            app_text_edit = QTextEdit()
+            app_text_edit.setText(config_app_content)
+            app_text_edit.setFont(QFont("Courier New", 11))
+            app_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
+
+            # Create and show dialog
+            self.show_config_dialog(startup_text_edit, app_text_edit)
+
+    def on_startup_success(config: StartupConfig) -> None:
+        nonlocal startup_config
+        startup_config = config
+        check_and_show_configs()
+
+    def on_startup_error(error: str) -> None:
+        nonlocal error_occurred
+        error_occurred = True
+        self.add_log(f'Error getting startup config: {error}', debug=True)
+        self.toast.show_notification(NotificationType.ERROR, 'Failed to load startup config')
+
+    def on_config_app_success(config: ConfigApp) -> None:
+        nonlocal config_app
+        config_app = config
+        check_and_show_configs()
+
+    def on_config_app_error(error: str) -> None:
+        nonlocal error_occurred
+        error_occurred = True
+        self.add_log(f'Error getting config app: {error}', debug=True)
+        self.toast.show_notification(NotificationType.ERROR, 'Failed to load config app')
+
+    if self.is_container_running():
+        # Start both requests in parallel
+        self.docker_handler.get_startup_config(on_startup_success, on_startup_error)
+        self.docker_handler.get_config_app(on_config_app_success, on_config_app_error)
+    else:
+        self.toast.show_notification(NotificationType.ERROR, 'Container not running')
+
+  def show_config_dialog(self, startup_text_edit, app_text_edit):
     # Create the dialog
     dialog = QDialog(self)
     dialog.setWindowTitle('View config files')

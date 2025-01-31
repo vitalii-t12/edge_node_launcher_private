@@ -146,8 +146,6 @@ class _DockerUtilsMixin:
     self.init_directories()
     
     self.volume_path = None
-    self.config_startup_file = None
-    self.config_app_file = None
 
     self.node_addr = None
     self.container_last_run_status = None
@@ -172,8 +170,6 @@ class _DockerUtilsMixin:
   def post_launch_setup(self):
     self.add_log('Executing post-launch setup...')
     self.volume_path = self.__get_volume_path()
-    self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
-    self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
     return
   
   def docker_initialize(self):
