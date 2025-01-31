@@ -102,15 +102,16 @@ jobs:
           ls  ${{ github.workspace }}/build
           dir  ${{ github.workspace }}/build
 
-      - name: Unlock Windows Executable
-        if: runner.os == 'Windows'
-        run: |
-          tasklist | findstr /I "EdgeNodeLauncher.exe" && taskkill /F /IM EdgeNodeLauncher.exe || echo "No process running"
+#      - name: Unlock Windows Executable
+#        if: runner.os == 'Windows'
+#        run: |
+#          tasklist | findstr /I "EdgeNodeLauncher.exe" && taskkill /F /IM EdgeNodeLauncher.exe || echo "No process running"
 
       - name: Set Permissions for Signing
         if: runner.os == 'Windows'
         run: |
           icacls build\EdgeNodeLauncher.exe /grant Everyone:F /T /C
+
 
       - name: Wait for File Unlock
         if: runner.os == 'Windows'
