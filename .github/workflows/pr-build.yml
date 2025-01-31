@@ -96,10 +96,10 @@ jobs:
           pwd
           ls  dist
           ls build
-          mkdir -p ./build/signed
-          chmod 777 ./build/EdgeNodeLauncher.exe
-          ls  ${{ github.workspace }}/build
-          dir  ${{ github.workspace }}/build
+          mkdir -p ./dist/signed
+          chmod 777 ./dist/EdgeNodeLauncher.exe
+          ls  ${{ github.workspace }}/dist
+          dir  ${{ github.workspace }}/dist
 
 #      - name: Unlock Windows Executable
 #        if: runner.os == 'Windows'
@@ -142,9 +142,9 @@ jobs:
           # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
           totp_secret: "1KxhDbtPxQXd1zbm8q0BCWmhrfV/Va+zq7s+bG54fDU="
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
-          file_path: ${{ github.workspace }}/build/EdgeNodeLauncher.exe
+          file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
-          output_path: ${{ github.workspace }}/build/signed
+          output_path: ${{ github.workspace }}/dist/signed
           # Scan code before sign
           malware_block: false
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
