@@ -113,9 +113,9 @@ jobs:
           icacls build\EdgeNodeLauncher.exe /grant Everyone:F /T /C
 
 
-      - name: Wait for File Unlock
-        if: runner.os == 'Windows'
-        run: timeout /t 5
+#      - name: Wait for File Unlock
+#        if: runner.os == 'Windows'
+#        run: timeout /t 5
 
       - name: Debug File Path
         if: runner.os == 'Windows'
