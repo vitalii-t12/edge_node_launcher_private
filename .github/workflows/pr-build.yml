@@ -144,7 +144,7 @@ jobs:
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
-          output_path: ${{ github.workspace }}/dist/signed
+          output_path: ${{ github.workspace }}/dist/
           # Scan code before sign
           malware_block: false
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
