@@ -1,4 +1,4 @@
-name: Multi-step multi-platform build on manually selected branch
+name: Multi-platform build on manually selected branch
 
 on:
   workflow_dispatch:
