@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (QApplication, QDialog, QInputDialog, QLabel,
                              QMessageBox, QProgressBar, QTextEdit, QVBoxLayout)
 
 from .const import *
+from .docker_commands import DockerCommandHandler
 
 def get_user_folder():
   """
@@ -145,20 +146,14 @@ class _DockerUtilsMixin:
     
     self.init_directories()
     
-    self.volume_path = None
-    self.config_startup_file = None
-    self.config_app_file = None
-    self.addrs_file = None
+    self.docker_commands = DockerCommandHandler(DOCKER_CONTAINER_NAME)
 
     self.node_addr = None
     self.container_last_run_status = None
     self.docker_container_name = DOCKER_CONTAINER_NAME
     self.docker_tag = DOCKER_TAG
     self.node_id = self.get_node_id()
-    self.mqtt_host = base64.b64decode(DEFAULT_MQTT_HOST).decode("utf-8")
-    self.mqtt_user = base64.b64decode(DEFAULT_MQTT_USER).decode("utf-8")
-    self.mqtt_password = base64.b64decode(DEFAULT_MQTT_PASSWORD).decode("utf-8")
-    self._dev_mode = False    
+    self._dev_mode = False
     
     self.run_with_sudo = False    
     
@@ -175,10 +170,6 @@ class _DockerUtilsMixin:
   
   def post_launch_setup(self):
     self.add_log('Executing post-launch setup...')
-    self.volume_path = self.__get_volume_path()
-    self.config_startup_file = os.path.join(self.volume_path, CONFIG_STARTUP_FILE)
-    self.config_app_file = os.path.join(self.volume_path, CONFIG_APP_FILE)
-    self.addrs_file = os.path.join(self.volume_path, ADDRS_FILE)    
     return
   
   def docker_initialize(self):
@@ -227,9 +218,6 @@ class _DockerUtilsMixin:
     self.__CMD += [
         '--rm', # remove the container when it exits
         '--env-file', '.env', #f'"{str(self.env_file)}"',  # pass the .env file to the container
-        '-e', f'EE_MQTT_HOST={self.mqtt_host}', # pass the MQTT host to the container
-        '-e', f'EE_MQTT_USER={self.mqtt_user}', # pass the MQTT user to the container
-        '-e', f'EE_MQTT={self.mqtt_password}', # pass the MQTT password to the container
         '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
         '--name', self.docker_container_name, '-d',  
     ]
@@ -248,10 +236,9 @@ class _DockerUtilsMixin:
       self.__CMD_INSPECT.insert(0, 'sudo')
 
     run_cmd = " ".join(self.get_cmd())
-    obfuscated_cmd = run_cmd.replace(self.mqtt_password, '*' * len(self.mqtt_password))
 
     self.add_log('Docker run command setup complete:')
-    self.add_log(' - Run:     {}'.format(obfuscated_cmd))
+    self.add_log(' - Run:     {}'.format(run_cmd))
     self.add_log(' - Clean:   {}'.format(" ".join(self.__CMD_CLEAN)))
     self.add_log(' - Stop:    {}'.format(" ".join(self.__CMD_STOP)))
     self.add_log(' - Inspect: {}'.format(" ".join(self.__CMD_INSPECT)))
@@ -323,31 +310,10 @@ class _DockerUtilsMixin:
     else:
       str_env = ENV_TEMPLATE.format(
         self.node_id, 
-        self.mqtt_host, 
-        self.mqtt_user, 
-        self.mqtt_password
       )
       with open(self.env_file, 'w') as f:
         f.write(str_env)    
     return
-
-
-  def __get_volume_path(self):
-    docker_check = self.check_docker()
-    if not docker_check:
-      sys.exit(1)
-    if platform.system() == 'Windows':
-      if os.path.isdir(WINDOWS_VOLUME_PATH1):
-        return WINDOWS_VOLUME_PATH1
-      elif os.path.isdir(WINDOWS_VOLUME_PATH2):
-        return WINDOWS_VOLUME_PATH2
-      else:
-        msg = 'ERROR: Could not find any of the Windows volume paths.'
-        QMessageBox.information(self, 'Missing Docker or docker failed to start ', msg)        
-        sys.exit(1)
-    else:
-      return LINUX_VOLUME_PATH
-
 
   def check_docker(self):
     self.add_log('Checking Docker status...')
@@ -483,19 +449,26 @@ class _DockerUtilsMixin:
 
 
   def delete_and_restart(self):
-    pem_path = os.path.join(self.volume_path, E2_PEM_FILE)
     if not self.is_container_running():
-      QMessageBox.warning(self, 'Restart Edge Node', 'Edge Node is not running.')
+        QMessageBox.warning(self, 'Restart Edge Node', 'Edge Node is not running.')
     else:
-      # now we ask for confirmation
-      reply = QMessageBox.question(self, 'Restart Edge Node', 'Are you sure you want to reset the local node?', QMessageBox.Yes | QMessageBox.No)
-      if reply == QMessageBox.Yes:
-        try:
-          self.stop_container()
-          os.remove(pem_path)
-          self.launch_container()
-          QMessageBox.information(self, 'Restart Edge Node', f'{E2_PEM_FILE} deleted and Edge Node restarted.')
-        except Exception as e:
-          QMessageBox.warning(self, 'Restart Edge Node', f'Failed to reset Edge Node: {e}')
+        # now we ask for confirmation
+        reply = QMessageBox.question(self, 'Restart Edge Node', 'Are you sure you want to reset the local node?', QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                # Call delete_e2_pem_file with callbacks
+                def on_success(data):
+                    self.stop_container()
+                    self.launch_container()
+                    QMessageBox.information(self, 'Restart Edge Node', f'{E2_PEM_FILE} deleted and Edge Node restarted.')
+                
+                def on_error(error):
+                    self.stop_container()
+                    self.launch_container()
+                    QMessageBox.warning(self, 'Restart Edge Node', f'Failed to do proper cleanup: {error}')
+                
+                self.docker_commands.delete_e2_pem_file(on_success, on_error)
+            except Exception as e:
+                QMessageBox.warning(self, 'Restart Edge Node', f'Failed to reset Edge Node: {e}')
     return
   

@@ -1,8 +1,12 @@
-name: Multi-step multi-platform build on PR to main branch and saves the artifacts
+name: Multi-platform build on manually selected branch
 
 on:
-  pull_request:
-    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run the workflow on"
+        required: true
+        default: "main"
 
 jobs:
   check-version:
@@ -11,9 +15,10 @@ jobs:
       should-run: ${{ steps.check-version.outputs.should-run }}
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout the repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history for all branches and tags
+          ref: ${{ github.event.inputs.branch }}  # Uses manually selected branch
 
       - name: Get latest release version
         id: latest-version
@@ -70,6 +75,14 @@ jobs:
             name: EdgeNodeLauncher-LINUX_Ubuntu-20.04
             platformDependencies: sudo apt-get update && sudo apt-get install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
 
+          - os: macos-latest
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+            zip: zip -r EdgeNodeLauncher-OSX-arm64.zip dist/*
+            name: EdgeNodeLauncher-OSX-arm64
+
+
     name: Build installers ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     permissions: write-all
@@ -86,26 +99,40 @@ jobs:
           pip install -r requirements.txt
           pip3 install --upgrade PyInstaller pyinstaller-hooks-contrib
 
-      - name: Replace placeholder in const.py (Windows)
-        if: runner.os == 'Windows'
-        env:
-          MQTT_K: ${{ secrets.MQTT_K }}
-        run: |
-          $filePath = "utils/const.py"
-          (Get-Content $filePath) -replace '\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*', "${{ env.MQTT_K }}" | Set-Content $filePath
-
-      - name: Replace placeholder in const.py (Linux)
-        if: runner.os == 'Linux'
-        env:
-          MQTT_K: ${{ secrets.MQTT_K }}
-        run: |
-          sed -i "s/\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*/${MQTT_K}/g" utils/const.py
-
       - name: Build app
         run: ${{ matrix.build }}
 
+      - name: Sign Windows app
+        if: runner.os == 'Windows'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          # Sign and timestamp code object.
+          command: sign
+          # SSL.com account username
+          username: ${{ secrets.SSL_USERNAME }}
+          # SSL.com account password.
+          password: ${{ secrets.SSL_PASSWORD }}
+          # Credential ID for signing certificate.
+          credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
+          totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
+          file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
+          # Directory where signed code object(s) will be written.
+          output_path: ${{ github.workspace }}/signed
+          # Scan code before sign
+          malware_block: true
+          # Environment Name, For Production 'PROD' or For Staging 'TEST'
+          environment_name: PROD
+
+      - name: Replace non-signed version with signed one
+        if: runner.os == 'Windows'
+        run: |
+          rm dist/EdgeNodeLauncher.exe
+          mv signed/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
+
       - name: Save build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: dist/*
@@ -117,25 +144,25 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-WIN32-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-WIN32
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-LINUX_Ubuntu-24.04-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-LINUX_Ubuntu-24.04
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-LINUX_Ubuntu-22.04-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-LINUX_Ubuntu-22.04
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-LINUX_Ubuntu-20.04-build-${{ github.event.pull_request.number }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-LINUX_Ubuntu-20.04

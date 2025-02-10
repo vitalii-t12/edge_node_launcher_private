@@ -78,20 +78,12 @@ jobs:
             name: EdgeNodeLauncher-LINUX_Ubuntu-20.04
             platformDependencies: sudo apt-get update && sudo apt-get install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
 
-          # disabled for now as we are testing basic functionality & fixes
-          # - os: macos-12
-          #   build: |
-          #     chmod +x build_scripts/unix_build.sh
-          #     ./build_scripts/unix_build.sh
-          #   zip: zip -r EdgeNodeLauncher-OSX-x86.zip dist/*
-          #   name: EdgeNodeLauncher-OSX-x86
-
-          # - os: macos-latest
-          #   build: |
-          #     chmod +x build_scripts/unix_build.sh
-          #     ./build_scripts/unix_build.sh
-          #   zip: zip -r EdgeNodeLauncher-OSX-arm64.zip dist/*
-          #   name: EdgeNodeLauncher-OSX-arm64
+          - os: macos-latest
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+            zip: zip -r EdgeNodeLauncher-OSX-arm64.zip dist/*
+            name: EdgeNodeLauncher-OSX-arm64
 
     name: Build installers ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -108,26 +100,42 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip3 install --upgrade PyInstaller pyinstaller-hooks-contrib
-      # Replace the `****************` to MQTT_K in utils/const.py
-      - name: Replace placeholder in const.py (Windows)
-        if: runner.os == 'Windows'
-        env:
-          MQTT_K: ${{ secrets.MQTT_K }}
-        run: |
-          $filePath = "utils/const.py"
-          (Get-Content $filePath) -replace '\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*', "${{ env.MQTT_K }}" | Set-Content $filePath
-      - name: Replace placeholder in const.py (Linux)
-        if: runner.os == 'Linux'
-        env:
-          MQTT_K: ${{ secrets.MQTT_K }}
-        run: |
-          sed -i "s/\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*/${MQTT_K}/g" utils/const.py
       - name: Build app
         run: ${{ matrix.build }}
+
+      - name: Sign Windows app
+        if: runner.os == 'Windows'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          # Sign and timestamp code object.
+          command: sign
+          # SSL.com account username
+          username: ${{ secrets.SSL_USERNAME }}
+          # SSL.com account password.
+          password: ${{ secrets.SSL_PASSWORD }}
+          # Credential ID for signing certificate.
+          credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
+          totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
+          file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
+          # Directory where signed code object(s) will be written.
+          output_path: ${{ github.workspace }}/signed
+          # Scan code before sign
+          malware_block: true
+          # Environment Name, For Production 'PROD' or For Staging 'TEST'
+          environment_name: PROD
+
+      - name: Replace non-signed version with signed one
+        if: runner.os == 'Windows'
+        run: |
+          rm dist/EdgeNodeLauncher.exe
+          mv signed/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
+
       - name: Zip App
         run: ${{ matrix.zip }}
       - name: Save zip File as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: ./${{ matrix.name }}.zip
@@ -151,7 +159,7 @@ jobs:
         run: |
           echo "VERSION=$(cat ver.py | grep -o "'.*'")" >> $GITHUB_OUTPUT
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: release
           path: release
