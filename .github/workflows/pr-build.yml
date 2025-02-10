@@ -70,6 +70,21 @@ jobs:
             name: EdgeNodeLauncher-LINUX_Ubuntu-20.04
             platformDependencies: sudo apt-get update && sudo apt-get install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
 
+          - os: macos-12
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+             zip: zip -r EdgeNodeLauncher-OSX-x86.zip dist/*
+             name: EdgeNodeLauncher-OSX-x86
+
+          - os: macos-latest
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+            zip: zip -r EdgeNodeLauncher-OSX-arm64.zip dist/*
+            name: EdgeNodeLauncher-OSX-arm64
+
+
     name: Build installers ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     permissions: write-all
