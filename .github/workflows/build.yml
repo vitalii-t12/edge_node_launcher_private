@@ -169,6 +169,7 @@ jobs:
         with:
           name: release
           path: release
+          overwrite: true
       - run: ls release
 
       - uses: ncipollo/release-action@v1
