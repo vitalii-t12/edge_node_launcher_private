@@ -54,49 +54,39 @@ jobs:
         include:
           - os: windows-latest
             build: ./build_scripts/win32_build.bat
-            zip: |
-              $version = (Get-Content ver.py) -replace "'", "" -replace "\s+", ""
-              Compress-Archive -Path dist/* -Destination "EdgeNodeLauncher-WIN32-$version.zip"
-            name: EdgeNodeLauncher-WIN32
+            zip: Compress-Archive -Path dist/* -Destination EdgeNodeLauncher-WIN32.zip
+            name: EdgeNodeLauncher-WIN32-1
             platformDependencies: ""
 
           - os: ubuntu-24.04
             build: |
               chmod +x build_scripts/unix_build.sh
               ./build_scripts/unix_build.sh
-            zip: |
-              version=$(cat ver.py | grep -o "'.*'" | tr -d "'")
-              zip -r "EdgeNodeLauncher-LINUX_Ubuntu-24.04-$version.zip" dist/*
-            name: EdgeNodeLauncher-LINUX_Ubuntu-24.04
+            zip: zip -r EdgeNodeLauncher-LINUX_Ubuntu-24.04.zip dist/*
+            name: EdgeNodeLauncher-LINUX_Ubuntu-24.04-1
             platformDependencies: sudo apt-get update && sudo apt install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
 
           - os: ubuntu-22.04
             build: |
               chmod +x build_scripts/unix_build.sh
               ./build_scripts/unix_build.sh
-            zip: |
-              version=$(cat ver.py | grep -o "'.*'" | tr -d "'")
-              zip -r "EdgeNodeLauncher-LINUX_Ubuntu-22.04-$version.zip" dist/*
-            name: EdgeNodeLauncher-LINUX_Ubuntu-22.04
+            zip: zip -r EdgeNodeLauncher-LINUX_Ubuntu-22.04.zip dist/*
+            name: EdgeNodeLauncher-LINUX_Ubuntu-22.04-1
             platformDependencies: sudo apt-get update && sudo apt install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
 
           - os: ubuntu-20.04
             build: |
               chmod +x build_scripts/unix_build.sh
               ./build_scripts/unix_build.sh
-            zip: |
-              version=$(cat ver.py | grep -o "'.*'" | tr -d "'")
-              zip -r "EdgeNodeLauncher-LINUX_Ubuntu-20.04-$version.zip" dist/*
-            name: EdgeNodeLauncher-LINUX_Ubuntu-20.04
+            zip: zip -r EdgeNodeLauncher-LINUX_Ubuntu-20.04.zip dist/*
+            name: EdgeNodeLauncher-LINUX_Ubuntu-20.04-1
             platformDependencies: sudo apt-get update && sudo apt-get install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
 
           - os: macos-latest
             build: |
               chmod +x build_scripts/unix_build.sh
               ./build_scripts/unix_build.sh
-            zip: |
-              version=$(cat ver.py | grep -o "'.*'" | tr -d "'")
-              zip -r "EdgeNodeLauncher-OSX-arm64-$version.zip" dist/*
+            zip: zip -r EdgeNodeLauncher-OSX-arm64.zip dist/*
             name: EdgeNodeLauncher-OSX-arm64
 
     name: Build installers ${{ matrix.os }}
@@ -152,12 +142,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release
-          path: ./*-${{ steps.retrieve_version.outputs.version }}.zip
+          path: ./${{ matrix.name }}.zip
       - name: Save zip File as artifact on EdgeNodeLauncherRelease
         uses: svenstaro/upload-release-action@master
         with:
-          file: ./${{ matrix.name }}-${{ steps.retrieve_version.outputs.version }}.zip
-          asset_name: ${{ matrix.name }}-${{ steps.retrieve_version.outputs.version }}.zip
+          file: ./${{ matrix.name }}.zip
+          asset_name: ${{ matrix.name }}.zip
           repo_name: ${{ github.repository }}
           overwrite: true
 
