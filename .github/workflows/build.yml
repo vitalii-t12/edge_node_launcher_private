@@ -21,8 +21,12 @@ jobs:
       - name: Get latest release version
         id: latest-version
         run: |
-          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+          LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "none")
+          if [ "$LATEST_TAG" = "none" ]; then
+          echo "No tags found."
+          else
           echo "Latest tag is $LATEST_TAG"
+          fi
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
       # Step to read version.py and compare
