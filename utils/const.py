@@ -16,8 +16,8 @@ E2_PEM_FILE = 'e2.pem'
 
 # titles, buttons, labels, captions
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
-EDIT_ENV_BUTTON_TEXT = 'Edit startup env'
-EDIT_AUTHORIZED_ADDRS = 'Edit Authorized Addrs'
+EDIT_ENV_BUTTON_TEXT = 'Edit Startup Environment'
+EDIT_AUTHORIZED_ADDRS = 'Edit Authorized Addresses'
 VIEW_CONFIGS_BUTTON_TEXT = 'View Configs'
 LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Edge Node'
 STOP_CONTAINER_BUTTON_TEXT = 'Stop Edge Node'
