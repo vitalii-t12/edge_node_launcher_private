@@ -143,6 +143,8 @@ jobs:
         with:
           name: release
           path: ./${{ matrix.name }}.zip
+          overwrite: true
+
       - name: Save zip File as artifact on EdgeNodeLauncherRelease
         uses: svenstaro/upload-release-action@master
         with:
@@ -167,6 +169,8 @@ jobs:
         with:
           name: release
           path: release
+          overwrite: true
+
       - run: ls release
 
       - uses: ncipollo/release-action@v1
