@@ -284,6 +284,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.copyEthButton.clicked.connect(self.copy_eht_address)
     bottom_button_area.addWidget(self.copyEthButton)
 
+    # Add Rename Node button
+    self.renameNodeButton = QPushButton(RENAME_NODE_BUTTON_TEXT)
+    self.renameNodeButton.clicked.connect(self.show_rename_dialog)
+    bottom_button_area.addWidget(self.renameNodeButton)
+
     self.envEditButton = QPushButton(EDIT_ENV_BUTTON_TEXT)
     self.envEditButton.clicked.connect(self.edit_env_file)
     bottom_button_area.addWidget(self.envEditButton)
@@ -735,16 +740,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       return
 
     def on_success(node_info: NodeInfo) -> None:
+      self.node_name = node_info.alias
+      self.nameDisplay.setText('Name: ' + node_info.alias)
+
       if node_info.address != self.node_addr:
         self.node_addr = node_info.address
         self.node_eth_address = node_info.eth_address
-        self.node_name = node_info.alias
-        self.node_eth_addr = node_info.eth_address
 
         str_display = f"{node_info.address[:8]}...{node_info.address[-8:]}"
         self.addressDisplay.setText('Addr: ' + str_display)
-        self.nameDisplay.setText('Name: ' + node_info.alias)
-        self.add_log(f'Node info updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_addr}')
+        self.add_log(f'Node info updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_address}')
 
     def on_error(error):
       self.add_log(f'Error getting node info: {error}', debug=True)
@@ -852,3 +857,57 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     else:
       self.add_log('Force Debug disabled.')
     return
+
+  def show_rename_dialog(self):
+    if not self.is_container_running():
+      self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not rename node.")
+      return
+
+    dialog = QDialog(self)
+    dialog.setWindowTitle('Rename Node')
+    dialog_layout = QVBoxLayout()
+
+    # Text input field
+    text_edit = QTextEdit()
+    text_edit.setText(self.node_name)
+    text_edit.setFixedHeight(50)
+    dialog_layout.addWidget(text_edit)
+
+    # Button layout
+    button_layout = QHBoxLayout()
+    
+    save_button = QPushButton('Save')
+    save_button.clicked.connect(lambda: self.save_node_name(text_edit.toPlainText(), dialog))
+    button_layout.addWidget(save_button)
+
+    cancel_button = QPushButton('Cancel')
+    cancel_button.clicked.connect(dialog.reject)
+    button_layout.addWidget(cancel_button)
+
+    dialog_layout.addLayout(button_layout)
+    dialog.setLayout(dialog_layout)
+    dialog.exec_()
+
+  def save_node_name(self, new_name: str, dialog: QDialog):
+    def on_success(data: dict) -> None:
+      self.add_log('Successfully renamed node, restarting container...', debug=True)
+      self.toast.show_notification(
+        NotificationType.SUCCESS,
+        'Node renamed successfully. Restarting...'
+      )
+      dialog.accept()
+      
+      # Stop and restart the container
+      self.stop_container()
+      self.launch_container()
+      self.post_launch_setup()
+      self.refresh_local_address()
+
+    def on_error(error: str) -> None:
+      self.add_log(f'Error renaming node: {error}', debug=True)
+      self.toast.show_notification(
+        NotificationType.ERROR,
+        'Failed to rename node'
+      )
+
+    self.docker_handler.update_node_name(new_name.strip(), on_success, on_error)

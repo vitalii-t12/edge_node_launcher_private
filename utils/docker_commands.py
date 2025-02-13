@@ -49,8 +49,8 @@ class DockerCommandThread(QThread):
 
             # TODO: Imrove output handling.
             # Maybe implement it in a way that the command itself can specify the output format.
-            # For reset_address command, treat output as plain text
-            if self.command == 'reset_address':
+            # For reset_address and commands starting with change_alias, treat output as plain text
+            if self.command == 'reset_address' or self.command.startswith('change_alias'):
                 self.command_finished.emit({'message': result.stdout.strip()})
                 return
 
@@ -187,3 +187,17 @@ class DockerCommandHandler:
                 error_callback(f"Failed to process response: {str(e)}")
 
         self._execute_threaded('reset_address', process_response, error_callback)
+
+    def update_node_name(self, new_name: str, callback, error_callback) -> None:
+        """Updates the node name/alias
+        
+        Args:
+            new_name: New name for the node
+            callback: Success callback
+            error_callback: Error callback
+        """
+        self._execute_threaded(
+            f'change_alias {new_name}',
+            callback,
+            error_callback
+        )
