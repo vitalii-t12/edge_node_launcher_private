@@ -869,6 +869,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   
   
   def explorer_button_clicked(self):
+    self.toast.show_notification(
+      NotificationType.INFO,
+      'Ratio1 Explorer is not yet implemented'
+    )
     return
   
   
