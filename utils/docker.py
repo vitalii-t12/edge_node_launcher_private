@@ -456,7 +456,7 @@ class _DockerUtilsMixin:
         reply = QMessageBox.question(self, 'Restart Edge Node', 'Are you sure you want to reset the local node?', QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             try:
-                # Call delete_e2_pem_file with callbacks
+                # Call reset_address with callbacks
                 def on_success(data):
                     self.stop_container()
                     self.launch_container()
@@ -467,7 +467,7 @@ class _DockerUtilsMixin:
                     self.launch_container()
                     QMessageBox.warning(self, 'Restart Edge Node', f'Failed to do proper cleanup: {error}')
                 
-                self.docker_commands.delete_e2_pem_file(on_success, on_error)
+                self.docker_commands.reset_address(on_success, on_error)
             except Exception as e:
                 QMessageBox.warning(self, 'Restart Edge Node', f'Failed to reset Edge Node: {e}')
     return

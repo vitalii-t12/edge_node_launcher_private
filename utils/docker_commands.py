@@ -49,8 +49,8 @@ class DockerCommandThread(QThread):
 
             # TODO: Imrove output handling.
             # Maybe implement it in a way that the command itself can specify the output format.
-            # For delete_e2_pem_file command, treat output as plain text
-            if self.command == 'delete_e2_pem_file':
+            # For reset_address command, treat output as plain text
+            if self.command == 'reset_address':
                 self.command_finished.emit({'message': result.stdout.strip()})
                 return
 
@@ -171,7 +171,7 @@ class DockerCommandHandler:
 
         self._execute_threaded('get_config_app', process_config_app, error_callback)
 
-    def delete_e2_pem_file(self, callback, error_callback) -> None:
+    def reset_address(self, callback, error_callback) -> None:
         """Deletes the E2 PEM file using a Docker command
         
         Args:
@@ -186,4 +186,4 @@ class DockerCommandHandler:
             except Exception as e:
                 error_callback(f"Failed to process response: {str(e)}")
 
-        self._execute_threaded('delete_e2_pem_file', process_response, error_callback)
+        self._execute_threaded('reset_address', process_response, error_callback)
