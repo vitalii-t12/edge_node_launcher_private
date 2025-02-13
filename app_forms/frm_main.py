@@ -280,6 +280,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.copyButton.clicked.connect(self.copy_address)
     bottom_button_area.addWidget(self.copyButton)
 
+    self.copyEthButton = QPushButton(COPY_ETHEREUM_ADDRESS_BUTTON_TEXT)
+    self.copyEthButton.clicked.connect(self.copy_eht_address)
+    bottom_button_area.addWidget(self.copyEthButton)
+
     self.envEditButton = QPushButton(EDIT_ENV_BUTTON_TEXT)
     self.envEditButton.clicked.connect(self.edit_env_file)
     bottom_button_area.addWidget(self.envEditButton)
@@ -463,6 +467,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
 
   def edit_addrs(self):
+    if not self.is_container_running():
+      self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not edit Authorized Addressees.")
+      return
+
     dialog = AuthorizedAddressesDialog(self, on_save_callback=None)
 
     def on_success(data: dict) -> None:
@@ -729,6 +737,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     def on_success(node_info: NodeInfo) -> None:
       if node_info.address != self.node_addr:
         self.node_addr = node_info.address
+        self.node_eth_address = node_info.eth_address
         self.node_name = node_info.alias
         self.node_eth_addr = node_info.eth_address
 
@@ -788,7 +797,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     clipboard.setText(self.node_addr)
     self.toast.show_notification(NotificationType.SUCCESS, NOTIFICATION_ADDRESS_COPIED.format(address=self.node_addr))
     return
-    
+
+  def copy_eht_address(self):
+    if not self.node_eth_address:
+      self.toast.show_notification(NotificationType.ERROR, NOTIFICATION_ADDRESS_COPY_FAILED)
+      return
+
+    clipboard = QApplication.clipboard()
+    clipboard.setText(self.node_eth_address)
+    self.toast.show_notification(NotificationType.SUCCESS, NOTIFICATION_ADDRESS_COPIED.format(address=self.node_eth_address))
+    return
+
   def refresh_all(self):
     t_t1 = time()
     self.update_toggle_button_text()

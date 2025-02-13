@@ -149,6 +149,7 @@ class _DockerUtilsMixin:
     self.docker_commands = DockerCommandHandler(DOCKER_CONTAINER_NAME)
 
     self.node_addr = None
+    self.node_eth_address = None
     self.container_last_run_status = None
     self.docker_container_name = DOCKER_CONTAINER_NAME
     self.docker_tag = DOCKER_TAG

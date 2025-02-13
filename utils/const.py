@@ -27,6 +27,7 @@ DELETE_AND_RESTART_BUTTON_TEXT = 'Reset Node Address'
 LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 REFRESH_LOCAL_ADDRESS_BUTTON_TEXT = 'Refresh Local Address'
 COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
+COPY_ETHEREUM_ADDRESS_BUTTON_TEXT = 'Copy Ethereum Address'
 LIGHT_DASHBOARD_BUTTON_TEXT = 'Switch to Light Theme'
 
 UPTIME_LABEL = 'Up Time:'
@@ -47,7 +48,7 @@ NOTIFICATION_TITLE_STRINGS_ENUM = {
 }
 
 NOTIFICATION_ADDRESS_COPIED = "Address {address} copied to clipboard"
-NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again a bit later"
+NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again after launching the Edge Node."
 
 ENV_TEMPLATE = '''
 # LOCAL FILE TEMPLATE
