@@ -384,7 +384,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.themeToggleButton.setText('Switch to Light Theme')
     self.apply_stylesheet()
     self.plot_graphs()
+    self.change_text_color()
     return  
+
+  # TODO: Find a better approach. It's a hotfix for the text color issue.
+  def change_text_color(self):
+    if self._current_stylesheet == DARK_STYLESHEET:
+      self.force_debug_checkbox.setStyleSheet("color: white;")
+    else:
+      self.force_debug_checkbox.setStyleSheet("color: black;")
 
   def apply_stylesheet(self):
     self.setStyleSheet(self._current_stylesheet)
@@ -768,7 +776,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     node_epoch = self.__current_node_epoch
     node_epoch_avail = self.__current_node_epoch_avail
     ver = self.__current_node_ver
-    color = 'white'
+    color = 'black'
     if not self.container_last_run_status:
       uptime = "STOPPED"
       node_epoch = "N/A"
@@ -778,7 +786,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     #end if overwrite if stopped      
     if uptime != self.__display_uptime:
       if self.__display_uptime is not None and node_epoch_avail is not None and node_epoch_avail > 0:
-        color = 'lightgreen'
+        color = 'green'
         
       self.node_uptime.setText(f'Up Time: {uptime}')
       self.node_uptime.setStyleSheet(f'color: {color}')

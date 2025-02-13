@@ -123,7 +123,11 @@ DARK_STYLESHEET = """
   PlotWidget {
     background-color: #243447;
     border: 1px solid #87CEEB;
-    color: yellow;  
+    color: white;  
+  }
+
+  PlotWidget LabelItem {
+    color: white;
   }
 """
 
@@ -166,13 +170,21 @@ LIGHT_STYLESHEET = """
   }
   
   PlotWidget {
-    background-color: #909090;
+    background-color: #FFFFFF;
     border: 1px solid #A9A9A9;
   }
 
   PlotWidget LabelItem {
-        color: #0F0F0F;  /* Set the desired font color here */
-  }  
+    color: black;
+  }
+
+  PlotWidget .axis {
+    color: black;
+  }
+
+  PlotWidget .plotLabel {
+    color: black;
+  }
 """
 
 # Environment settings
