@@ -174,3 +174,19 @@ LIGHT_STYLESHEET = """
         color: #0F0F0F;  /* Set the desired font color here */
   }  
 """
+
+# Environment settings
+ENVIRONMENTS = {
+    'mainnet': 'Mainnet',
+    'testnet': 'Testnet',
+    'devnet': 'Devnet'
+}
+
+DAPP_URLS = {
+    'mainnet': 'https://app.ratio1.ai/',
+    'testnet': 'https://testnet-app.ratio1.ai/',
+    'devnet': 'https://devnet-app.ratio1.ai/'
+}
+
+DEFAULT_ENVIRONMENT = 'testnet'
+

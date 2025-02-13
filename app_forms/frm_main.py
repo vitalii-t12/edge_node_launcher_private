@@ -82,6 +82,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.__force_debug = False
     super().__init__()
 
+    # Set current environment (you'll need to get this from your configuration)
+    self.current_environment = DEFAULT_ENVIRONMENT
+
     self.__current_node_uptime = -1
     self.__current_node_epoch = -1
     self.__current_node_epoch_avail = -1
@@ -843,6 +846,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
 
   def dapp_button_clicked(self):
+    import webbrowser
+    dapp_url = DAPP_URLS.get(self.current_environment)
+    if dapp_url:
+      webbrowser.open(dapp_url)
+      self.add_log(f'Opening dApp URL: {dapp_url}', debug=True)
+    else:
+      self.add_log(f'Unknown environment: {self.current_environment}', debug=True)
+      self.toast.show_notification(
+        NotificationType.ERROR,
+        f'Unknown environment: {self.current_environment}'
+      )
     return
   
   
