@@ -27,10 +27,17 @@ class DockerCommandThread(QThread):
                 full_command.extend(['-i'])  # Add interactive flag when input is provided
             full_command.extend([self.container_name] + self.command.split())
 
+            # Disabled for now
+            # Ensure input_data is encoded bytes
+            # encoded_input = (self.input_data.encode() if isinstance(self.input_data, str)
+            #                else self.input_data if isinstance(self.input_data, bytes)
+            #                else None)
+
             if os.name == 'nt':
                 result = subprocess.run(
                     full_command,
-                    input=self.input_data.encode() if self.input_data else None,
+                    input=self.input_data,
+                    # input=encoded_input,
                     capture_output=True,
                     text=True,
                     creationflags=subprocess.CREATE_NO_WINDOW
@@ -39,6 +46,7 @@ class DockerCommandThread(QThread):
                 result = subprocess.run(
                     full_command,
                     input=self.input_data,
+                    # input=encoded_input,
                     capture_output=True,
                     text=True
                 )
@@ -105,8 +113,11 @@ class DockerCommandHandler:
                 allowed_dict = {}
                 for line in output.strip().split('\n'):
                     if line.strip():  # Skip empty lines
-                        address, alias = line.strip().split(None, 1)  # Split on whitespace, max 1 split
-                        allowed_dict[address] = alias
+                        # Split on '#' and take only the first part
+                        main_part = line.split('#')[0].strip()
+                        if main_part:  # Skip if line is empty after removing comment
+                            address, alias = main_part.split(None, 1)  # Split on whitespace, max 1 split
+                            allowed_dict[address] = alias.strip()
                 
                 callback(allowed_dict)
             except Exception as e:
@@ -140,15 +151,15 @@ class DockerCommandHandler:
             callback: Success callback
             error_callback: Error callback
         """
-        # Format data as required by the command
-        batch_input = '\n'.join(f"{addr['address']} {addr['alias']}" 
+        # Format data as one address-alias pair per line
+        batch_input = '\n'.join(f"{addr['address']} {addr.get('alias', '')}" 
                               for addr in addresses_data)
         
         self._execute_threaded(
-            'update_allowed_batch',
+            'update_allowed_batch',  # Just the command name, no data here
             callback,
             error_callback,
-            input_data=batch_input
+            input_data=batch_input + '\n'  # Add final newline and pass as input_data
         )
 
     def get_startup_config(self, callback, error_callback) -> None:
