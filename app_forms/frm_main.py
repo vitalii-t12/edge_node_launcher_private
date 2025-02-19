@@ -484,32 +484,125 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def edit_addrs(self):
     if not self.is_container_running():
-      self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not edit Authorized Addressees.")
-      return
+        self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not edit Authorized Addressees.")
+        return
 
     dialog = AuthorizedAddressesDialog(self, on_save_callback=None)
 
     def on_success(data: dict) -> None:
         allowed_list = AllowedAddressList.from_dict(data)
         dialog.load_data(allowed_list.to_batch_format())
-        dialog.exec_()
+        
+        while True:  # Keep showing dialog until properly saved or cancelled
+            if dialog.exec_() != QDialog.Accepted:
+                break  # User clicked Cancel on the main dialog
+                
+            # Check for long aliases and duplicates before saving
+            data_to_save = dialog.get_data()
+            
+            # Check for duplicate aliases
+            aliases = [item['alias'] for item in data_to_save]
+            duplicate_aliases = [alias for alias in set(aliases) if aliases.count(alias) > 1]
+            
+            if duplicate_aliases:
+                # Show duplicate aliases warning
+                warning_msg = "The following aliases are duplicated:\n\n"
+                for alias in duplicate_aliases:
+                    warning_msg += f"• {alias}\n"
+                warning_msg += "\nPlease make all aliases unique before saving."
+                
+                # Show warning dialog
+                dup_dialog = QDialog(dialog)
+                dup_dialog.setWindowTitle("Warning: Duplicate Aliases")
+                layout = QVBoxLayout()
+                
+                # Add message
+                label = QLabel(warning_msg)
+                layout.addWidget(label)
+                
+                # Add OK button
+                ok_btn = QPushButton("OK")
+                ok_btn.clicked.connect(dup_dialog.accept)
+                layout.addWidget(ok_btn)
+                
+                dup_dialog.setLayout(layout)
+                dup_dialog.exec_()
+                continue  # Go back to editing
+            
+            # Check for long aliases
+            long_aliases = [(item['alias'], len(item['alias'])) for item in data_to_save if len(item['alias']) > 15]
+            
+            if not long_aliases:  # No long aliases, proceed with save
+                def save_success(data: dict) -> None:
+                    self.add_log('Successfully updated authorized addresses', debug=True)
+                    self.toast.show_notification(
+                        NotificationType.SUCCESS, 
+                        'Authorized addresses updated successfully'
+                    )
 
-        if dialog.result() == QDialog.Accepted:
-            def save_success(data: dict) -> None:
-                self.add_log('Successfully updated authorized addresses', debug=True)
-                self.toast.show_notification(
-                    NotificationType.SUCCESS, 
-                    'Authorized addresses updated successfully'
-                )
+                def save_error(error: str) -> None:
+                    self.add_log(f'Error updating authorized addresses: {error}', debug=True)
+                    self.toast.show_notification(
+                        NotificationType.ERROR, 
+                        'Failed to update authorized addresses'
+                    )
 
-            def save_error(error: str) -> None:
-                self.add_log(f'Error updating authorized addresses: {error}', debug=True)
-                self.toast.show_notification(
-                    NotificationType.ERROR, 
-                    'Failed to update authorized addresses'
-                )
+                self.docker_handler.update_allowed_batch(data_to_save, save_success, save_error)
+                break  # Exit the loop after successful save
+            
+            # Show warning for long aliases
+            warning_msg = "The following aliases are too long (max 15 characters) and will be truncated:\n\n"
+            for alias, length in long_aliases:
+                warning_msg += f"• {alias} ({length} characters)\n"
+            warning_msg += "\nDo you want to proceed with truncation?"
+            
+            # Show confirmation dialog
+            confirm_dialog = QDialog(dialog)
+            confirm_dialog.setWindowTitle("Warning: Long Aliases")
+            layout = QVBoxLayout()
+            
+            # Add message
+            label = QLabel(warning_msg)
+            layout.addWidget(label)
+            
+            # Add buttons
+            button_layout = QHBoxLayout()
+            proceed_btn = QPushButton("Proceed")
+            cancel_btn = QPushButton("Cancel")
+            
+            button_layout.addWidget(proceed_btn)
+            button_layout.addWidget(cancel_btn)
+            layout.addLayout(button_layout)
+            
+            confirm_dialog.setLayout(layout)
+            
+            # Connect buttons
+            proceed_btn.clicked.connect(confirm_dialog.accept)
+            cancel_btn.clicked.connect(confirm_dialog.reject)
+            
+            if confirm_dialog.exec_() == QDialog.Accepted:
+                # Truncate long aliases
+                for item in data_to_save:
+                    if len(item['alias']) > 15:
+                        item['alias'] = item['alias'][:15]
+                
+                def save_success(data: dict) -> None:
+                    self.add_log('Successfully updated authorized addresses', debug=True)
+                    self.toast.show_notification(
+                        NotificationType.SUCCESS, 
+                        'Authorized addresses updated successfully'
+                    )
 
-            self.docker_handler.update_allowed_batch(dialog.get_data(), save_success, save_error)
+                def save_error(error: str) -> None:
+                    self.add_log(f'Error updating authorized addresses: {error}', debug=True)
+                    self.toast.show_notification(
+                        NotificationType.ERROR, 
+                        'Failed to update authorized addresses'
+                    )
+
+                self.docker_handler.update_allowed_batch(data_to_save, save_success, save_error)
+                break  # Exit the loop after successful save
+            # If user clicked Cancel on confirmation, loop continues and shows main dialog again
 
     def on_error(error: str) -> None:
         self.add_log(f'Error getting allowed addresses: {error}', debug=True)
@@ -886,12 +979,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def show_rename_dialog(self):
     if not self.is_container_running():
-      self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not rename node.")
-      return
+        self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not rename node.")
+        return
 
     dialog = QDialog(self)
     dialog.setWindowTitle('Rename Node')
     dialog_layout = QVBoxLayout()
+
+    # Add note about max length
+    note_label = QLabel("Note: Maximum node name length is 15 characters")
+    note_label.setStyleSheet("color: gray; font-style: italic;")
+    dialog_layout.addWidget(note_label)
 
     # Text input field
     text_edit = QTextEdit()
@@ -903,7 +1001,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     button_layout = QHBoxLayout()
     
     save_button = QPushButton('Save')
-    save_button.clicked.connect(lambda: self.save_node_name(text_edit.toPlainText(), dialog))
+    save_button.clicked.connect(lambda: self.validate_and_save_node_name(text_edit.toPlainText(), dialog))
     button_layout.addWidget(save_button)
 
     cancel_button = QPushButton('Cancel')
@@ -914,26 +1012,61 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     dialog.setLayout(dialog_layout)
     dialog.exec_()
 
-  def save_node_name(self, new_name: str, dialog: QDialog):
+  def validate_and_save_node_name(self, new_name: str, dialog: QDialog):
+    new_name = new_name.strip()
+    if len(new_name) > 15:
+        # Show warning dialog
+        warning_dialog = QDialog(dialog)
+        warning_dialog.setWindowTitle("Warning: Name Too Long")
+        layout = QVBoxLayout()
+        
+        # Add message
+        warning_msg = f"The node name is too long ({len(new_name)} characters).\n\n"
+        warning_msg += f"'{new_name}' will be truncated to '{new_name[:15]}'\n\n"
+        warning_msg += "Do you want to proceed?"
+        
+        label = QLabel(warning_msg)
+        layout.addWidget(label)
+        
+        # Add buttons
+        button_layout = QHBoxLayout()
+        proceed_btn = QPushButton("Proceed")
+        cancel_btn = QPushButton("Cancel")
+        
+        button_layout.addWidget(proceed_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        
+        warning_dialog.setLayout(layout)
+        
+        # Connect buttons
+        proceed_btn.clicked.connect(warning_dialog.accept)
+        cancel_btn.clicked.connect(warning_dialog.reject)
+        
+        if warning_dialog.exec_() == QDialog.Accepted:
+            new_name = new_name[:15]
+        else:
+            return  # Return to editing if user cancels
+    
     def on_success(data: dict) -> None:
-      self.add_log('Successfully renamed node, restarting container...', debug=True)
-      self.toast.show_notification(
-        NotificationType.SUCCESS,
-        'Node renamed successfully. Restarting...'
-      )
-      dialog.accept()
-      
-      # Stop and restart the container
-      self.stop_container()
-      self.launch_container()
-      self.post_launch_setup()
-      self.refresh_local_address()
+        self.add_log('Successfully renamed node, restarting container...', debug=True)
+        self.toast.show_notification(
+            NotificationType.SUCCESS,
+            'Node renamed successfully. Restarting...'
+        )
+        dialog.accept()
+        
+        # Stop and restart the container
+        self.stop_container()
+        self.launch_container()
+        self.post_launch_setup()
+        self.refresh_local_address()
 
     def on_error(error: str) -> None:
-      self.add_log(f'Error renaming node: {error}', debug=True)
-      self.toast.show_notification(
-        NotificationType.ERROR,
-        'Failed to rename node'
-      )
+        self.add_log(f'Error renaming node: {error}', debug=True)
+        self.toast.show_notification(
+            NotificationType.ERROR,
+            'Failed to rename node'
+        )
 
-    self.docker_handler.update_node_name(new_name.strip(), on_success, on_error)
+    self.docker_handler.update_node_name(new_name, on_success, on_error)
