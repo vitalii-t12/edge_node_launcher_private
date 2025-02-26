@@ -22,7 +22,8 @@ from PyQt5.QtWidgets import (
   QHBoxLayout, 
   QSpacerItem, 
   QSizePolicy,
-  QCheckBox
+  QCheckBox,
+  QStyle
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -259,9 +260,37 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     info_box.setMidLineWidth(1)
     info_box_layout = QVBoxLayout()
 
+    # Address display with copy button
+    addr_layout = QHBoxLayout()
     self.addressDisplay = QLabel('')
     self.addressDisplay.setFont(QFont("Courier New"))
-    info_box_layout.addWidget(self.addressDisplay)
+    addr_layout.addWidget(self.addressDisplay)
+    
+    self.copyAddrButton = QPushButton()
+    self.copyAddrButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+    self.copyAddrButton.setToolTip('Copy address')
+    self.copyAddrButton.clicked.connect(self.copy_address)
+    self.copyAddrButton.setFixedSize(24, 24)
+    self.copyAddrButton.hide()  # Initially hidden
+    addr_layout.addWidget(self.copyAddrButton)
+    addr_layout.addStretch()
+    info_box_layout.addLayout(addr_layout)
+
+    # ETH address display with copy button
+    eth_addr_layout = QHBoxLayout()
+    self.ethAddressDisplay = QLabel('')
+    self.ethAddressDisplay.setFont(QFont("Courier New"))
+    eth_addr_layout.addWidget(self.ethAddressDisplay)
+    
+    self.copyEthButton = QPushButton()
+    self.copyEthButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+    self.copyEthButton.setToolTip('Copy Ethereum address')
+    self.copyEthButton.clicked.connect(self.copy_eth_address)
+    self.copyEthButton.setFixedSize(24, 24)
+    self.copyEthButton.hide()  # Initially hidden
+    eth_addr_layout.addWidget(self.copyEthButton)
+    eth_addr_layout.addStretch()
+    info_box_layout.addLayout(eth_addr_layout)
 
     self.nameDisplay = QLabel('')
     self.nameDisplay.setFont(QFont("Courier New"))
@@ -287,22 +316,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     bottom_button_area.addWidget(info_box)
     
     ## buttons
-    self.copyButton = QPushButton(COPY_ADDRESS_BUTTON_TEXT)
-    self.copyButton.clicked.connect(self.copy_address)
-    bottom_button_area.addWidget(self.copyButton)
-
-    self.copyEthButton = QPushButton(COPY_ETHEREUM_ADDRESS_BUTTON_TEXT)
-    self.copyEthButton.clicked.connect(self.copy_eht_address)
-    bottom_button_area.addWidget(self.copyEthButton)
-
     # Add Rename Node button
     self.renameNodeButton = QPushButton(RENAME_NODE_BUTTON_TEXT)
     self.renameNodeButton.clicked.connect(self.show_rename_dialog)
     bottom_button_area.addWidget(self.renameNodeButton)
-
-    self.envEditButton = QPushButton(EDIT_ENV_BUTTON_TEXT)
-    self.envEditButton.clicked.connect(self.edit_env_file)
-    bottom_button_area.addWidget(self.envEditButton)
 
     self.btn_edit_addrs = QPushButton(EDIT_AUTHORIZED_ADDRS)
     self.btn_edit_addrs.clicked.connect(self.edit_addrs)
@@ -849,26 +866,39 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def refresh_local_address(self):
     if not self.is_container_running():
-      self.addressDisplay.setText('Node not running')
-      self.nameDisplay.setText('')
-      return
+        self.addressDisplay.setText('Address: Node not running')
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.nameDisplay.setText('')
+        self.copyAddrButton.hide()
+        self.copyEthButton.hide()
+        return
 
     def on_success(node_info: NodeInfo) -> None:
-      self.node_name = node_info.alias
-      self.nameDisplay.setText('Name: ' + node_info.alias)
+        self.node_name = node_info.alias
+        self.nameDisplay.setText('Name: ' + node_info.alias)
 
-      if node_info.address != self.node_addr:
-        self.node_addr = node_info.address
-        self.node_eth_address = node_info.eth_address
+        if node_info.address != self.node_addr:
+            self.node_addr = node_info.address
+            self.node_eth_address = node_info.eth_address
 
-        str_display = f"{node_info.address[:8]}...{node_info.address[-8:]}"
-        self.addressDisplay.setText('Addr: ' + str_display)
-        self.add_log(f'Node info updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_address}')
+            # Format addresses with clear labels and truncated values
+            str_display = f"Address: {node_info.address[:16]}...{node_info.address[-8:]}"
+            self.addressDisplay.setText(str_display)
+            self.copyAddrButton.setVisible(bool(node_info.address))
+            
+            str_eth_display = f"ETH Address: {node_info.eth_address[:16]}...{node_info.eth_address[-8:]}"
+            self.ethAddressDisplay.setText(str_eth_display)
+            self.copyEthButton.setVisible(bool(node_info.eth_address))
+            
+            self.add_log(f'Node info updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_address}')
 
     def on_error(error):
-      self.add_log(f'Error getting node info: {error}', debug=True)
-      self.addressDisplay.setText('Error getting node info')
-      self.nameDisplay.setText('')
+        self.add_log(f'Error getting node info: {error}', debug=True)
+        self.addressDisplay.setText('Address: Error getting node info')
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.nameDisplay.setText('')
+        self.copyAddrButton.hide()
+        self.copyEthButton.hide()
 
     self.docker_handler.get_node_info(on_success, on_error)
 
@@ -917,7 +947,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.toast.show_notification(NotificationType.SUCCESS, NOTIFICATION_ADDRESS_COPIED.format(address=self.node_addr))
     return
 
-  def copy_eht_address(self):
+  def copy_eth_address(self):
     if not self.node_eth_address:
       self.toast.show_notification(NotificationType.ERROR, NOTIFICATION_ADDRESS_COPY_FAILED)
       return
@@ -1083,12 +1113,34 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def _clear_info_display(self):
     """Clear all information displays."""
-    self.addressDisplay.setText('')
+    # Set text color based on theme
+    text_color = "white" if self._current_stylesheet == DARK_STYLESHEET else "black"
+    
+    # Set text and color for each label
+    self.addressDisplay.setText('Address: Not available')
+    self.addressDisplay.setStyleSheet(f"color: {text_color};")
+    self.copyAddrButton.hide()
+    
+    self.ethAddressDisplay.setText('ETH Address: Not available')
+    self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
+    self.copyEthButton.hide()
+    
     self.nameDisplay.setText('')
+    self.nameDisplay.setStyleSheet(f"color: {text_color};")
+    
     self.node_uptime.setText(UPTIME_LABEL)
+    self.node_uptime.setStyleSheet(f"color: {text_color};")
+    
     self.node_epoch.setText(EPOCH_LABEL)
+    self.node_epoch.setStyleSheet(f"color: {text_color};")
+    
     self.node_epoch_avail.setText(EPOCH_AVAIL_LABEL)
+    self.node_epoch_avail.setStyleSheet(f"color: {text_color};")
+    
     self.node_version.setText('')
+    self.node_version.setStyleSheet(f"color: {text_color};")
+    
+    # Reset state variables
     self.__display_uptime = None
     self.node_addr = None
     self.node_eth_address = None
@@ -1096,13 +1148,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.__current_node_epoch = -1
     self.__current_node_epoch_avail = -1
     self.__current_node_ver = -1
+    self.__last_plot_data = None
+    self.__last_timesteps = []
+    
+    # Clear all graphs
+    self.cpu_plot.clear()
+    self.memory_plot.clear()
+    self.gpu_plot.clear()
+    self.gpu_memory_plot.clear()
+    
+    # Reset graph titles and labels with current theme color
+    for plot in [self.cpu_plot, self.memory_plot, self.gpu_plot, self.gpu_memory_plot]:
+        plot.setTitle('')
+        plot.setLabel('left', '')
+        plot.setLabel('bottom', '')
+    
     # Update toggle button state and color
     self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
     self.toggleButton.setStyleSheet("background-color: green; color: white;")
 
   def _on_host_selected(self, host_name: str):
     """Handle host selection."""
-    # Clear current display
+    # Clear current display and state
     self._clear_info_display()
     
     if host_name:
@@ -1139,19 +1206,23 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def _on_mode_changed(self, is_multi_host: bool):
     """Handle mode change."""
-    # Clear current display
+    # Clear current display and state
     self._clear_info_display()
     
     if not is_multi_host:
         self.clear_remote_connection()
         self.docker_handler.clear_remote_connection()  # Clear remote connection for docker_handler
         self.add_log("Switched to local mode")
+        self.toggleButton.setEnabled(True)
         # Refresh container status
         if self.is_container_running():
             self.post_launch_setup()
             self.refresh_local_address()
             self.plot_data()
         self.update_toggle_button_text()
+    else:
+        self.add_log("Switched to multi-host mode")
+        self.toggleButton.setEnabled(False)  # Disable toggle button until a host is selected
 
   def open_docker_download(self):
     """Open Docker download page in default browser."""
