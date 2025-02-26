@@ -38,6 +38,7 @@ class StatusIndicator(QLabel):
         super().__init__(parent)
         self.setFixedSize(12, 12)
         self.setAlignment(Qt.AlignCenter)
+        self.setProperty("is_online", False)
         self.set_status(False)
 
     def set_status(self, is_online):
@@ -49,6 +50,7 @@ class StatusIndicator(QLabel):
                 margin: 2px;
             }}
         """)
+        self.setProperty("is_online", is_online)
 
 class HostSelector(QWidget):
     host_selected = pyqtSignal(str)  # Emitted when a host is selected

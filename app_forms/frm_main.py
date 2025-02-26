@@ -221,26 +221,26 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     top_button_area = QVBoxLayout()
 
+    # Launch Edge Node button
     self.toggleButton = QPushButton(LAUNCH_CONTAINER_BUTTON_TEXT)
     self.toggleButton.clicked.connect(self.toggle_container)
     top_button_area.addWidget(self.toggleButton)
 
+    # Docker download button right under Launch Edge Node
+    self.docker_download_button = QPushButton('Download Docker')
+    self.docker_download_button.setToolTip('Ratio1 Edge Node requires Docker Desktop running in parallel')
+    self.docker_download_button.clicked.connect(self.open_docker_download)
+    top_button_area.addWidget(self.docker_download_button)
+
+    # dApp button
     self.dapp_button = QPushButton(DAPP_BUTTON_TEXT)
     self.dapp_button.clicked.connect(self.dapp_button_clicked)
     top_button_area.addWidget(self.dapp_button)
-    
-    # b1 = ToggleButton1()
-    # b2 = ToggleButton1()
-    # b3 = ToggleButton1()
-    # top_button_area.addWidget(b1)
-    # top_button_area.addWidget(b2)
-    # top_button_area.addWidget(b3)
-    
 
+    # Explorer button
     self.explorer_button = QPushButton(EXPLORER_BUTTON_TEXT)
     self.explorer_button.clicked.connect(self.explorer_button_clicked)
     top_button_area.addWidget(self.explorer_button)
-
 
     menu_layout.addLayout(top_button_area)
 
@@ -1108,9 +1108,25 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     if host_name:
         ssh_command = self.host_selector.get_ssh_command(host_name)
         if ssh_command:
+            # Check if host is online
+            if not self.host_selector.status_threads.get(host_name) or not self.host_selector.status_threads[host_name].isRunning():
+                self.host_selector.check_host_status(host_name)
+            
+            # Get the status indicator state
+            is_online = self.host_selector.current_status.property("is_online")
+            
+            if not is_online:
+                self.add_log(f"Host {host_name} is offline")
+                self.toggleButton.setText("Host Offline")
+                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                self.toggleButton.setEnabled(False)
+                self.toast.show_notification(NotificationType.ERROR, f"Host {host_name} is offline")
+                return
+                
             self.set_remote_connection(ssh_command)
             self.docker_handler.set_remote_connection(ssh_command)  # Set remote connection for docker_handler
             self.add_log(f"Connected to remote host: {host_name}")
+            self.toggleButton.setEnabled(True)
             # Refresh container status
             if self.is_container_running():
                 self.post_launch_setup()
@@ -1119,6 +1135,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             self.update_toggle_button_text()
         else:
             self.add_log(f"Failed to get SSH command for host: {host_name}")
+            self.toast.show_notification(NotificationType.ERROR, f"Failed to get SSH command for host: {host_name}")
 
   def _on_mode_changed(self, is_multi_host: bool):
     """Handle mode change."""
@@ -1135,3 +1152,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             self.refresh_local_address()
             self.plot_data()
         self.update_toggle_button_text()
+
+  def open_docker_download(self):
+    """Open Docker download page in default browser."""
+    import webbrowser
+    webbrowser.open('https://docs.docker.com/get-docker/')

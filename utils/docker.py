@@ -335,18 +335,35 @@ class _DockerUtilsMixin:
   def check_docker(self):
     self.add_log('Checking Docker status...')
     try:
-      if os.name == 'nt':
-        output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
-      else:
-        output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
-      self.add_log("Docker status: " + output)
-      return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-      QMessageBox.warning(
-         self, 'Docker Check', 
-         'Docker is not installed. Please install Docker and restart the application.\n\nFor more information, visit: https://docs.docker.com/get-docker/'
-      )
-      return False
+        # First check if Docker is installed
+        if os.name == 'nt':
+            output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            output = subprocess.check_output(['docker', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
+        self.add_log("Docker version: " + output.strip())
+        
+        # Then check if Docker daemon is running
+        if os.name == 'nt':
+            subprocess.check_output(['docker', 'info'], stderr=subprocess.STDOUT, universal_newlines=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            subprocess.check_output(['docker', 'info'], stderr=subprocess.STDOUT, universal_newlines=True)
+        
+        self.add_log("Docker daemon is running")
+        return True
+    except FileNotFoundError:
+        QMessageBox.warning(
+            self, 'Docker Check', 
+            'Docker is not installed. Please install Docker and restart the application.\n\n'
+            'Click the "Download Docker" button to visit the Docker installation page.'
+        )
+        return False
+    except subprocess.CalledProcessError:
+        QMessageBox.warning(
+            self, 'Docker Check', 
+            'Docker daemon is not running. Please start Docker and try again.\n\n'
+            'If Docker is not installed, click the "Download Docker" button to visit the Docker installation page.'
+        )
+        return False
 
 
   def is_container_running(self):
@@ -372,30 +389,34 @@ class _DockerUtilsMixin:
 
 
   def launch_container(self):
+    # Check Docker status first
+    if not self.check_docker():
+        return
+
     is_env_ok = self.__check_env_keys()
     if not is_env_ok:
-      self.add_log('Environment is not ok. Could not start the container.')
-      return
+        self.add_log('Environment is not ok. Could not start the container.')
+        return
 
     # If in multi-host mode, use the service command instead
     if self.is_remote:
-      try:
-        self.add_log('Starting Edge Node service on remote host...')
-        
-        success, error = self.service_manager.restart_service('mnl_execution_engine')
-        
-        if not success:
-          raise Exception(error)
-        
-        self.add_log('Edge Node service restarted successfully.')
-        QMessageBox.information(self, 'Service Restart', 'Edge Node service restarted successfully.')
-        self.post_launch_setup()
-        return
-        
-      except Exception as e:
-        QMessageBox.warning(self, 'Service Restart', 'Failed to restart Edge Node service')
-        self.add_log(f'Edge Node service restart failed: {str(e)}')
-        return
+        try:
+            self.add_log('Starting Edge Node service on remote host...')
+            
+            success, error = self.service_manager.restart_service('mnl_execution_engine')
+            
+            if not success:
+                raise Exception(error)
+            
+            self.add_log('Edge Node service restarted successfully.')
+            QMessageBox.information(self, 'Service Restart', 'Edge Node service restarted successfully.')
+            self.post_launch_setup()
+            return
+            
+        except Exception as e:
+            QMessageBox.warning(self, 'Service Restart', 'Failed to restart Edge Node service')
+            self.add_log(f'Edge Node service restart failed: {str(e)}')
+            return
 
     # Regular Docker container launch for local mode
     self.add_log('Updating image...')
