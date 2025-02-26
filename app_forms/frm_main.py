@@ -1172,14 +1172,29 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Clear current display and state
     self._clear_info_display()
     
-    if host_name:
-        ssh_command = self.host_selector.get_ssh_command(host_name)
-        if ssh_command:
-            # Check if host is online
-            if not self.host_selector.status_threads.get(host_name) or not self.host_selector.status_threads[host_name].isRunning():
-                self.host_selector.check_host_status(host_name)
-            
-            # Get the status indicator state
+    if not host_name:
+        return
+        
+    # Disable button and show checking status
+    self.toggleButton.setText("Checking Host...")
+    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+    self.toggleButton.setEnabled(False)
+        
+    ssh_command = self.host_selector.get_ssh_command(host_name)
+    if not ssh_command:
+        self.add_log(f"Failed to get SSH command for host: {host_name}")
+        self.toast.show_notification(NotificationType.ERROR, f"Failed to get SSH command for host: {host_name}")
+        self.toggleButton.setText("SSH Error")
+        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+        self.toggleButton.setEnabled(False)
+        return
+
+    # Start status check if not already running
+    if not self.host_selector.status_threads.get(host_name) or not self.host_selector.status_threads[host_name].isRunning():
+        self.host_selector.check_host_status(host_name)
+        
+        # Wait for status check to complete
+        def check_status():
             is_online = self.host_selector.current_status.property("is_online")
             
             if not is_online:
@@ -1189,20 +1204,81 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 self.toggleButton.setEnabled(False)
                 self.toast.show_notification(NotificationType.ERROR, f"Host {host_name} is offline")
                 return
-                
-            self.set_remote_connection(ssh_command)
-            self.docker_handler.set_remote_connection(ssh_command)  # Set remote connection for docker_handler
-            self.add_log(f"Connected to remote host: {host_name}")
-            self.toggleButton.setEnabled(True)
-            # Refresh container status
-            if self.is_container_running():
-                self.post_launch_setup()
-                self.refresh_local_address()
-                self.plot_data()
-            self.update_toggle_button_text()
-        else:
-            self.add_log(f"Failed to get SSH command for host: {host_name}")
-            self.toast.show_notification(NotificationType.ERROR, f"Failed to get SSH command for host: {host_name}")
+            
+            # Only proceed with connection if host is online
+            self._check_host_connection(host_name, ssh_command)
+            
+        # Check status after a delay to allow the check to complete
+        QTimer.singleShot(2000, check_status)
+        return
+    
+    # If status check is already running, use current status
+    is_online = self.host_selector.current_status.property("is_online")
+    if not is_online:
+        self.add_log(f"Host {host_name} is offline")
+        self.toggleButton.setText("Host Offline")
+        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+        self.toggleButton.setEnabled(False)
+        self.toast.show_notification(NotificationType.ERROR, f"Host {host_name} is offline")
+        return
+        
+    # Only proceed with connection if host is online
+    self._check_host_connection(host_name, ssh_command)
+
+  def _check_host_connection(self, host_name: str, ssh_command: str):
+    """Check connection and Docker status for a host."""
+    try:
+        # Set up remote connection
+        self.set_remote_connection(ssh_command)
+        
+        # Test SSH connection first
+        if not self.ssh_service.check_connection():
+            raise Exception("Failed to establish SSH connection")
+            
+        self.docker_handler.set_remote_connection(ssh_command)
+        self.add_log(f"Connected to remote host: {host_name}")
+        
+        # Check if Docker is available on the remote host
+        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', '--version'])
+        if return_code != 0:
+            self.add_log(f"Docker not found on host {host_name}")
+            self.toggleButton.setText("Docker Not Found")
+            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+            self.toggleButton.setEnabled(False)
+            self.toast.show_notification(NotificationType.ERROR, f"Docker not found on host {host_name}")
+            return
+        
+        # Check if Docker daemon is running
+        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'info'])
+        if return_code != 0:
+            self.add_log(f"Docker daemon not running on host {host_name}")
+            self.toggleButton.setText("Docker Not Running")
+            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+            self.toggleButton.setEnabled(False)
+            self.toast.show_notification(NotificationType.ERROR, f"Docker daemon not running on host {host_name}")
+            return
+        
+        self.add_log(f"Docker is available on host {host_name}")
+        self.toggleButton.setEnabled(True)
+        
+        # Refresh container status
+        if self.is_container_running():
+            self.post_launch_setup()
+            self.refresh_local_address()
+            self.plot_data()
+        self.update_toggle_button_text()
+        
+    except Exception as e:
+        # Clear any partial connection state
+        self.clear_remote_connection()
+        self.docker_handler.clear_remote_connection()
+        
+        self.add_log(f"Connection failed to host {host_name}: {str(e)}")
+        self.toggleButton.setText("Connection Failed")
+        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+        self.toggleButton.setEnabled(False)
+        self.toast.show_notification(NotificationType.ERROR, f"Failed to connect to host {host_name}")
+        return
 
   def _on_mode_changed(self, is_multi_host: bool):
     """Handle mode change."""
@@ -1223,6 +1299,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     else:
         self.add_log("Switched to multi-host mode")
         self.toggleButton.setEnabled(False)  # Disable toggle button until a host is selected
+        
+        # Check the initial host if one is selected
+        current_host = self.host_selector.get_current_host()
+        if current_host:
+            self._on_host_selected(current_host)  # This will check the host's status
 
   def open_docker_download(self):
     """Open Docker download page in default browser."""
