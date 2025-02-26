@@ -1081,8 +1081,30 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     self.docker_handler.update_node_name(new_name, on_success, on_error)
 
+  def _clear_info_display(self):
+    """Clear all information displays."""
+    self.addressDisplay.setText('')
+    self.nameDisplay.setText('')
+    self.node_uptime.setText(UPTIME_LABEL)
+    self.node_epoch.setText(EPOCH_LABEL)
+    self.node_epoch_avail.setText(EPOCH_AVAIL_LABEL)
+    self.node_version.setText('')
+    self.__display_uptime = None
+    self.node_addr = None
+    self.node_eth_address = None
+    self.__current_node_uptime = -1
+    self.__current_node_epoch = -1
+    self.__current_node_epoch_avail = -1
+    self.__current_node_ver = -1
+    # Update toggle button state and color
+    self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+    self.toggleButton.setStyleSheet("background-color: green; color: white;")
+
   def _on_host_selected(self, host_name: str):
     """Handle host selection."""
+    # Clear current display
+    self._clear_info_display()
+    
     if host_name:
         ssh_command = self.host_selector.get_ssh_command(host_name)
         if ssh_command:
@@ -1100,6 +1122,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def _on_mode_changed(self, is_multi_host: bool):
     """Handle mode change."""
+    # Clear current display
+    self._clear_info_display()
+    
     if not is_multi_host:
         self.clear_remote_connection()
         self.docker_handler.clear_remote_connection()  # Clear remote connection for docker_handler
