@@ -47,6 +47,7 @@ from widgets.dialogs.AuthorizedAddressedDialog import AuthorizedAddressesDialog
 from models.AllowedAddress import AllowedAddress, AllowedAddressList
 from models.StartupConfig import StartupConfig
 from models.ConfigApp import ConfigApp
+from widgets.HostSelector import HostSelector
 
 
 def get_platform_and_os_info():
@@ -210,6 +211,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     menu_widget.setFixedWidth(300)  # Set the fixed width here
     menu_layout = QVBoxLayout(menu_widget)
     menu_layout.setAlignment(Qt.AlignTop)
+    
+    # Add host selector at the top
+    self.host_selector = HostSelector()
+    self.host_selector.host_selected.connect(self._on_host_selected)
+    self.host_selector.mode_changed.connect(self._on_mode_changed)
+    self.host_selector.apply_stylesheet(self._current_stylesheet == DARK_STYLESHEET)  # Set initial theme
+    menu_layout.addWidget(self.host_selector)
     
     top_button_area = QVBoxLayout()
 
@@ -379,9 +387,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     if self._current_stylesheet == DARK_STYLESHEET:
       self._current_stylesheet = LIGHT_STYLESHEET
       self.themeToggleButton.setText('Switch to Dark Theme')
+      self.host_selector.apply_stylesheet(False)  # Light theme
     else:
       self._current_stylesheet = DARK_STYLESHEET
       self.themeToggleButton.setText('Switch to Light Theme')
+      self.host_selector.apply_stylesheet(True)  # Dark theme
     self.apply_stylesheet()
     self.plot_graphs()
     self.change_text_color()
@@ -1070,3 +1080,33 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         )
 
     self.docker_handler.update_node_name(new_name, on_success, on_error)
+
+  def _on_host_selected(self, host_name: str):
+    """Handle host selection."""
+    if host_name:
+        ssh_command = self.host_selector.get_ssh_command(host_name)
+        if ssh_command:
+            self.set_remote_connection(ssh_command)
+            self.docker_handler.set_remote_connection(ssh_command)  # Set remote connection for docker_handler
+            self.add_log(f"Connected to remote host: {host_name}")
+            # Refresh container status
+            if self.is_container_running():
+                self.post_launch_setup()
+                self.refresh_local_address()
+                self.plot_data()
+            self.update_toggle_button_text()
+        else:
+            self.add_log(f"Failed to get SSH command for host: {host_name}")
+
+  def _on_mode_changed(self, is_multi_host: bool):
+    """Handle mode change."""
+    if not is_multi_host:
+        self.clear_remote_connection()
+        self.docker_handler.clear_remote_connection()  # Clear remote connection for docker_handler
+        self.add_log("Switched to local mode")
+        # Refresh container status
+        if self.is_container_running():
+            self.post_launch_setup()
+            self.refresh_local_address()
+            self.plot_data()
+        self.update_toggle_button_text()

@@ -156,7 +156,11 @@ class _DockerUtilsMixin:
     self.node_id = self.get_node_id()
     self._dev_mode = False
     
-    self.run_with_sudo = False    
+    self.run_with_sudo = False
+    
+    # Remote connection settings
+    self.is_remote = False
+    self.remote_ssh_command = None
     
     return
   
@@ -198,47 +202,55 @@ class _DockerUtilsMixin:
   def __setup_docker_run(self):
     self.add_log('Setting up Docker run command...')
     self.docker_image = DOCKER_IMAGE + ":" + self.docker_tag
-    self.__CMD_CLEAN = [
-        'docker', 'rm', self.docker_container_name,
-    ]
+    
+    # Base commands without remote prefix
+    base_clean = ['docker', 'rm', self.docker_container_name]
+    base_stop = ['docker', 'stop', self.docker_container_name]
+    base_inspect = ['docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name]
+    
     if self._use_gpus:
       str_gpus = '--gpus=all'
       self.add_log('Using GPU.')
     else:
       str_gpus = ''
       self.add_log('Not using GPU.')
-    #endif use GPU
     
-    self.__CMD = [
-        'docker', 'run',
-    ]
-
+    base_run = ['docker', 'run']
     if len(str_gpus) > 0:
-      self.__CMD += [str_gpus]
-
-    self.__CMD += [
-        '--rm', # remove the container when it exits
-        '--env-file', '.env', #f'"{str(self.env_file)}"',  # pass the .env file to the container
-        '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache', # mount the volume
-        '--name', self.docker_container_name, '-d',  
+      base_run += [str_gpus]
+    
+    base_run += [
+        '--rm',
+        '--env-file', '.env',
+        '-v', f'{DOCKER_VOLUME}:/edge_node/_local_cache',
+        '--name', self.docker_container_name, '-d',
     ]
     
-    self.__CMD_STOP = [
-        'docker', 'stop', self.docker_container_name,
-    ]
-    
-    self.__CMD_INSPECT = [
-        'docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name,
-    ]
+    # Add sudo if needed
     if self.run_with_sudo:
-      self.__CMD.insert(0, 'sudo')
-      self.__CMD_CLEAN.insert(0, 'sudo')
-      self.__CMD_STOP.insert(0, 'sudo')
-      self.__CMD_INSPECT.insert(0, 'sudo')
-
+      base_clean.insert(0, 'sudo')
+      base_stop.insert(0, 'sudo')
+      base_inspect.insert(0, 'sudo')
+      base_run.insert(0, 'sudo')
+    
+    # Add remote prefix if needed
+    if self.is_remote and self.remote_ssh_command:
+      self.__CMD_CLEAN = self.remote_ssh_command + base_clean
+      self.__CMD_STOP = self.remote_ssh_command + base_stop
+      self.__CMD_INSPECT = self.remote_ssh_command + base_inspect
+      self.__CMD = self.remote_ssh_command + base_run
+    else:
+      self.__CMD_CLEAN = base_clean
+      self.__CMD_STOP = base_stop
+      self.__CMD_INSPECT = base_inspect
+      self.__CMD = base_run
+    
     run_cmd = " ".join(self.get_cmd())
-
+    
     self.add_log('Docker run command setup complete:')
+    self.add_log(f' - Remote mode: {self.is_remote}')
+    if self.is_remote:
+      self.add_log(f' - SSH command: {" ".join(self.remote_ssh_command)}')
     self.add_log(' - Run:     {}'.format(run_cmd))
     self.add_log(' - Clean:   {}'.format(" ".join(self.__CMD_CLEAN)))
     self.add_log(' - Stop:    {}'.format(" ".join(self.__CMD_STOP)))
@@ -471,5 +483,19 @@ class _DockerUtilsMixin:
                 self.docker_commands.reset_address(on_success, on_error)
             except Exception as e:
                 QMessageBox.warning(self, 'Restart Edge Node', f'Failed to reset Edge Node: {e}')
+    return
+
+  def set_remote_connection(self, ssh_command: str):
+    """Set up remote connection using SSH command."""
+    self.is_remote = bool(ssh_command)
+    self.remote_ssh_command = ssh_command.split()  # Split into list of arguments
+    self.__setup_docker_run()
+    return
+
+  def clear_remote_connection(self):
+    """Clear remote connection settings."""
+    self.is_remote = False
+    self.remote_ssh_command = None
+    self.__setup_docker_run()
     return
   
