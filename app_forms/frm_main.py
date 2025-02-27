@@ -23,7 +23,9 @@ from PyQt5.QtWidgets import (
   QSpacerItem, 
   QSizePolicy,
   QCheckBox,
-  QStyle
+  QStyle,
+  QComboBox,
+  QMessageBox
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -40,7 +42,8 @@ from utils.updater import _UpdaterMixin
 from utils.icon import ICON_BASE64
 
 from app_forms.frm_utils import (
-  get_icon_from_base64, DateAxisItem
+  get_icon_from_base64, DateAxisItem,
+  generate_container_name, get_volume_name
 )
 
 from ver import __VER__ as __version__
@@ -123,6 +126,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     self.docker_initialize()
     self.docker_handler = DockerCommandHandler(DOCKER_CONTAINER_NAME)
+
+    # Initialize container list
+    self.refresh_container_list()
 
     if self.is_container_running():
       self.post_launch_setup()
@@ -233,6 +239,23 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     menu_layout.addWidget(self.host_selector)
     
     top_button_area = QVBoxLayout()
+
+    # Container selector area
+    container_selector_layout = QHBoxLayout()
+    
+    # Container dropdown
+    self.container_combo = QComboBox()
+    self.container_combo.setFont(QFont("Courier New", 10))
+    self.container_combo.currentTextChanged.connect(self._on_container_selected)
+    container_selector_layout.addWidget(self.container_combo, stretch=1)
+    
+    # Add Node button
+    self.add_node_button = QPushButton("Add Node")
+    self.add_node_button.setFont(QFont("Courier New", 10))
+    self.add_node_button.clicked.connect(self.show_add_node_dialog)
+    container_selector_layout.addWidget(self.add_node_button)
+    
+    top_button_area.addLayout(container_selector_layout)
 
     # Launch Edge Node button
     self.toggleButton = QPushButton(LAUNCH_CONTAINER_BUTTON_TEXT)
@@ -465,26 +488,110 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.memory_plot.setBackground(None)
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
+    
+    # Style container selector
+    text_color = "white" if is_dark else "black"
+    bg_color = "#2b2b2b" if is_dark else "white"
+    border_color = "#555555" if is_dark else "#cccccc"
+    hover_color = "#3b3b3b" if is_dark else "#f5f5f5"
+    
+    combobox_style = f"""
+        QComboBox {{
+            color: {text_color};
+            background-color: {bg_color};
+            border: 1px solid {border_color};
+            border-radius: 4px;
+            padding: 4px;
+            min-width: 100px;
+        }}
+        QComboBox:hover {{
+            background-color: {hover_color};
+            border: 1px solid #4CAF50;
+        }}
+        QComboBox::drop-down {{
+            border: none;
+            width: 20px;
+        }}
+        QComboBox::down-arrow {{
+            image: none;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid {text_color};
+            margin-right: 8px;
+        }}
+        QComboBox QAbstractItemView {{
+            color: {text_color};
+            background-color: {bg_color};
+            selection-background-color: {hover_color};
+            selection-color: {text_color};
+        }}
+    """
+    
+    button_style = f"""
+        QPushButton {{
+            color: {text_color};
+            background-color: {bg_color};
+            border: 1px solid {border_color};
+            border-radius: 4px;
+            padding: 4px 12px;
+        }}
+        QPushButton:hover {{
+            background-color: {hover_color};
+            border: 1px solid #4CAF50;
+        }}
+    """
+    
+    self.container_combo.setStyleSheet(combobox_style)
+    self.add_node_button.setStyleSheet(button_style)
+    
     if hasattr(self, 'mode_switch'):
       self.mode_switch.apply_stylesheet(is_dark)
     return
 
   def toggle_container(self):
-    if self.is_container_running():
-      self.add_log('Edge Node is running, user requested stopping the container...')
-      self.stop_container()
-    else:
-      self.launch_container()
-    self.update_toggle_button_text()
+    # Get currently selected container
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.toast.show_notification(NotificationType.ERROR, "No container selected")
+        return
+        
+    try:
+        # Update docker handler with selected container
+        self.docker_handler.set_container_name(container_name)
+        
+        if self.is_container_running():
+            self.add_log(f'Stopping container {container_name}...')
+            # Use docker_handler to stop the container instead of the mixin method
+            self.docker_handler.stop_container()
+            self._clear_info_display()
+        else:
+            self.add_log(f'Starting container {container_name}...')
+            # Get volume name based on container name
+            volume_name = get_volume_name(container_name)
+            self.launch_container(volume_name=volume_name)
+            
+        self.update_toggle_button_text()
+        
+    except Exception as e:
+        self.add_log(f"Error toggling container {container_name}: {str(e)}", debug=True, color="red")
+        self.toast.show_notification(NotificationType.ERROR, f"Error toggling container: {str(e)}")
     return
 
   def update_toggle_button_text(self):
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+        self.toggleButton.setEnabled(False)
+        return
+        
+    self.toggleButton.setEnabled(True)
     if self.is_container_running():
-      self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
-      self.toggleButton.setStyleSheet("background-color: red; color: white;")
+        self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
+        self.toggleButton.setStyleSheet("background-color: red; color: white;")
     else:
-      self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-      self.toggleButton.setStyleSheet("background-color: green; color: white;")
+        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+        self.toggleButton.setStyleSheet("background-color: green; color: white;")
     return
   
   def edit_file(self, file_path, func, title='Edit File'):
@@ -1002,6 +1109,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     t_te = time() - t_t1
     if not self.is_container_running():
       self.add_log('Edge Node is not running. Skipping refresh.')
+      self.refresh_container_list()  # Add this line to refresh container list periodically
     else:
       t0 = time()
       self.refresh_local_address()    
@@ -1371,3 +1479,156 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     """Open Docker download page in default browser."""
     import webbrowser
     webbrowser.open('https://docs.docker.com/get-docker/')
+
+  def _on_container_selected(self, container_name: str):
+    """Handle container selection and update dashboard display"""
+    if not container_name:
+        self._clear_info_display()
+        return
+        
+    try:
+        # Update docker handler with new container
+        self.docker_handler.set_container_name(container_name)
+        
+        # Update UI elements
+        self.update_toggle_button_text()
+        
+        # If container is running, update all information displays
+        if self.is_container_running():
+            self.post_launch_setup()
+            self.refresh_local_address()  # Updates address, ETH address, and name displays
+            self.plot_data()  # Updates graphs and metrics
+            self.maybe_refresh_uptime()  # Updates uptime, epoch, and version info
+            self.add_log(f"Selected container: {container_name}", debug=True)
+        else:
+            self._clear_info_display()
+            self.add_log(f"Selected container {container_name} is not running", debug=True)
+            
+    except Exception as e:
+        self._clear_info_display()
+        self.add_log(f"Error selecting container {container_name}: {str(e)}", debug=True, color="red")
+        self.toast.show_notification(NotificationType.ERROR, f"Error selecting container: {str(e)}")
+
+  def show_add_node_dialog(self):
+    """Show confirmation dialog for adding a new node."""
+    from PyQt5.QtWidgets import QMessageBox
+    
+    # Generate the container name that would be used
+    container_name = generate_container_name()
+    volume_name = get_volume_name(container_name)
+    
+    # Create confirmation dialog
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Question)
+    msg.setWindowTitle("Add New Node")
+    msg.setText("Would you like to create a new edge node?")
+    msg.setInformativeText(f"This will create:\nContainer: {container_name}\nVolume: {volume_name}")
+    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    msg.setDefaultButton(QMessageBox.No)
+    
+    # Show dialog and handle response
+    if msg.exec_() == QMessageBox.Yes:
+        self.add_new_node(container_name, volume_name)
+
+  def add_new_node(self, container_name: str, volume_name: str):
+    """Add a new edge node container.
+    
+    Args:
+        container_name: Name for the new container
+        volume_name: Name for the container's volume
+    """
+    try:
+        # Set the container name in the Docker handler
+        self.docker_handler.set_container_name(container_name)
+        
+        # Launch the container
+        self.launch_container(volume_name=volume_name)
+        
+        # Refresh the container list
+        self.refresh_container_list()
+        
+        # Select the new container
+        index = self.container_combo.findText(container_name)
+        if index >= 0:
+            self.container_combo.setCurrentIndex(index)
+        
+        # Show success message
+        self.add_log(f"Successfully created new node: {container_name}", color="green")
+        
+    except Exception as e:
+        self.add_log(f"Failed to create new node: {str(e)}", color="red")
+
+  def get_edge_node_containers(self) -> list:
+    """Get list of all edge node containers"""
+    containers = []
+    try:
+      # Get all containers that match our pattern
+      stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}'])
+      if return_code == 0:
+        containers = [name.strip() for name in stdout.split('\n') if name.strip().startswith('edge_node_container_')]
+    except Exception as e:
+      self.add_log(f"Error getting containers: {str(e)}", debug=True)
+    return containers
+
+  def launch_container(self, volume_name: str):
+    """Launch the currently selected container"""
+    self.add_log(f'Launching container {self.docker_handler.container_name} with volume {volume_name}...')
+    self.docker_handler.launch_container(volume_name=volume_name)
+    
+    # Update UI after launch
+    self.post_launch_setup()
+    self.refresh_local_address()
+    self.plot_data()
+    self.update_toggle_button_text()
+
+  def refresh_container_list(self):
+    """Refresh the dropdown list of containers"""
+    try:
+      # Store current selection
+      current_container = self.container_combo.currentText()
+      
+      # Clear and repopulate the list
+      self.container_combo.clear()
+      containers = self.get_edge_node_containers()
+      for container in containers:
+        self.container_combo.addItem(container)
+        
+      # Restore previous selection if it exists, otherwise select first item
+      if current_container and current_container in containers:
+        self.container_combo.setCurrentText(current_container)
+      elif containers:
+        self.container_combo.setCurrentIndex(0)
+        
+    except Exception as e:
+      self.add_log(f"Error refreshing container list: {str(e)}", debug=True, color="red")
+
+  def is_container_running(self):
+    """Check if the currently selected container is running.
+    
+    This method uses the docker_handler to check if the container is running.
+    It properly handles both local and remote containers.
+    
+    Returns:
+        bool: True if the container is running, False otherwise
+    """
+    try:
+        # Make sure we have a container name selected
+        container_name = self.container_combo.currentText()
+        if not container_name:
+            return False
+            
+        # Make sure the docker handler has the correct container name
+        self.docker_handler.set_container_name(container_name)
+        
+        # Use the docker handler to check if the container is running
+        is_running = self.docker_handler.is_container_running()
+        
+        # Log status changes for debugging
+        if hasattr(self, 'container_last_run_status') and self.container_last_run_status != is_running:
+            self.add_log(f'Container {container_name} status changed: {self.container_last_run_status} -> {is_running}', debug=True)
+            self.container_last_run_status = is_running
+            
+        return is_running
+    except Exception as e:
+        self.add_log(f"Error checking if container is running: {str(e)}", debug=True, color="red")
+        return False

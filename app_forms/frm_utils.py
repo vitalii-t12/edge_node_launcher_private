@@ -2,6 +2,7 @@ import sys
 import base64
 import traceback
 from datetime import datetime
+import random
 
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QAbstractButton, QCheckBox, QRadioButton
 from PyQt5.QtCore import Qt, QRect, QPropertyAnimation, QTimer
@@ -9,6 +10,26 @@ from PyQt5.QtGui import QFont, QPixmap, QIcon
 from PyQt5.QtGui import QPainter, QColor, QBrush
 from pyqtgraph import AxisItem
 
+# List of adjectives and nouns for generating container names
+ADJECTIVES = [
+    "swift", "bright", "calm", "wise", "bold", 
+    "quick", "keen", "brave", "agile", "noble"
+]
+
+NOUNS = [
+    "falcon", "tiger", "eagle", "wolf", "bear",
+    "hawk", "lion", "puma", "lynx", "fox"
+]
+
+def generate_container_name(prefix="edge_node_container_"):
+    """Generate a random but readable container name"""
+    adj = random.choice(ADJECTIVES)
+    noun = random.choice(NOUNS)
+    return f"{prefix}{adj}_{noun}"
+
+def get_volume_name(container_name):
+    """Get volume name from container name by replacing container with volume"""
+    return container_name.replace("container", "volume")
 
 def get_icon_from_base64(base64_str):
   icon_data = base64.b64decode(base64_str)
