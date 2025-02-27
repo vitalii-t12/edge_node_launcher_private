@@ -909,6 +909,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return result
 
   def plot_data(self):
+    """Fetch and plot node history data.
+    
+    This method fetches node history data from the container and plots it.
+    It handles errors and timeouts gracefully.
+    """
+    # Define success and error callbacks
     def on_success(history: NodeHistory) -> None:
       self.__current_node_epoch = history.current_epoch
       self.__current_node_epoch_avail = history.current_epoch_avail
@@ -933,9 +939,20 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     def on_error(error: str) -> None:
       self.add_log(f'Error getting history: {error}', debug=True)
+      # Still try to plot with existing data if available
       self.plot_graphs(None)
+      
+      # If this is a timeout error, log it more prominently
+      if "timed out" in error.lower():
+        self.add_log("Node history request timed out. This may indicate network issues or high load on the remote host.", color="red")
 
-    self.docker_handler.get_node_history(on_success, on_error)
+    # Start the request
+    try:
+      self.docker_handler.get_node_history(on_success, on_error)
+    except Exception as e:
+      self.add_log(f"Failed to start node history request: {str(e)}", debug=True, color="red")
+      # Try to plot with existing data
+      self.plot_graphs(None)
 
   def plot_graphs(self, history: Optional[NodeHistory] = None, limit: int = 100) -> None:
     if history is None:
@@ -1011,6 +1028,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       update_plot(self.gpu_memory_plot, timestamps, history.gpu_occupied_memory, 'Occupied GPU Memory', color)
 
   def refresh_local_address(self):
+    """Fetch and display node address information.
+    
+    This method fetches node address information from the container and updates the UI.
+    It handles errors and timeouts gracefully.
+    """
     if not self.is_container_running():
         self.addressDisplay.setText('Address: Node not running')
         self.ethAddressDisplay.setText('ETH Address: Not available')
@@ -1045,9 +1067,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.nameDisplay.setText('')
         self.copyAddrButton.hide()
         self.copyEthButton.hide()
+        
+        # If this is a timeout error, log it more prominently
+        if "timed out" in error.lower():
+            self.add_log("Node info request timed out. This may indicate network issues or high load on the remote host.", color="red")
 
-    self.docker_handler.get_node_info(on_success, on_error)
-
+    try:
+        self.docker_handler.get_node_info(on_success, on_error)
+    except Exception as e:
+        self.add_log(f"Failed to start node info request: {str(e)}", debug=True, color="red")
+        on_error(str(e))
 
   def maybe_refresh_uptime(self):
     # update uptime, epoch and epoch avail
@@ -1104,34 +1133,175 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
 
   def refresh_all(self):
-    t_t1 = time()
-    self.update_toggle_button_text()
-    t_te = time() - t_t1
-    if not self.is_container_running():
-      self.add_log('Edge Node is not running. Skipping refresh.')
-      self.refresh_container_list()  # Add this line to refresh container list periodically
+    """Refresh all data and UI elements."""
+    # Check if we're in remote mode
+    if hasattr(self, 'host_selector') and self.host_selector.is_multi_host_mode():
+      # Get current host
+      current_host = self.host_selector.get_current_host()
+      if not current_host:
+        return
+        
+      # Check host status in a non-blocking way
+      # Connect to the host_status_updated signal for a one-time update
+      self.host_selector.host_status_updated.connect(self._on_refresh_host_status_updated)
+      
+      # Start the status check
+      self.host_selector.check_host_status(current_host)
     else:
-      t0 = time()
-      self.refresh_local_address()    
-      t1 = time()
-      self.plot_data()
-      t2 = time()
-      #
-      t3 = time()
-      self.maybe_refresh_uptime()
-      t4 = time()
-      self.add_log(
-        f'{t1 - t0:.2f}s (refresh_local_address), {t2 - t1:.2f}s (plot_data), {t_te:.2f}s (update_toggle_button_text), {t4 - t3:.2f}s (maybe_refresh_uptime)',
-        debug=True
-      )
-    #endif container is running
+      # For local mode, just refresh container list and info
+      self._refresh_local_containers()
+    
+    # Check for updates periodically
     if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
       verbose = self.__last_auto_update_check == 0
       self.__last_auto_update_check = time()
       self.check_for_updates(verbose=verbose or FULL_DEBUG)
-    return    
 
+  def _on_refresh_host_status_updated(self, host_name, is_online):
+    """Handle host status update during refresh."""
+    # Disconnect from the signal to avoid multiple connections
+    self.host_selector.host_status_updated.disconnect(self._on_refresh_host_status_updated)
+    
+    # Log the status update
+    self.add_log(f"Host {host_name} status update: {'online' if is_online else 'offline'}")
+    
+    # If status has changed, handle it
+    if is_online:
+      # If host is online but we don't have a connection, try to reconnect
+      if not hasattr(self, 'ssh_service') or not self.ssh_service or not self.ssh_service.check_connection():
+        self.add_log(f"Host {host_name} is online, checking connection...")
+        # Get SSH command for the host
+        ssh_command = self.host_selector.get_ssh_command(host_name)
+        if ssh_command:
+          # Set up remote connection
+          self.set_remote_connection(ssh_command)
+          self.docker_handler.set_remote_connection(ssh_command)
+          self.add_log(f"Connected to host: {host_name}")
+          
+          # In pro mode, specifically check for edge_node_container
+          if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
+            # Check if edge_node_container exists and is running
+            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+            if return_code == 0:
+              containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+              if containers:
+                self.add_log(f"Found container on remote host: {containers[0]}")
+                # Set the container in the docker handler
+                self.docker_handler.set_container_name(containers[0])
+                
+                # Update the container combo box
+                self.refresh_container_list()
+                index = self.container_combo.findText(containers[0])
+                if index >= 0:
+                  self.container_combo.setCurrentIndex(index)
+                  
+                # Refresh container info
+                self._refresh_remote_containers()
+              else:
+                self.add_log(f"No edge_node_container found on host {host_name}")
+                self.toggleButton.setText("No Container Found")
+                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                self.toggleButton.setEnabled(False)
+            else:
+              self.add_log(f"Error checking for containers on host {host_name}")
+          else:
+            # For non-pro mode, just refresh container list and info
+            self._refresh_remote_containers()
+      else:
+        # Connection is already established, just refresh container info
+        self.add_log(f"Connection to {host_name} is active, refreshing containers")
+        
+        # In pro mode, specifically check for edge_node_container
+        if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
+          # Check if edge_node_container exists and is running
+          stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+          if return_code == 0:
+            containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+            if containers:
+              self.add_log(f"Found container on remote host: {containers[0]}")
+              # Set the container in the docker handler
+              self.docker_handler.set_container_name(containers[0])
+              
+              # Update the container combo box
+              self.refresh_container_list()
+              index = self.container_combo.findText(containers[0])
+              if index >= 0:
+                self.container_combo.setCurrentIndex(index)
+        
+        self._refresh_remote_containers()
+    else:
+      # Host is offline
+      self.add_log(f"Host {host_name} is offline")
+      self.toggleButton.setText("Host Offline")
+      self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+      self.toggleButton.setEnabled(False)
 
+  def _refresh_local_containers(self):
+    """Refresh local container list and info."""
+    try:
+        # Refresh container list
+        self.refresh_container_list()
+        
+        # Update container info if running
+        if self.is_container_running():
+            try:
+                # Refresh address first (usually faster)
+                self.refresh_local_address()
+                
+                # Then plot data (can be slower)
+                try:
+                    self.plot_data()
+                except Exception as e:
+                    self.add_log(f"Error plotting data for local container: {str(e)}", debug=True, color="red")
+            except Exception as e:
+                self.add_log(f"Error refreshing local container info: {str(e)}", color="red")
+        
+        # Always update the toggle button text
+        self.update_toggle_button_text()
+    except Exception as e:
+        self.add_log(f"Error in local container refresh: {str(e)}", color="red")
+        # Ensure toggle button text is updated even if there's an error
+        self.update_toggle_button_text()
+
+  def _refresh_remote_containers(self):
+    """Refresh remote container list and info."""
+    try:
+        # Refresh container list
+        self.refresh_container_list()
+        
+        # Update container info if running
+        if self.is_container_running():
+            # Set a timeout for these operations
+            self.add_log("Refreshing remote container information...", debug=True)
+            
+            # Use a timer to prevent UI freezing if operations take too long
+            refresh_timer = QTimer(self)
+            refresh_timer.setSingleShot(True)
+            refresh_timer.timeout.connect(lambda: self.add_log("Remote container refresh timed out, operations may be incomplete", color="red"))
+            refresh_timer.start(30000)  # 30 second timeout
+            
+            try:
+                # Refresh address first (usually faster)
+                self.refresh_local_address()
+                
+                # Then plot data (can be slower)
+                try:
+                    self.plot_data()
+                except Exception as e:
+                    self.add_log(f"Error plotting data for remote container: {str(e)}", debug=True, color="red")
+                
+                # Stop the timer if we completed successfully
+                refresh_timer.stop()
+            except Exception as e:
+                self.add_log(f"Error refreshing remote container info: {str(e)}", color="red")
+                refresh_timer.stop()
+        
+        # Always update the toggle button text
+        self.update_toggle_button_text()
+    except Exception as e:
+        self.add_log(f"Error in remote container refresh: {str(e)}", color="red")
+        # Ensure toggle button text is updated even if there's an error
+        self.update_toggle_button_text()
 
   def dapp_button_clicked(self):
     import webbrowser
@@ -1326,6 +1496,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.toggleButton.setText("Checking Host...")
     self.toggleButton.setStyleSheet("background-color: gray; color: white;")
     self.toggleButton.setEnabled(False)
+    
+    self.add_log(f"Host selected: {host_name}, checking status...")
         
     ssh_command = self.host_selector.get_ssh_command(host_name)
     if not ssh_command:
@@ -1336,31 +1508,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toggleButton.setEnabled(False)
         return
 
-    # Start status check if not already running
-    if not self.host_selector.status_threads.get(host_name) or not self.host_selector.status_threads[host_name].isRunning():
-        self.host_selector.check_host_status(host_name)
-        
-        # Wait for status check to complete
-        def check_status():
-            is_online = self.host_selector.current_status.property("is_online")
-            
-            if not is_online:
-                self.add_log(f"Host {host_name} is offline")
-                self.toggleButton.setText("Host Offline")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.ERROR, f"Host {host_name} is offline")
-                return
-            
-            # Only proceed with connection if host is online
-            self._check_host_connection(host_name, ssh_command)
-            
-        # Check status after a delay to allow the check to complete
-        QTimer.singleShot(2000, check_status)
-        return
+    # Connect to the host_status_updated signal
+    self.host_selector.host_status_updated.connect(self._on_host_status_updated)
     
-    # If status check is already running, use current status
-    is_online = self.host_selector.current_status.property("is_online")
+    # Force a fresh status check
+    self.host_selector.check_host_status(host_name)
+
+  def _on_host_status_updated(self, host_name: str, is_online: bool):
+    """Handle host status update."""
+    # Disconnect from the signal to avoid multiple connections
+    self.host_selector.host_status_updated.disconnect(self._on_host_status_updated)
+    
     if not is_online:
         self.add_log(f"Host {host_name} is offline")
         self.toggleButton.setText("Host Offline")
@@ -1368,9 +1526,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toggleButton.setEnabled(False)
         self.toast.show_notification(NotificationType.ERROR, f"Host {host_name} is offline")
         return
-        
+    
     # Only proceed with connection if host is online
-    self._check_host_connection(host_name, ssh_command)
+    ssh_command = self.host_selector.get_ssh_command(host_name)
+    if ssh_command:
+        self._check_host_connection(host_name, ssh_command)
 
   def _check_host_connection(self, host_name: str, ssh_command: str):
     """Check connection and Docker status for a host."""
@@ -1406,6 +1566,41 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             return
         
         self.add_log(f"Docker is available on host {host_name}")
+        
+        # In pro mode, specifically check for edge_node_container
+        if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
+            # Check if edge_node_container exists
+            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+            if return_code == 0:
+                containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+                if containers:
+                    self.add_log(f"Found container on remote host: {containers[0]}")
+                    # Set the container in the docker handler
+                    self.docker_handler.set_container_name(containers[0])
+                    
+                    # Update the container combo box
+                    self.refresh_container_list()
+                    index = self.container_combo.findText(containers[0])
+                    if index >= 0:
+                        self.container_combo.setCurrentIndex(index)
+                else:
+                    self.add_log(f"No edge_node_container found on host {host_name}")
+                    self.toggleButton.setText("No Container Found")
+                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                    self.toggleButton.setEnabled(False)
+                    self.toast.show_notification(NotificationType.WARNING, f"No edge_node_container found on host {host_name}")
+                    return
+            else:
+                self.add_log(f"Error checking for containers on host {host_name}")
+                self.toggleButton.setText("Container Check Failed")
+                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                self.toggleButton.setEnabled(False)
+                self.toast.show_notification(NotificationType.ERROR, f"Failed to check for containers on host {host_name}")
+                return
+        else:
+            # For non-pro mode, just refresh the container list
+            self.refresh_container_list()
+        
         self.toggleButton.setEnabled(True)
         
         # Refresh container status
@@ -1459,21 +1654,42 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Update host selector pro mode state
     self.host_selector.set_pro_mode(is_pro_mode)
     
-    # Handle host selector visibility
+    # Handle UI visibility and functionality based on mode
     if is_pro_mode:
+      # Show host selector for remote connections
       self.host_selector.show()
+      
+      # Hide container dropdown and add node button in pro mode
+      self.container_combo.hide()
+      self.add_node_button.hide()
+      
+      # Clear any existing container info
+      self._clear_info_display()
+      
+      # Disable toggle button until a host is selected and verified
+      self.toggleButton.setText("Select Host...")
+      self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+      self.toggleButton.setEnabled(False)
+      
+      # Check the initial host if one is selected
+      current_host = self.host_selector.get_current_host()
+      if current_host:
+        # Use QTimer to delay the host selection to avoid blocking the UI
+        QTimer.singleShot(100, lambda: self._on_host_selected(current_host))
     else:
+      # Hide host selector in simple mode
       self.host_selector.hide()
+      
+      # Show container dropdown and add node button in simple mode
+      self.container_combo.show()
+      self.add_node_button.show()
+      
       # Clear any remote connections
       self.clear_remote_connection()
       self.docker_handler.clear_remote_connection()
-      # Refresh container status for local mode
-      if self.is_container_running():
-        self.post_launch_setup()
-        self.refresh_local_address()
-        self.plot_data()
+      
+      # Reset toggle button
       self.update_toggle_button_text()
-      self.toggleButton.setEnabled(True)
 
   def open_docker_download(self):
     """Open Docker download page in default browser."""
@@ -1562,12 +1778,29 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     """Get list of all edge node containers"""
     containers = []
     try:
-      # Get all containers that match our pattern
-      stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}'])
-      if return_code == 0:
-        containers = [name.strip() for name in stdout.split('\n') if name.strip().startswith('edge_node_container_')]
+      # In pro mode with remote host, we only look for the specific edge_node_container
+      if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode() and self.host_selector.is_multi_host_mode():
+        self.add_log("Pro mode with remote host: Looking for edge_node_container", debug=True)
+        stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+        if return_code == 0:
+          # In pro mode, we only care about the exact container name
+          containers = [name.strip() for name in stdout.split('\n') if name.strip() == 'edge_node_container']
+          if not containers and 'edge_node_container' not in stdout:
+            # If we didn't find the exact container, check if it exists with a suffix
+            stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+            if return_code == 0:
+              containers = [name.strip() for name in stdout.split('\n') if name.strip().startswith('edge_node_container')]
+              if containers:
+                self.add_log(f"Found container with prefix: {containers[0]}", debug=True)
+      else:
+        # Get all containers that match our pattern for local mode
+        stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}'])
+        if return_code == 0:
+          containers = [name.strip() for name in stdout.split('\n') if name.strip().startswith('edge_node_container_')]
     except Exception as e:
       self.add_log(f"Error getting containers: {str(e)}", debug=True)
+    
+    self.add_log(f"Found containers: {containers}", debug=True)
     return containers
 
   def launch_container(self, volume_name: str):
@@ -1615,6 +1848,22 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Make sure we have a container name selected
         container_name = self.container_combo.currentText()
         if not container_name:
+            # In pro mode with remote host, we might need to check for edge_node_container directly
+            if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode() and self.host_selector.is_multi_host_mode():
+                # Check if we have a remote connection
+                if hasattr(self, 'ssh_service') and self.ssh_service and self.ssh_service.check_connection():
+                    self.add_log("Pro mode with remote host: Checking edge_node_container status directly", debug=True)
+                    # Check if edge_node_container is running
+                    stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+                    if return_code == 0:
+                        containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+                        if containers:
+                            self.add_log(f"Found running container on remote host: {containers[0]}", debug=True)
+                            # Set the container in the docker handler
+                            self.docker_handler.set_container_name(containers[0])
+                            # Update the container combo box
+                            self.refresh_container_list()
+                            return True
             return False
             
         # Make sure the docker handler has the correct container name

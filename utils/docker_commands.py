@@ -119,43 +119,63 @@ class DockerCommandThread(QThread):
             # Add remote prefix if needed
             if self.remote_ssh_command:
                 full_command = self.remote_ssh_command + full_command
+                print(f"Command: {' '.join(full_command)}")
+                print(f"Input data: {self.input_data}")
 
-            if os.name == 'nt':
-                result = subprocess.run(
-                    full_command,
-                    input=self.input_data,
-                    capture_output=True,
-                    text=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW
-                )
-            else:
-                result = subprocess.run(
-                    full_command,
-                    input=self.input_data,
-                    capture_output=True,
-                    text=True
-                )
-
-            if result.returncode != 0:
-                self.command_error.emit(f"Command failed: {result.stderr}\nCommand: {' '.join(full_command)}\nInput data: {self.input_data}")
-                return
-
-            # TODO: Improve output handling.
-            # Maybe implement it in a way that the command itself can specify the output format.
-            # For reset_address and commands starting with change_alias, treat output as plain text
-            if self.command == 'reset_address' or self.command.startswith('change_alias'):
-                self.command_finished.emit({'message': result.stdout.strip()})
-                return
+            # Use a longer timeout for remote commands
+            timeout = 20 if self.remote_ssh_command else 10  # Increased timeout for remote commands
 
             try:
-                data = json.loads(result.stdout)
-                self.command_finished.emit(data)
-            except json.JSONDecodeError:
-                self.command_error.emit(f"Error decoding JSON response. Raw output: {result.stdout}")
-            except Exception as e:
-                self.command_error.emit(f"Error processing response: {str(e)}\nRaw output: {result.stdout}")
+                if os.name == 'nt':
+                    result = subprocess.run(
+                        full_command,
+                        input=self.input_data,
+                        capture_output=True,
+                        text=True,
+                        timeout=timeout,
+                        creationflags=subprocess.CREATE_NO_WINDOW
+                    )
+                else:
+                    result = subprocess.run(
+                        full_command,
+                        input=self.input_data,
+                        capture_output=True,
+                        text=True,
+                        timeout=timeout
+                    )
+
+                if result.returncode != 0:
+                    self.command_error.emit(f"Command failed: {result.stderr}\nCommand: {' '.join(full_command)}\nInput data: {self.input_data}")
+                    return
+
+                # TODO: Improve output handling.
+                # Maybe implement it in a way that the command itself can specify the output format.
+                # For reset_address and commands starting with change_alias, treat output as plain text
+                if self.command == 'reset_address' or self.command.startswith('change_alias'):
+                    self.command_finished.emit({'message': result.stdout.strip()})
+                    return
+
+                try:
+                    data = json.loads(result.stdout)
+                    self.command_finished.emit(data)
+                except json.JSONDecodeError:
+                    self.command_error.emit(f"Error decoding JSON response. Raw output: {result.stdout}")
+                except Exception as e:
+                    self.command_error.emit(f"Error processing response: {str(e)}\nRaw output: {result.stdout}")
+            except subprocess.TimeoutExpired as e:
+                error_msg = f"Command timed out after {e.timeout} seconds: {' '.join(full_command)}"
+                print(error_msg)
+                if hasattr(e, 'stdout') and e.stdout:
+                    print(f"  stdout: {e.stdout}")
+                if hasattr(e, 'stderr') and e.stderr:
+                    print(f"  stderr: {e.stderr}")
+                self.command_error.emit(error_msg)
         except Exception as e:
-            self.command_error.emit(f"Error executing command: {str(e)}\nCommand: {' '.join(full_command)}\nInput data: {self.input_data}")
+            error_msg = f"Error executing command: {str(e)}\nCommand: {' '.join(full_command) if 'full_command' in locals() else self.command}\nInput data: {self.input_data}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            self.command_error.emit(error_msg)
 
 class DockerCommandHandler:
     """ Handles Docker commands """
