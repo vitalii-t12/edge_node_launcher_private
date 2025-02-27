@@ -1134,8 +1134,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def refresh_all(self):
     """Refresh all data and UI elements."""
-    # Check if we're in remote mode
-    if hasattr(self, 'host_selector') and self.host_selector.is_multi_host_mode():
+    # Check if we're in simple mode
+    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
+    
+    # Check if we're in remote mode and not in simple mode
+    if not is_simple_mode and hasattr(self, 'host_selector') and self.host_selector.is_multi_host_mode():
       # Get current host
       current_host = self.host_selector.get_current_host()
       if not current_host:
@@ -1148,7 +1151,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       # Start the status check
       self.host_selector.check_host_status(current_host)
     else:
-      # For local mode, just refresh container list and info
+      # For local mode or simple mode, just refresh container list and info
       self._refresh_local_containers()
     
     # Check for updates periodically
@@ -1161,6 +1164,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     """Handle host status update during refresh."""
     # Disconnect from the signal to avoid multiple connections
     self.host_selector.host_status_updated.disconnect(self._on_refresh_host_status_updated)
+    
+    # Check if we're in simple mode
+    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
+    
+    if is_simple_mode:
+        # In simple mode, skip SSH connection and proceed with local Docker
+        self.add_log("Simple mode: skipping SSH connection, using local Docker")
+        self._refresh_local_containers()
+        return
     
     # Log the status update
     self.add_log(f"Host {host_name} status update: {'online' if is_online else 'offline'}")
@@ -1491,6 +1503,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     if not host_name:
         return
+    
+    # Check if we're in simple mode
+    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
+    
+    if is_simple_mode:
+        # In simple mode, skip SSH connection and proceed with local Docker
+        self.add_log("Simple mode: skipping SSH connection, using local Docker")
+        self.toggleButton.setEnabled(True)
+        self.update_toggle_button_text()
+        self.refresh_container_list()
+        return
         
     # Disable button and show checking status
     self.toggleButton.setText("Checking Host...")
@@ -1519,6 +1542,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Disconnect from the signal to avoid multiple connections
     self.host_selector.host_status_updated.disconnect(self._on_host_status_updated)
     
+    # Check if we're in simple mode
+    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
+    
+    if is_simple_mode:
+        # In simple mode, skip SSH connection and proceed with local Docker
+        self.add_log("Simple mode: skipping SSH connection, using local Docker")
+        self.toggleButton.setEnabled(True)
+        self.update_toggle_button_text()
+        self.refresh_container_list()
+        return
+    
     if not is_online:
         self.add_log(f"Host {host_name} is offline")
         self.toggleButton.setText("Host Offline")
@@ -1535,37 +1569,78 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def _check_host_connection(self, host_name: str, ssh_command: str):
     """Check connection and Docker status for a host."""
     try:
-        # Set up remote connection
-        self.set_remote_connection(ssh_command)
+        # Check if we're in simple mode - if so, skip SSH connection
+        is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
         
-        # Test SSH connection first
-        if not self.ssh_service.check_connection():
-            raise Exception("Failed to establish SSH connection")
+        if not is_simple_mode:
+            # Set up remote connection only in pro mode
+            self.set_remote_connection(ssh_command)
             
-        self.docker_handler.set_remote_connection(ssh_command)
-        self.add_log(f"Connected to remote host: {host_name}")
-        
-        # Check if Docker is available on the remote host
-        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', '--version'])
-        if return_code != 0:
-            self.add_log(f"Docker not found on host {host_name}")
-            self.toggleButton.setText("Docker Not Found")
-            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-            self.toggleButton.setEnabled(False)
-            self.toast.show_notification(NotificationType.ERROR, f"Docker not found on host {host_name}")
-            return
-        
-        # Check if Docker daemon is running
-        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'info'])
-        if return_code != 0:
-            self.add_log(f"Docker daemon not running on host {host_name}")
-            self.toggleButton.setText("Docker Not Running")
-            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-            self.toggleButton.setEnabled(False)
-            self.toast.show_notification(NotificationType.ERROR, f"Docker daemon not running on host {host_name}")
-            return
-        
-        self.add_log(f"Docker is available on host {host_name}")
+            # Test SSH connection first
+            if not self.ssh_service.check_connection():
+                raise Exception("Failed to establish SSH connection")
+                
+            self.docker_handler.set_remote_connection(ssh_command)
+            self.add_log(f"Connected to remote host: {host_name}")
+            
+            # Check if Docker is available on the remote host
+            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', '--version'])
+            if return_code != 0:
+                self.add_log(f"Docker not found on host {host_name}")
+                self.toggleButton.setText("Docker Not Found")
+                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                self.toggleButton.setEnabled(False)
+                self.toast.show_notification(NotificationType.ERROR, f"Docker not found on host {host_name}")
+                return
+            
+            # Check if Docker daemon is running
+            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'info'])
+            if return_code != 0:
+                self.add_log(f"Docker daemon not running on host {host_name}")
+                self.toggleButton.setText("Docker Not Running")
+                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                self.toggleButton.setEnabled(False)
+                self.toast.show_notification(NotificationType.ERROR, f"Docker daemon not running on host {host_name}")
+                return
+            
+            self.add_log(f"Docker is available on host {host_name}")
+        else:
+            # In simple mode, just check if Docker is available locally
+            self.add_log("Simple mode: skipping SSH connection, using local Docker")
+            
+            # Clear any remote connection settings to ensure we're using local Docker
+            self.clear_remote_connection()
+            self.docker_handler.clear_remote_connection()
+            
+            # Check if Docker is available locally
+            try:
+                import subprocess
+                result = subprocess.run(['docker', '--version'], capture_output=True, text=True)
+                if result.returncode != 0:
+                    self.add_log("Docker not found locally")
+                    self.toggleButton.setText("Docker Not Found")
+                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                    self.toggleButton.setEnabled(False)
+                    self.toast.show_notification(NotificationType.ERROR, "Docker not found locally")
+                    return
+                
+                result = subprocess.run(['docker', 'info'], capture_output=True, text=True)
+                if result.returncode != 0:
+                    self.add_log("Docker daemon not running locally")
+                    self.toggleButton.setText("Docker Not Running")
+                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                    self.toggleButton.setEnabled(False)
+                    self.toast.show_notification(NotificationType.ERROR, "Docker daemon not running locally")
+                    return
+                
+                self.add_log("Docker is available locally")
+            except Exception as e:
+                self.add_log(f"Error checking Docker: {str(e)}")
+                self.toggleButton.setText("Docker Check Failed")
+                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+                self.toggleButton.setEnabled(False)
+                self.toast.show_notification(NotificationType.ERROR, f"Failed to check Docker: {str(e)}")
+                return
         
         # In pro mode, specifically check for edge_node_container
         if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
@@ -1845,11 +1920,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         bool: True if the container is running, False otherwise
     """
     try:
+        # Check if we're in simple mode
+        is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
+        
         # Make sure we have a container name selected
         container_name = self.container_combo.currentText()
         if not container_name:
             # In pro mode with remote host, we might need to check for edge_node_container directly
-            if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode() and self.host_selector.is_multi_host_mode():
+            if not is_simple_mode and hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode() and self.host_selector.is_multi_host_mode():
                 # Check if we have a remote connection
                 if hasattr(self, 'ssh_service') and self.ssh_service and self.ssh_service.check_connection():
                     self.add_log("Pro mode with remote host: Checking edge_node_container status directly", debug=True)
