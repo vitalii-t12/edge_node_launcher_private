@@ -1,4 +1,3 @@
-
 import sys
 import base64
 import traceback
@@ -76,10 +75,11 @@ class ToggleButton1(QAbstractButton):
     self.setCheckable(True)
     self._background_color = QColor(255, 0, 0)
     self._circle_color = QColor(255, 255, 255)
-    self._circle_position = 3
+    self._circle_position = 3  # Start position
 
     self.anim = QPropertyAnimation(self, b"circle_position", self)
     self.anim.setDuration(200)
+    self.anim.finished.connect(self.update)  # Ensure we update after animation
 
     self.setFixedSize(50, 25)
 
@@ -87,19 +87,32 @@ class ToggleButton1(QAbstractButton):
     rect = self.rect()
     painter = QPainter(self)
     painter.setRenderHint(QPainter.Antialiasing)
+    
+    # Draw background
     painter.setBrush(QBrush(self._background_color))
     painter.setPen(Qt.NoPen)
     painter.drawRoundedRect(0, 0, rect.width(), rect.height(), rect.height() // 2, rect.height() // 2)
+    
+    # Draw circle - position based on checked state if not animating
+    if not self.anim.state():
+      self._circle_position = self.width() - self.height() + 3 if self.isChecked() else 3
+    
+    # Draw the circle
     painter.setBrush(QBrush(self._circle_color))
     painter.drawEllipse(self._circle_position, 3, rect.height() - 6, rect.height() - 6)
 
   def mouseReleaseEvent(self, event):
     if self.rect().contains(event.pos()):
-      self.setChecked(not self.isChecked())
-      self.anim.setStartValue(self._circle_position)
-      self.anim.setEndValue(3 if not self.isChecked() else self.width() - self.height() + 3)
+      checked = not self.isChecked()
+      self.setChecked(checked)
+      
+      # Animate the circle
+      start_pos = self._circle_position
+      end_pos = self.width() - self.height() + 3 if checked else 3
+      
+      self.anim.setStartValue(start_pos)
+      self.anim.setEndValue(end_pos)
       self.anim.start()
-    super().mouseReleaseEvent(event)
 
   def setBackgroundColor(self, color):
     self._background_color = QColor(color)

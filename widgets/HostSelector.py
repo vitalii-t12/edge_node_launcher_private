@@ -61,6 +61,7 @@ class HostSelector(QWidget):
         self.hosts_manager = AnsibleHostsManager()
         self.status_threads = {}  # Keep track of status check threads
         self.status_indicators = {}  # Keep track of status indicators
+        self._is_pro_mode = False  # Track pro mode state
         self.initUI()
 
     def initUI(self):
@@ -172,6 +173,11 @@ class HostSelector(QWidget):
 
     def _on_mode_changed(self, state):
         """Handle mode change."""
+        # If in pro mode, force multi-host mode to be enabled
+        if self._is_pro_mode and not state:
+            self.mode_checkbox.setChecked(True)
+            return
+
         is_multi_host = bool(state)
         self.host_label.setVisible(is_multi_host)
         self.host_combo.setVisible(is_multi_host)
@@ -342,4 +348,25 @@ class HostSelector(QWidget):
         self.mode_checkbox.setStyleSheet(checkbox_style)
         self.host_combo.setStyleSheet(combobox_style)
         self.refresh_button.setStyleSheet(button_style)
-        self.host_label.setStyleSheet(f"color: {text_color};") 
+        self.host_label.setStyleSheet(f"color: {text_color};")
+
+        self.host_label.setStyleSheet(f"color: {text_color};")
+
+    def is_multi_host_mode(self) -> bool:
+        """Check if multi-host mode is enabled"""
+        return self.mode_checkbox.isChecked()
+
+    def set_multi_host_mode(self, enabled: bool):
+        """Set multi-host mode state"""
+        if self.mode_checkbox.isChecked() != enabled:
+            self.mode_checkbox.setChecked(enabled)  # This will trigger the mode_changed signal via _on_mode_changed 
+
+    def set_pro_mode(self, enabled: bool):
+        """Set pro mode state and update UI accordingly"""
+        self._is_pro_mode = enabled
+        if enabled:
+            # Force multi-host mode when pro mode is enabled
+            self.mode_checkbox.setChecked(True)
+            self.mode_checkbox.setEnabled(False)  # Disable checkbox in pro mode
+        else:
+            self.mode_checkbox.setEnabled(True)  # Re-enable checkbox in simple mode 

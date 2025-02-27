@@ -49,6 +49,7 @@ from models.AllowedAddress import AllowedAddress, AllowedAddressList
 from models.StartupConfig import StartupConfig
 from models.ConfigApp import ConfigApp
 from widgets.HostSelector import HostSelector
+from widgets.ModeSwitch import ModeSwitch
 
 
 def get_platform_and_os_info():
@@ -205,19 +206,30 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.setGeometry(0, 0, 1800, HEIGHT)
     self.center()
 
-    main_layout = QHBoxLayout(self)
+    # Create the main layout
+    main_layout = QVBoxLayout(self)
+    main_layout.setContentsMargins(0, 0, 0, 0)
+    main_layout.setSpacing(0)
+
+    # Content area with overlay for mode switch
+    content_widget = QWidget()
+    content_widget.setLayout(QHBoxLayout())
+    content_widget.layout().setContentsMargins(0, 0, 0, 0)
+    content_widget.layout().setSpacing(0)
 
     # Left menu layout with fixed width
     menu_widget = QWidget()
     menu_widget.setFixedWidth(300)  # Set the fixed width here
     menu_layout = QVBoxLayout(menu_widget)
     menu_layout.setAlignment(Qt.AlignTop)
+    menu_layout.setContentsMargins(0, 0, 0, 0)
     
-    # Add host selector at the top
+    # Add host selector
     self.host_selector = HostSelector()
     self.host_selector.host_selected.connect(self._on_host_selected)
-    self.host_selector.mode_changed.connect(self._on_mode_changed)
-    self.host_selector.apply_stylesheet(self._current_stylesheet == DARK_STYLESHEET)  # Set initial theme
+    self.host_selector.mode_changed.connect(self._on_host_mode_changed)
+    self.host_selector.apply_stylesheet(self._current_stylesheet == DARK_STYLESHEET)
+    self.host_selector.hide()  # Initially hidden in simple mode
     menu_layout.addWidget(self.host_selector)
     
     top_button_area = QVBoxLayout()
@@ -353,20 +365,40 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     bottom_button_area.addStretch()
     menu_layout.addLayout(bottom_button_area)
     
-    main_layout.addWidget(menu_widget)  # Add the fixed-width widget
+    content_widget.layout().addWidget(menu_widget)
 
+    # Right panel with mode switch overlay
+    right_container = QWidget()
+    right_container_layout = QVBoxLayout(right_container)
+    right_container_layout.setContentsMargins(0, 0, 0, 0)
+    right_container_layout.setSpacing(0)
+
+    # Mode switch at the top
+    mode_switch_layout = QHBoxLayout()
+    mode_switch_layout.setContentsMargins(10, 5, 10, 5)
+    mode_switch_layout.setSpacing(0)
+    mode_switch_layout.addStretch(1)
+    self.mode_switch = ModeSwitch()
+    self.mode_switch.mode_changed.connect(self._on_simple_pro_mode_changed)
+    self.mode_switch.apply_stylesheet(self._current_stylesheet == DARK_STYLESHEET)
+    mode_switch_layout.addWidget(self.mode_switch, 0, Qt.AlignRight | Qt.AlignVCenter)
+    right_container_layout.addLayout(mode_switch_layout)
+
+    # Add a small spacer between mode switch and graphs
+    right_container_layout.addSpacing(5)
+    
     # Right side layout (for graphs)
-    self.left_panel = QWidget()
-    left_panel_layout = QVBoxLayout()
+    right_panel = QWidget()
+    right_panel_layout = QVBoxLayout(right_panel)
     
     # the graph area
     self.graphView = QWidget()
     graph_layout = QGridLayout()
     
-    self.cpu_plot = pg.PlotWidget() #background='#243447')
-    self.memory_plot = pg.PlotWidget() #background='#243447')
-    self.gpu_plot = pg.PlotWidget() #background='#243447')
-    self.gpu_memory_plot = pg.PlotWidget() #background='#243447')
+    self.cpu_plot = pg.PlotWidget()
+    self.memory_plot = pg.PlotWidget()
+    self.gpu_plot = pg.PlotWidget()
+    self.gpu_memory_plot = pg.PlotWidget()
     
     graph_layout.addWidget(self.cpu_plot, 0, 0)
     graph_layout.addWidget(self.memory_plot, 0, 1)
@@ -374,7 +406,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     graph_layout.addWidget(self.gpu_memory_plot, 1, 1)
     
     self.graphView.setLayout(graph_layout)
-    left_panel_layout.addWidget(self.graphView)
+    right_panel_layout.addWidget(self.graphView)
     
     # the log scroll text area
     self.logView = QTextEdit()
@@ -382,15 +414,19 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.logView.setStyleSheet(self._current_stylesheet)
     self.logView.setFixedHeight(150)
     self.logView.setFont(QFont("Courier New"))
-    left_panel_layout.addWidget(self.logView)
+    right_panel_layout.addWidget(self.logView)
     if self.log_buffer:
-      for line in self.log_buffer:
-        self.logView.append(line)
-      self.log_buffer = []
-    # endif log buffer is populated
+        for line in self.log_buffer:
+            self.logView.append(line)
+        self.log_buffer = []
+
+    right_container_layout.addWidget(right_panel)
     
-    self.left_panel.setLayout(left_panel_layout)
-    main_layout.addWidget(self.left_panel)
+    # Add the main content widgets
+    content_widget.layout().addWidget(menu_widget)
+    content_widget.layout().addWidget(right_container)
+    
+    main_layout.addWidget(content_widget)
 
     self.setLayout(main_layout)
     self.apply_stylesheet()
@@ -422,12 +458,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.force_debug_checkbox.setStyleSheet("color: black;")
 
   def apply_stylesheet(self):
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
     self.setStyleSheet(self._current_stylesheet)
     self.logView.setStyleSheet(self._current_stylesheet)
     self.cpu_plot.setBackground(None)  # Reset the background to let the stylesheet take effect
     self.memory_plot.setBackground(None)
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
+    if hasattr(self, 'mode_switch'):
+      self.mode_switch.apply_stylesheet(is_dark)
     return
 
   def toggle_container(self):
@@ -1280,8 +1319,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toast.show_notification(NotificationType.ERROR, f"Failed to connect to host {host_name}")
         return
 
-  def _on_mode_changed(self, is_multi_host: bool):
-    """Handle mode change."""
+  def _on_host_mode_changed(self, is_multi_host: bool):
+    """Handle mode change for host selector (multi-host mode)"""
     # Clear current display and state
     self._clear_info_display()
     
@@ -1304,6 +1343,29 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         current_host = self.host_selector.get_current_host()
         if current_host:
             self._on_host_selected(current_host)  # This will check the host's status
+
+  def _on_simple_pro_mode_changed(self, is_pro_mode):
+    """Handle mode change between simple and pro"""
+    self.add_log(f'Switched to {"pro" if is_pro_mode else "simple"} mode')
+    
+    # Update host selector pro mode state
+    self.host_selector.set_pro_mode(is_pro_mode)
+    
+    # Handle host selector visibility
+    if is_pro_mode:
+      self.host_selector.show()
+    else:
+      self.host_selector.hide()
+      # Clear any remote connections
+      self.clear_remote_connection()
+      self.docker_handler.clear_remote_connection()
+      # Refresh container status for local mode
+      if self.is_container_running():
+        self.post_launch_setup()
+        self.refresh_local_address()
+        self.plot_data()
+      self.update_toggle_button_text()
+      self.toggleButton.setEnabled(True)
 
   def open_docker_download(self):
     """Open Docker download page in default browser."""
