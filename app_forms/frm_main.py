@@ -4,7 +4,7 @@ import os
 import json
 import dataclasses
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import time
 from typing import Optional
 import re
@@ -25,7 +25,8 @@ from PyQt5.QtWidgets import (
   QCheckBox,
   QStyle,
   QComboBox,
-  QMessageBox
+  QMessageBox,
+  QFileDialog
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -38,12 +39,13 @@ from utils.const import *
 from utils.docker import _DockerUtilsMixin
 from utils.docker_commands import DockerCommandHandler
 from utils.updater import _UpdaterMixin
+from utils.docker_utils import get_volume_name, generate_container_name
+from utils.config_manager import ConfigManager, ContainerConfig
 
 from utils.icon import ICON_BASE64
 
 from app_forms.frm_utils import (
-  get_icon_from_base64, DateAxisItem,
-  generate_container_name, get_volume_name
+  get_icon_from_base64, DateAxisItem
 )
 
 from ver import __VER__ as __version__
@@ -108,6 +110,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.runs_in_production = self.is_running_in_production()
     
+    # Initialize config manager for container configurations
+    self.config_manager = ConfigManager()
+    
     self.initUI()
 
     self.__cwd = os.getcwd()
@@ -130,11 +135,19 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Initialize container list
     self.refresh_container_list()
 
+    # Set initial container status
+    self.container_last_run_status = False
+    
+    # Check if container is running and update UI accordingly
     if self.is_container_running():
+      self.add_log("Container is running on startup, updating UI", debug=True)
       self.post_launch_setup()
       self.refresh_local_address()
       self.plot_data()  # Initial plot
+    else:
+      self.add_log("No running container found on startup", debug=True)
 
+    # Ensure button state is correct
     self.update_toggle_button_text()
 
     self.timer = QTimer(self)
@@ -277,7 +290,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.explorer_button = QPushButton(EXPLORER_BUTTON_TEXT)
     self.explorer_button.clicked.connect(self.explorer_button_clicked)
     top_button_area.addWidget(self.explorer_button)
-
+    
     menu_layout.addLayout(top_button_area)
 
     # Spacer to push bottom_button_area to the bottom
@@ -564,17 +577,66 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             # Use docker_handler to stop the container instead of the mixin method
             self.docker_handler.stop_container()
             self._clear_info_display()
+            
+            # Update button state immediately
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.toggleButton.setStyleSheet("background-color: green; color: white;")
         else:
             self.add_log(f'Starting container {container_name}...')
-            # Get volume name based on container name
-            volume_name = get_volume_name(container_name)
+            
+            # Get volume name from config or generate it
+            volume_name = None
+            container_config = self.config_manager.get_container(container_name)
+            
+            if container_config and container_config.volume:
+                volume_name = container_config.volume
+                self.add_log(f"Using volume name from config: {volume_name}", debug=True)
+            else:
+                # Generate volume name based on container name
+                volume_name = get_volume_name(container_name)
+                self.add_log(f"Generated volume name: {volume_name}", debug=True)
+                
+                # Save to config if not already there
+                from datetime import datetime
+                current_time = datetime.now().isoformat()
+                new_config = ContainerConfig(
+                    name=container_name,
+                    volume=volume_name,
+                    created_at=current_time,
+                    last_used=current_time
+                )
+                self.config_manager.add_container(new_config)
+            
+            # Update last used timestamp
+            from datetime import datetime
+            self.config_manager.update_last_used(container_name, datetime.now().isoformat())
+            
+            # Update button state immediately to show we're working on it
+            self.toggleButton.setText("Starting...")
+            self.toggleButton.setStyleSheet("background-color: orange; color: white;")
+            self.toggleButton.setEnabled(False)
+            
+            # Process events to update UI
+            QApplication.processEvents()
+            
+            # Launch the container
             self.launch_container(volume_name=volume_name)
             
+            # Update button state after launch
+            self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
+            self.toggleButton.setStyleSheet("background-color: red; color: white;")
+            self.toggleButton.setEnabled(True)
+        
+        # Final update of button text based on actual container state
         self.update_toggle_button_text()
         
     except Exception as e:
         self.add_log(f"Error toggling container {container_name}: {str(e)}", debug=True, color="red")
         self.toast.show_notification(NotificationType.ERROR, f"Error toggling container: {str(e)}")
+        
+        # Make sure button is enabled even if there's an error
+        self.toggleButton.setEnabled(True)
+        self.update_toggle_button_text()
     return
 
   def update_toggle_button_text(self):
@@ -584,14 +646,34 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toggleButton.setStyleSheet("background-color: gray; color: white;")
         self.toggleButton.setEnabled(False)
         return
-        
+    
+    # Check if container exists in Docker
+    container_exists = self.container_exists_in_docker(container_name)
+    
+    # If container doesn't exist in Docker but exists in config, show launch button
+    if not container_exists:
+        config_container = self.config_manager.get_container(container_name)
+        if config_container:
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.toggleButton.setStyleSheet("background-color: green; color: white;")
+            self.toggleButton.setEnabled(True)
+            return
+    
+    # Make sure the docker handler has the correct container name
+    self.docker_handler.set_container_name(container_name)
+    
+    # Check if the container is running using docker_handler directly
+    is_running = self.docker_handler.is_container_running()
+    
     self.toggleButton.setEnabled(True)
-    if self.is_container_running():
+    if is_running:
         self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
         self.toggleButton.setStyleSheet("background-color: red; color: white;")
+        self.add_log(f"Container {container_name} is running, setting button to red", debug=True)
     else:
         self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
         self.toggleButton.setStyleSheet("background-color: green; color: white;")
+        self.add_log(f"Container {container_name} is not running, setting button to green", debug=True)
     return
   
   def edit_file(self, file_path, func, title='Edit File'):
@@ -1059,6 +1141,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             self.copyEthButton.setVisible(bool(node_info.eth_address))
             
             self.add_log(f'Node info updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_address}')
+            
+            # Save addresses to config
+            container_name = self.container_combo.currentText()
+            if container_name:
+                # Update node address in config
+                self.config_manager.update_node_address(container_name, self.node_addr)
+                # Update ETH address in config
+                self.config_manager.update_eth_address(container_name, self.node_eth_address)
+                self.add_log(f"Saved node and ETH addresses to config for {container_name}", debug=True)
 
     def on_error(error):
         self.add_log(f'Error getting node info: {error}', debug=True)
@@ -1773,13 +1864,48 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def _on_container_selected(self, container_name: str):
     """Handle container selection and update dashboard display"""
+    # Always clear previous container's data first to ensure no data mixing
+    self._clear_info_display()
+    
     if not container_name:
-        self._clear_info_display()
         return
         
     try:
+        self.add_log(f"Selected container: {container_name}", debug=True)
+        
         # Update docker handler with new container
         self.docker_handler.set_container_name(container_name)
+        
+        # Check if container exists in Docker
+        container_exists = self.container_exists_in_docker(container_name)
+        
+        # Get container config
+        config_container = self.config_manager.get_container(container_name)
+        
+        # If container doesn't exist in Docker but exists in config, show a message
+        if not container_exists:
+            if config_container:
+                self.add_log(f"Container {container_name} exists in config but not in Docker. It will be recreated when launched.", debug=True)
+                self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+                self.toggleButton.setStyleSheet("background-color: green; color: white;")
+                self.toggleButton.setEnabled(True)
+                
+                # Display saved addresses if available
+                if config_container.node_address:
+                    self.node_addr = config_container.node_address
+                    str_display = f"Address: {config_container.node_address[:16]}...{config_container.node_address[-8:]}"
+                    self.addressDisplay.setText(str_display)
+                    self.copyAddrButton.setVisible(True)
+                    self.add_log(f"Displaying saved node address for {container_name}", debug=True)
+                
+                if config_container.eth_address:
+                    self.node_eth_address = config_container.eth_address
+                    str_eth_display = f"ETH Address: {config_container.eth_address[:16]}...{config_container.eth_address[-8:]}"
+                    self.ethAddressDisplay.setText(str_eth_display)
+                    self.copyEthButton.setVisible(True)
+                    self.add_log(f"Displaying saved ETH address for {container_name}", debug=True)
+                
+                return
         
         # Update UI elements
         self.update_toggle_button_text()
@@ -1790,10 +1916,25 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             self.refresh_local_address()  # Updates address, ETH address, and name displays
             self.plot_data()  # Updates graphs and metrics
             self.maybe_refresh_uptime()  # Updates uptime, epoch, and version info
-            self.add_log(f"Selected container: {container_name}", debug=True)
+            self.add_log(f"Updated UI with running container data for: {container_name}", debug=True)
         else:
-            self._clear_info_display()
-            self.add_log(f"Selected container {container_name} is not running", debug=True)
+            # Display saved addresses from config if available
+            if config_container:
+                if config_container.node_address:
+                    self.node_addr = config_container.node_address
+                    str_display = f"Address: {config_container.node_address[:16]}...{config_container.node_address[-8:]}"
+                    self.addressDisplay.setText(str_display)
+                    self.copyAddrButton.setVisible(True)
+                    self.add_log(f"Displaying saved node address for {container_name}", debug=True)
+                
+                if config_container.eth_address:
+                    self.node_eth_address = config_container.eth_address
+                    str_eth_display = f"ETH Address: {config_container.eth_address[:16]}...{config_container.eth_address[-8:]}"
+                    self.ethAddressDisplay.setText(str_eth_display)
+                    self.copyEthButton.setVisible(True)
+                    self.add_log(f"Displaying saved ETH address for {container_name}", debug=True)
+                
+                self.add_log(f"Container {container_name} is not running, displaying saved data", debug=True)
             
     except Exception as e:
         self._clear_info_display()
@@ -1822,20 +1963,21 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_new_node(container_name, volume_name)
 
   def add_new_node(self, container_name: str, volume_name: str):
-    """Add a new edge node container.
-    
-    Args:
-        container_name: Name for the new container
-        volume_name: Name for the container's volume
-    """
+    """Add a new node with the given container name and volume name"""
     try:
-        # Set the container name in the Docker handler
-        self.docker_handler.set_container_name(container_name)
+        # Create container config
+        from datetime import datetime
+        container_config = ContainerConfig(
+            name=container_name,
+            volume=volume_name,
+            created_at=datetime.now().isoformat(),
+            last_used=datetime.now().isoformat()
+        )
         
-        # Launch the container
-        self.launch_container(volume_name=volume_name)
+        # Add to config manager
+        self.config_manager.add_container(container_config)
         
-        # Refresh the container list
+        # Refresh container list
         self.refresh_container_list()
         
         # Select the new container
@@ -1849,39 +1991,27 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     except Exception as e:
         self.add_log(f"Failed to create new node: {str(e)}", color="red")
 
-  def get_edge_node_containers(self) -> list:
-    """Get list of all edge node containers"""
-    containers = []
-    try:
-      # In pro mode with remote host, we only look for the specific edge_node_container
-      if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode() and self.host_selector.is_multi_host_mode():
-        self.add_log("Pro mode with remote host: Looking for edge_node_container", debug=True)
-        stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
-        if return_code == 0:
-          # In pro mode, we only care about the exact container name
-          containers = [name.strip() for name in stdout.split('\n') if name.strip() == 'edge_node_container']
-          if not containers and 'edge_node_container' not in stdout:
-            # If we didn't find the exact container, check if it exists with a suffix
-            stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
-            if return_code == 0:
-              containers = [name.strip() for name in stdout.split('\n') if name.strip().startswith('edge_node_container')]
-              if containers:
-                self.add_log(f"Found container with prefix: {containers[0]}", debug=True)
-      else:
-        # Get all containers that match our pattern for local mode
-        stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}'])
-        if return_code == 0:
-          containers = [name.strip() for name in stdout.split('\n') if name.strip().startswith('edge_node_container_')]
-    except Exception as e:
-      self.add_log(f"Error getting containers: {str(e)}", debug=True)
-    
-    self.add_log(f"Found containers: {containers}", debug=True)
-    return containers
-
-  def launch_container(self, volume_name: str):
+  def launch_container(self, volume_name: str = None):
     """Launch the currently selected container"""
-    self.add_log(f'Launching container {self.docker_handler.container_name} with volume {volume_name}...')
+    container_name = self.docker_handler.container_name
+    
+    # If volume_name is not provided, try to get it from config
+    if volume_name is None:
+        container_config = self.config_manager.get_container(container_name)
+        if container_config and container_config.volume:
+            volume_name = container_config.volume
+            self.add_log(f"Using volume name from config: {volume_name}", debug=True)
+        else:
+            # Generate volume name based on container name
+            volume_name = get_volume_name(container_name)
+            self.add_log(f"Generated volume name: {volume_name}", debug=True)
+    
+    self.add_log(f'Launching container {container_name} with volume {volume_name}...')
     self.docker_handler.launch_container(volume_name=volume_name)
+    
+    # Update last used timestamp in config
+    from datetime import datetime
+    self.config_manager.update_last_used(container_name, datetime.now().isoformat())
     
     # Update UI after launch
     self.post_launch_setup()
@@ -1897,16 +2027,51 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       
       # Clear and repopulate the list
       self.container_combo.clear()
-      containers = self.get_edge_node_containers()
-      for container in containers:
+      
+      # Get containers from config file only
+      config_containers = [container.name for container in self.config_manager.get_all_containers()]
+      
+      # If no containers in config, create a default one
+      if not config_containers:
+        from datetime import datetime
+        from utils.const import DOCKER_CONTAINER_NAME
+        
+        # Create default container name
+        default_container_name = DOCKER_CONTAINER_NAME
+        
+        # Create default volume name
+        default_volume_name = get_volume_name(default_container_name)
+        
+        # Create default container config
+        default_config = ContainerConfig(
+          name=default_container_name,
+          volume=default_volume_name,
+          created_at=datetime.now().isoformat()
+        )
+        
+        # Add to config manager
+        self.config_manager.add_container(default_config)
+        self.add_log(f"Created default container config: {default_container_name}", debug=True)
+        
+        # Update config_containers list
+        config_containers = [default_container_name]
+      
+      # Sort containers by name
+      config_containers.sort()
+      
+      # Add only config containers to the dropdown
+      for container in config_containers:
         self.container_combo.addItem(container)
         
       # Restore previous selection if it exists, otherwise select first item
-      if current_container and current_container in containers:
+      if current_container and current_container in config_containers:
         self.container_combo.setCurrentText(current_container)
-      elif containers:
+      elif config_containers:
         self.container_combo.setCurrentIndex(0)
         
+      # Log the container sources
+      self.add_log(f"Showing {len(config_containers)} containers from config in dropdown", debug=True)
+      
     except Exception as e:
       self.add_log(f"Error refreshing container list: {str(e)}", debug=True, color="red")
 
@@ -1920,42 +2085,169 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         bool: True if the container is running, False otherwise
     """
     try:
-        # Check if we're in simple mode
-        is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-        
         # Make sure we have a container name selected
         container_name = self.container_combo.currentText()
         if not container_name:
-            # In pro mode with remote host, we might need to check for edge_node_container directly
-            if not is_simple_mode and hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode() and self.host_selector.is_multi_host_mode():
-                # Check if we have a remote connection
-                if hasattr(self, 'ssh_service') and self.ssh_service and self.ssh_service.check_connection():
-                    self.add_log("Pro mode with remote host: Checking edge_node_container status directly", debug=True)
-                    # Check if edge_node_container is running
-                    stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
-                    if return_code == 0:
-                        containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
-                        if containers:
-                            self.add_log(f"Found running container on remote host: {containers[0]}", debug=True)
-                            # Set the container in the docker handler
-                            self.docker_handler.set_container_name(containers[0])
-                            # Update the container combo box
-                            self.refresh_container_list()
-                            return True
             return False
             
         # Make sure the docker handler has the correct container name
         self.docker_handler.set_container_name(container_name)
         
-        # Use the docker handler to check if the container is running
-        is_running = self.docker_handler.is_container_running()
-        
-        # Log status changes for debugging
-        if hasattr(self, 'container_last_run_status') and self.container_last_run_status != is_running:
-            self.add_log(f'Container {container_name} status changed: {self.container_last_run_status} -> {is_running}', debug=True)
-            self.container_last_run_status = is_running
+        # Check directly with docker ps command (only running containers)
+        stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '--format', '{{.Names}}', '--filter', f'name={container_name}'])
+        if return_code == 0:
+            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip() == container_name]
+            is_running = len(containers) > 0
             
-        return is_running
+            # Log status changes for debugging
+            if hasattr(self, 'container_last_run_status') and self.container_last_run_status != is_running:
+                self.add_log(f'Container {container_name} status changed: {self.container_last_run_status} -> {is_running}', debug=True)
+                self.container_last_run_status = is_running
+                
+            return is_running
+        return False
     except Exception as e:
         self.add_log(f"Error checking if container is running: {str(e)}", debug=True, color="red")
         return False
+
+  def delete_and_restart(self):
+    """Delete the current container and restart it with a new address."""
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.toast.show_notification(NotificationType.ERROR, "No container selected")
+        return
+        
+    # Confirm with the user
+    from PyQt5.QtWidgets import QMessageBox
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setWindowTitle("Confirm Reset")
+    msg.setText("Are you sure you want to reset this node?")
+    msg.setInformativeText("This will delete the container and create a new one with a fresh address.")
+    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    msg.setDefaultButton(QMessageBox.No)
+    
+    if msg.exec_() != QMessageBox.Yes:
+        return
+        
+    try:
+        # Stop and remove the container
+        self.docker_handler.set_container_name(container_name)
+        
+        # Get volume name before deleting
+        volume_name = None
+        container_config = self.config_manager.get_container(container_name)
+        if container_config:
+            volume_name = container_config.volume
+        else:
+            volume_name = get_volume_name(container_name)
+            
+        # Stop and remove the container
+        if self.is_container_running():
+            self.docker_handler.stop_container()
+            
+        self.docker_handler.remove_container()
+        self.add_log(f"Container {container_name} removed")
+        
+        # Create a new container with the same name
+        self.docker_handler.set_container_name(container_name)
+        self.add_log(f"Creating new container {container_name} with volume {volume_name}")
+        
+        # Update config with new timestamp
+        from datetime import datetime
+        current_time = datetime.now().isoformat()
+        
+        if container_config:
+            # Update existing config
+            self.config_manager.update_last_used(container_name, current_time)
+        else:
+            # Create new config if it doesn't exist
+            new_config = ContainerConfig(
+                name=container_name,
+                volume=volume_name,
+                created_at=current_time,
+                last_used=current_time
+            )
+            self.config_manager.add_container(new_config)
+        
+        # Launch the new container
+        self.launch_container(volume_name=volume_name)
+        
+        # Refresh the container list
+        self.refresh_container_list()
+        
+        # Select the new container
+        index = self.container_combo.findText(container_name)
+        if index >= 0:
+            self.container_combo.setCurrentIndex(index)
+            
+        self.toast.show_notification(NotificationType.SUCCESS, f"Node {container_name} has been reset with a new address")
+        
+    except Exception as e:
+        self.add_log(f"Error resetting node: {str(e)}", debug=True, color="red")
+        self.toast.show_notification(NotificationType.ERROR, f"Error resetting node: {str(e)}")
+
+  def container_exists_in_docker(self, container_name: str) -> bool:
+    """Check if a container exists in Docker.
+    
+    Args:
+        container_name: Name of the container to check
+        
+    Returns:
+        bool: True if the container exists in Docker, False otherwise
+    """
+    try:
+        # Check directly with docker ps command
+        stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', f'name={container_name}'])
+        if return_code == 0:
+            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip() == container_name]
+            return len(containers) > 0
+        return False
+    except Exception as e:
+        self.add_log(f"Error checking if container exists in Docker: {str(e)}", debug=True, color="red")
+        return False
+
+  def cleanup_container_configs(self):
+    """Update container configurations with their current status.
+    
+    This method checks which containers exist in Docker and updates their status in the config.
+    It does NOT remove any configurations to maintain persistence.
+    """
+    try:
+        # Get all containers from config
+        config_containers = self.config_manager.get_all_containers()
+        
+        # Check each container's existence in Docker
+        for config_container in config_containers:
+            exists_in_docker = self.container_exists_in_docker(config_container.name)
+            self.add_log(f"Container {config_container.name} exists in Docker: {exists_in_docker}", debug=True)
+            
+            # We could add a status field to ContainerConfig if needed in the future
+            # For now, we just log the status
+        
+        # Refresh container list
+        self.refresh_container_list()
+    except Exception as e:
+        self.add_log(f"Error updating container configurations: {str(e)}", debug=True, color="red")
+
+  def post_launch_setup(self):
+    """Execute post-launch setup tasks.
+    
+    This method is called after a container is launched to update the UI.
+    It overrides the method from _DockerUtilsMixin.
+    """
+    # Call the parent method first
+    super().post_launch_setup()
+    
+    # Update button state to show container is running
+    self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
+    self.toggleButton.setStyleSheet("background-color: red; color: white;")
+    self.toggleButton.setEnabled(True)
+    
+    # Log the setup
+    self.add_log('Post-launch setup completed', debug=True)
+    
+    # Process events to update UI immediately
+    QApplication.processEvents()
+    
+    return

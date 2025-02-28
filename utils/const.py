@@ -4,6 +4,7 @@ FULL_DEBUG = True
 
 
 HOME_SUBFOLDER = ".naeural_launcher"
+CONFIG_DIR = ".ratio1/edge_node_launcher"
 
 # Docker
 DOCKER_VOLUME = 'naeural_vol'
