@@ -581,8 +581,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         if self.is_container_running():
             self.add_log(f'Stopping container {container_name}...')
-            # Use docker_handler to stop the container instead of the mixin method
-            self.docker_handler.stop_container()
+            # Pass the container name explicitly to ensure we're stopping the right one
+            self.docker_handler.stop_container(container_name)
             self._clear_info_display()
             
             # Update button state immediately
@@ -591,36 +591,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         else:
             self.add_log(f'Starting container {container_name}...')
             
-            # Get volume name from config or generate it
+            # Get volume name from config or generate one
             volume_name = None
             container_config = self.config_manager.get_container(container_name)
-            
-            if container_config and container_config.volume:
+            if container_config:
                 volume_name = container_config.volume
-                self.add_log(f"Using volume name from config: {volume_name}", debug=True)
+                self.add_log(f"Using existing volume name from config: {volume_name}", debug=True)
             else:
-                # Generate volume name based on container name
                 volume_name = get_volume_name(container_name)
-                self.add_log(f"Generated volume name: {volume_name}", debug=True)
-                
-                # Save to config if not already there
-                from datetime import datetime
-                current_time = datetime.now().isoformat()
-                new_config = ContainerConfig(
-                    name=container_name,
-                    volume=volume_name,
-                    created_at=current_time,
-                    last_used=current_time
-                )
-                self.config_manager.add_container(new_config)
-            
-            # Update last used timestamp
-            from datetime import datetime
-            self.config_manager.update_last_used(container_name, datetime.now().isoformat())
-            
-            # Update button state immediately to show we're working on it
-            self.toggleButton.setText("Starting...")
-            self.toggleButton.setStyleSheet("background-color: orange; color: white;")
+                self.add_log(f"Generated new volume name: {volume_name}", debug=True)
             
             # Launch the container
             self.launch_container(volume_name)
@@ -1470,7 +1449,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     name_input.setPlaceholderText("Enter node name")
     
     # Apply theme-appropriate styles
-    is_dark = hasattr(self, 'is_dark_mode') and self.is_dark_mode
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
     text_color = "white" if is_dark else "black"
     name_input.setStyleSheet(f"color: {text_color};")
     layout.addWidget(name_input)
@@ -2128,72 +2107,49 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toast.show_notification(NotificationType.ERROR, error_msg)
 
   def refresh_container_list(self):
-    """Refresh the dropdown list of containers"""
-    try:
-      # Store current selection
-      current_container = self.container_combo.currentText()
-      
-      # Clear and repopulate the list
-      self.container_combo.clear()
-      
-      # Get containers from config file
-      config_containers = self.config_manager.get_all_containers()
-      
-      # If no containers in config, create a default one
-      if not config_containers:
-        from datetime import datetime
-        from utils.const import DOCKER_CONTAINER_NAME
-        
-        # Create default container name
-        default_container_name = DOCKER_CONTAINER_NAME
-        
-        # Create default volume name
-        default_volume_name = get_volume_name(default_container_name)
-        
-        # Create default container config
-        default_config = ContainerConfig(
-          name=default_container_name,
-          volume=default_volume_name,
-          created_at=datetime.now().isoformat(),
-          node_alias="Default Node"  # Add a friendly display name
+    """Refresh the container list in the combo box."""
+    # Store current selection
+    current_index = self.container_combo.currentIndex()
+    selected_container = self.container_combo.itemData(current_index) if current_index >= 0 else None
+    
+    # Clear the combo box
+    self.container_combo.clear()
+    
+    # Get containers from config
+    containers = self.config_manager.get_all_containers()
+    
+    # If no containers found, create a default one
+    if not containers:
+        default_container = ContainerConfig(
+            name="edge_node_container",
+            volume="edge_node_volume",
+            node_alias="Default Node"
         )
-        
-        # Add to config manager
-        self.config_manager.add_container(default_config)
-        self.add_log(f"Created default container config: {default_container_name}", debug=True)
-        
-        # Update config_containers list
-        config_containers = [default_config]
-      
-      # Sort containers by name
-      config_containers.sort(key=lambda x: x.name.lower())
-      
-      # Add containers to the dropdown with display name if available
-      for container in config_containers:
-        if container.node_alias:
-          # Format: "Node Alias - Container Name"
-          display_text = f"{container.node_alias} - {container.name}"
-        else:
-          # Just use container name if no alias is available
-          display_text = container.name
-        
+        self.config_manager.add_container(default_container)
+        containers = [default_container]
+    
+    # Sort containers by name
+    containers.sort(key=lambda x: x.name.lower())
+    
+    # Add containers to combo box
+    for container in containers:
+        display_text = container.node_alias + " - " + container.name if container.node_alias else container.name
         self.container_combo.addItem(display_text, container.name)
-        
-      # Restore previous selection if it exists, otherwise select first item
-      if current_container:
-        # Find the index of the container with the matching name
+    
+    # Restore previous selection if it exists
+    if selected_container:
+        index = -1
         for i in range(self.container_combo.count()):
-          if self.container_combo.itemData(i) == current_container:
-            self.container_combo.setCurrentIndex(i)
-            break
-      elif self.container_combo.count() > 0:
+            if self.container_combo.itemData(i) == selected_container:
+                index = i
+                break
+        if index >= 0:
+            self.container_combo.setCurrentIndex(index)
+    elif self.container_combo.count() > 0:
+        # If no previous selection or it wasn't found, select the first item
         self.container_combo.setCurrentIndex(0)
-        
-      # Log the container count
-      self.add_log(f"Showing {len(config_containers)} containers in dropdown", debug=True)
-        
-    except Exception as e:
-      self.add_log(f"Error refreshing container list: {str(e)}", debug=True, color="red")
+    
+    self.add_log(f'Displayed {self.container_combo.count()} containers in dropdown', debug=True)
 
   def is_container_running(self):
     """Check if the currently selected container is running.
@@ -2282,10 +2238,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Stop and remove the container
         if self.is_container_running():
             self.add_log(f"Stopping container {container_name}...")
-            self.docker_handler.stop_container()
+            self.docker_handler.stop_container(container_name)
             
         self.add_log(f"Removing container {container_name}...")
-        self.docker_handler.remove_container()
+        self.docker_handler.remove_container(container_name)
         self.add_log(f"Container {container_name} removed")
         
         # Launch a new container with the same name
