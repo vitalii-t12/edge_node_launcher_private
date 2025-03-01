@@ -8,13 +8,14 @@ from utils.const import CONFIG_DIR
 # Container configuration structure
 class ContainerConfig:
     def __init__(self, name: str, volume: str, created_at: str = None, last_used: str = None, 
-                 node_address: str = None, eth_address: str = None):
+                 node_address: str = None, eth_address: str = None, node_alias: str = None):
         self.name = name
         self.volume = volume
         self.created_at = created_at
         self.last_used = last_used
         self.node_address = node_address
         self.eth_address = eth_address
+        self.node_alias = node_alias
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -23,7 +24,8 @@ class ContainerConfig:
             "created_at": self.created_at,
             "last_used": self.last_used,
             "node_address": self.node_address,
-            "eth_address": self.eth_address
+            "eth_address": self.eth_address,
+            "node_alias": self.node_alias
         }
     
     @classmethod
@@ -34,7 +36,8 @@ class ContainerConfig:
             created_at=data.get("created_at"),
             last_used=data.get("last_used"),
             node_address=data.get("node_address"),
-            eth_address=data.get("eth_address")
+            eth_address=data.get("eth_address"),
+            node_alias=data.get("node_alias")
         )
 
 
@@ -145,20 +148,46 @@ class ConfigManager:
         return False
     
     def update_eth_address(self, container_name: str, eth_address: str) -> bool:
-        """Update the Ethereum address for a container.
+        """Update the ETH address for a container.
         
         Args:
             container_name: Name of the container
-            eth_address: Ethereum address to save
+            eth_address: New ETH address
             
         Returns:
-            bool: True if update was successful, False otherwise
+            bool: True if successful, False otherwise
         """
-        container = self.get_container(container_name)
-        if container:
-            container.eth_address = eth_address
-            return self.save_containers()
-        return False
+        try:
+            container = self.get_container(container_name)
+            if container:
+                container.eth_address = eth_address
+                self.save_containers()
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"Error updating ETH address: {str(e)}")
+            return False
+    
+    def update_node_alias(self, container_name: str, node_alias: str) -> bool:
+        """Update the node alias for a container.
+        
+        Args:
+            container_name: Name of the container
+            node_alias: New node alias
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            container = self.get_container(container_name)
+            if container:
+                container.node_alias = node_alias
+                self.save_containers()
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"Error updating node alias: {str(e)}")
+            return False
     
     def update_volume(self, container_name: str, volume_name: str) -> bool:
         """Update the volume name for a container.

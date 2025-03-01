@@ -26,7 +26,8 @@ from PyQt5.QtWidgets import (
   QStyle,
   QComboBox,
   QMessageBox,
-  QFileDialog
+  QFileDialog,
+  QLineEdit
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -1182,7 +1183,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 self.config_manager.update_node_address(container_name, self.node_addr)
                 # Update ETH address in config
                 self.config_manager.update_eth_address(container_name, self.node_eth_address)
-                self.add_log(f"Saved node and ETH addresses to config for {container_name}", debug=True)
+                # Update node alias in config
+                self.config_manager.update_node_alias(container_name, self.node_name)
+                self.add_log(f"Saved node address, ETH address, and alias to config for {container_name}", debug=True)
 
     def on_error(error):
         # Make sure we're still on the same container
@@ -1598,6 +1601,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         )
         dialog.accept()
         
+        # Save the new name to the config
+        self.config_manager.update_node_alias(container_name, new_name)
+        self.add_log(f"Saved new node alias '{new_name}' to config for {container_name}", debug=True)
+        
         # Stop and restart the container
         self.stop_container()
         self.launch_container()
@@ -1968,9 +1975,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if not container_exists:
             if config_container:
                 self.add_log(f"Container {container_name} exists in config but not in Docker. It will be recreated when launched.", debug=True)
-                self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-                self.toggleButton.setStyleSheet("background-color: green; color: white;")
-                self.toggleButton.setEnabled(True)
                 
                 # Display saved addresses if available
                 if config_container.node_address:
@@ -1986,6 +1990,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                     self.ethAddressDisplay.setText(str_eth_display)
                     self.copyEthButton.setVisible(True)
                     self.add_log(f"Displaying saved ETH address for {container_name}", debug=True)
+                
+                if config_container.node_alias:
+                    self.node_name = config_container.node_alias
+                    self.nameDisplay.setText('Name: ' + config_container.node_alias)
+                    self.add_log(f"Displaying saved node alias for {container_name}", debug=True)
                 
                 return
         
@@ -2025,26 +2034,50 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def show_add_node_dialog(self):
     """Show confirmation dialog for adding a new node."""
-    from PyQt5.QtWidgets import QMessageBox
+    from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
     
     # Generate the container name that would be used
     container_name = generate_container_name()
     volume_name = get_volume_name(container_name)
     
-    # Create confirmation dialog
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Question)
-    msg.setWindowTitle("Add New Node")
-    msg.setText("Would you like to create a new edge node?")
-    msg.setInformativeText(f"This will create:\nContainer: {container_name}\nVolume: {volume_name}")
-    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-    msg.setDefaultButton(QMessageBox.No)
+    # Create dialog for node name input
+    dialog = QDialog(self)
+    dialog.setWindowTitle("Add New Node")
+    layout = QVBoxLayout()
     
-    # Show dialog and handle response
-    if msg.exec_() == QMessageBox.Yes:
-        self.add_new_node(container_name, volume_name)
+    # Add info text
+    info_text = f"This will create:\nContainer: {container_name}\nVolume: {volume_name}"
+    layout.addWidget(QLabel(info_text))
+    
+    # Add node name input
+    layout.addWidget(QLabel("Node Display Name (optional):"))
+    name_input = QLineEdit()
+    name_input.setPlaceholderText("Enter a friendly name for your node")
+    layout.addWidget(name_input)
+    
+    # Add buttons
+    button_layout = QHBoxLayout()
+    create_button = QPushButton("Create Node")
+    cancel_button = QPushButton("Cancel")
+    
+    button_layout.addWidget(create_button)
+    button_layout.addWidget(cancel_button)
+    layout.addLayout(button_layout)
+    
+    dialog.setLayout(layout)
+    
+    # Connect buttons
+    create_button.clicked.connect(lambda: self._create_node_with_name(container_name, volume_name, name_input.text(), dialog))
+    cancel_button.clicked.connect(dialog.reject)
+    
+    dialog.exec_()
+    
+  def _create_node_with_name(self, container_name, volume_name, display_name, dialog):
+    """Create a new node with the given name and close the dialog."""
+    dialog.accept()
+    self.add_new_node(container_name, volume_name, display_name.strip() or None)
 
-  def add_new_node(self, container_name: str, volume_name: str):
+  def add_new_node(self, container_name: str, volume_name: str, display_name: str = None):
     """Add a new node with the given container name and volume name"""
     try:
         # Create container config
@@ -2053,7 +2086,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             name=container_name,
             volume=volume_name,
             created_at=datetime.now().isoformat(),
-            last_used=datetime.now().isoformat()
+            last_used=datetime.now().isoformat(),
+            node_alias=display_name
         )
         
         # Add to config manager
@@ -2149,8 +2183,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       # Clear and repopulate the list
       self.container_combo.clear()
       
-      # Get containers from config file only
-      config_containers = [container.name for container in self.config_manager.get_all_containers()]
+      # Get containers from config file
+      config_containers = self.config_manager.get_all_containers()
       
       # If no containers in config, create a default one
       if not config_containers:
@@ -2167,7 +2201,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         default_config = ContainerConfig(
           name=default_container_name,
           volume=default_volume_name,
-          created_at=datetime.now().isoformat()
+          created_at=datetime.now().isoformat(),
+          display_name="Default Node"  # Add a friendly display name
         )
         
         # Add to config manager
@@ -2175,23 +2210,30 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_log(f"Created default container config: {default_container_name}", debug=True)
         
         # Update config_containers list
-        config_containers = [default_container_name]
+        config_containers = [default_config]
       
       # Sort containers by name
-      config_containers.sort()
+      config_containers.sort(key=lambda x: x.name.lower())
       
-      # Add only config containers to the dropdown
+      # Add containers to the dropdown with display name if available
       for container in config_containers:
-        self.container_combo.addItem(container)
+        display_text = container.name
+        if container.node_alias:
+          display_text = f"{container.node_alias} ({container.name})"
+        self.container_combo.addItem(display_text, container.name)
         
       # Restore previous selection if it exists, otherwise select first item
-      if current_container and current_container in config_containers:
-        self.container_combo.setCurrentText(current_container)
-      elif config_containers:
+      if current_container:
+        # Find the index of the container with the matching name
+        for i in range(self.container_combo.count()):
+          if self.container_combo.itemData(i) == current_container:
+            self.container_combo.setCurrentIndex(i)
+            break
+      elif self.container_combo.count() > 0:
         self.container_combo.setCurrentIndex(0)
         
-      # Log the container sources
-      self.add_log(f"Showing {len(config_containers)} containers from config in dropdown", debug=True)
+      # Log the container count
+      self.add_log(f"Showing {len(config_containers)} containers in dropdown", debug=True)
       
     except Exception as e:
       self.add_log(f"Error refreshing container list: {str(e)}", debug=True, color="red")
