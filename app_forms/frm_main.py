@@ -1988,11 +1988,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     layout.addWidget(QLabel(info_text))
     
     # Add node name input
-    layout.addWidget(QLabel("Node Display Name (optional):"))
-    name_input = QLineEdit()
-    name_input.setPlaceholderText("Enter a friendly name for your node")
-    name_input.setStyleSheet(f"color: {text_color};")
-    layout.addWidget(name_input)
+    # TODO: Add logic to use this
+    # layout.addWidget(QLabel("Node Display Name (optional):"))
+    # name_input = QLineEdit()
+    # name_input.setPlaceholderText("Enter a friendly name for your node")
+    # name_input.setStyleSheet(f"color: {text_color};")
+    # layout.addWidget(name_input)
     
     # Add buttons
     button_layout = QHBoxLayout()
