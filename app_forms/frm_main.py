@@ -563,8 +563,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
 
   def toggle_container(self):
-    # Get currently selected container
-    container_name = self.container_combo.currentText()
+    # Get the current index and container name from the data
+    current_index = self.container_combo.currentIndex()
+    if current_index < 0:
+        self.toast.show_notification(NotificationType.ERROR, "No container selected")
+        return
+        
+    # Get the actual container name from the item data
+    container_name = self.container_combo.itemData(current_index)
     if not container_name:
         self.toast.show_notification(NotificationType.ERROR, "No container selected")
         return
@@ -615,33 +621,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             # Update button state immediately to show we're working on it
             self.toggleButton.setText("Starting...")
             self.toggleButton.setStyleSheet("background-color: orange; color: white;")
-            self.toggleButton.setEnabled(False)
-            
-            # Process events to update UI
-            QApplication.processEvents()
             
             # Launch the container
-            self.launch_container(volume_name=volume_name)
+            self.launch_container(volume_name)
             
-            # Update button state after launch
-            self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
-            self.toggleButton.setStyleSheet("background-color: red; color: white;")
-            self.toggleButton.setEnabled(True)
-        
-        # Final update of button text based on actual container state
-        self.update_toggle_button_text()
-        
+            # Update button state after launching
+            QTimer.singleShot(2000, self.update_toggle_button_text)
+            
     except Exception as e:
-        self.add_log(f"Error toggling container {container_name}: {str(e)}", debug=True, color="red")
+        self.add_log(f"Error toggling container: {str(e)}", color="red")
         self.toast.show_notification(NotificationType.ERROR, f"Error toggling container: {str(e)}")
-        
-        # Make sure button is enabled even if there's an error
-        self.toggleButton.setEnabled(True)
-        self.update_toggle_button_text()
-    return
 
   def update_toggle_button_text(self):
-    container_name = self.container_combo.currentText()
+    # Get the current index and container name from the data
+    current_index = self.container_combo.currentIndex()
+    if current_index < 0:
+        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+        self.toggleButton.setEnabled(False)
+        return
+        
+    # Get the actual container name from the item data
+    container_name = self.container_combo.itemData(current_index)
     if not container_name:
         self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
         self.toggleButton.setStyleSheet("background-color: gray; color: white;")
@@ -1131,15 +1132,25 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.add_log(f"Updated graphs for container {container_name} with {len(timestamps)} data points", debug=True)
 
   def refresh_local_address(self):
-    """Fetch and display node address information.
-    
-    This method fetches node address information from the container and updates the UI.
-    It handles errors and timeouts gracefully.
-    """
-    # Get the currently selected container
-    container_name = self.container_combo.currentText()
+    """Refresh the node address display."""
+    # Get the current index and container name from the data
+    current_index = self.container_combo.currentIndex()
+    if current_index < 0:
+        self.addressDisplay.setText('Address: No container selected')
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.nameDisplay.setText('')
+        self.copyAddrButton.hide()
+        self.copyEthButton.hide()
+        return
+        
+    # Get the actual container name from the item data
+    container_name = self.container_combo.itemData(current_index)
     if not container_name:
-        self.add_log("No container selected, cannot refresh address", debug=True)
+        self.addressDisplay.setText('Address: No container selected')
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.nameDisplay.setText('')
+        self.copyAddrButton.hide()
+        self.copyEthButton.hide()
         return
         
     # Make sure we're working with the correct container
@@ -1155,7 +1166,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     def on_success(node_info: NodeInfo) -> None:
         # Make sure we're still on the same container
-        if container_name != self.container_combo.currentText():
+        current_index_now = self.container_combo.currentIndex()
+        if current_index_now < 0:
+            return
+            
+        current_container_now = self.container_combo.itemData(current_index_now)
+        if container_name != current_container_now:
             self.add_log(f"Container changed during address refresh, ignoring results", debug=True)
             return
             
@@ -1189,7 +1205,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     def on_error(error):
         # Make sure we're still on the same container
-        if container_name != self.container_combo.currentText():
+        current_index_now = self.container_combo.currentIndex()
+        if current_index_now < 0:
+            return
+            
+        current_container_now = self.container_combo.itemData(current_index_now)
+        if container_name != current_container_now:
             self.add_log(f"Container changed during address refresh, ignoring error", debug=True)
             return
             
@@ -1557,8 +1578,23 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     dialog.setLayout(dialog_layout)
     dialog.exec_()
 
-  def validate_and_save_node_name(self, new_name: str, dialog: QDialog):
+  def validate_and_save_node_name(self, new_name: str, dialog: QDialog, container_name: str = None):
     new_name = new_name.strip()
+    
+    # If container_name is not provided, get it from the combo box
+    if container_name is None:
+        current_index = self.container_combo.currentIndex()
+        if current_index < 0:
+            self.toast.show_notification(NotificationType.ERROR, "No container selected")
+            dialog.reject()
+            return
+            
+        container_name = self.container_combo.itemData(current_index)
+        if not container_name:
+            self.toast.show_notification(NotificationType.ERROR, "No container selected")
+            dialog.reject()
+            return
+    
     if len(new_name) > MAX_ALIAS_LENGTH:
         # Show warning dialog
         warning_dialog = QDialog(dialog)
@@ -2202,7 +2238,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           name=default_container_name,
           volume=default_volume_name,
           created_at=datetime.now().isoformat(),
-          display_name="Default Node"  # Add a friendly display name
+          node_alias="Default Node"  # Add a friendly display name
         )
         
         # Add to config manager
@@ -2217,9 +2253,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       
       # Add containers to the dropdown with display name if available
       for container in config_containers:
-        display_text = container.name
         if container.node_alias:
-          display_text = f"{container.node_alias} ({container.name})"
+          # Format: "Node Alias - Container Name"
+          display_text = f"{container.node_alias} - {container.name}"
+        else:
+          # Just use container name if no alias is available
+          display_text = container.name
+        
         self.container_combo.addItem(display_text, container.name)
         
       # Restore previous selection if it exists, otherwise select first item
@@ -2248,27 +2288,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         bool: True if the container is running, False otherwise
     """
     try:
-        # Make sure we have a container name selected
-        container_name = self.container_combo.currentText()
+        # Get the current index and container name from the data
+        current_index = self.container_combo.currentIndex()
+        if current_index < 0:
+            return False
+            
+        # Get the actual container name from the item data
+        container_name = self.container_combo.itemData(current_index)
         if not container_name:
             return False
             
         # Make sure the docker handler has the correct container name
         self.docker_handler.set_container_name(container_name)
         
-        # Check directly with docker ps command (only running containers)
-        stdout, stderr, return_code = self.docker_handler.execute_command(['docker', 'ps', '--format', '{{.Names}}', '--filter', f'name={container_name}'])
-        if return_code == 0:
-            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip() == container_name]
-            is_running = len(containers) > 0
+        # Use the docker_handler's is_container_running method directly
+        is_running = self.docker_handler.is_container_running()
+        
+        # Log status changes for debugging
+        if hasattr(self, 'container_last_run_status') and self.container_last_run_status != is_running:
+            self.add_log(f'Container {container_name} status changed: {self.container_last_run_status} -> {is_running}', debug=True)
+            self.container_last_run_status = is_running
             
-            # Log status changes for debugging
-            if hasattr(self, 'container_last_run_status') and self.container_last_run_status != is_running:
-                self.add_log(f'Container {container_name} status changed: {self.container_last_run_status} -> {is_running}', debug=True)
-                self.container_last_run_status = is_running
-                
-            return is_running
-        return False
+        return is_running
     except Exception as e:
         self.add_log(f"Error checking if container is running: {str(e)}", debug=True, color="red")
         return False
