@@ -1353,12 +1353,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           self.docker_handler.set_remote_connection(ssh_command)
           self.add_log(f"Connected to host: {host_name}")
           
-          # In pro mode, specifically check for edge_node_container
+          # In pro mode, specifically check for r1node containers
           if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-            # Check if edge_node_container exists and is running
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+            # Check if r1node containers exist and are running
+            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
             if return_code == 0:
-              containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+              containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
               if containers:
                 self.add_log(f"Found container on remote host: {containers[0]}")
                 # Set the container in the docker handler
@@ -1373,7 +1373,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 # Refresh container info
                 self._refresh_remote_containers()
               else:
-                self.add_log(f"No edge_node_container found on host {host_name}")
+                self.add_log(f"No r1node container found on host {host_name}")
                 self.toggleButton.setText("No Container Found")
                 self.toggleButton.setStyleSheet("background-color: gray; color: white;")
                 self.toggleButton.setEnabled(False)
@@ -1386,12 +1386,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Connection is already established, just refresh container info
         self.add_log(f"Connection to {host_name} is active, refreshing containers")
         
-        # In pro mode, specifically check for edge_node_container
+        # In pro mode, specifically check for r1node containers
         if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-          # Check if edge_node_container exists and is running
-          stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+          # Check if r1node containers exist and are running
+          stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
           if return_code == 0:
-            containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
             if containers:
               self.add_log(f"Found container on remote host: {containers[0]}")
               # Set the container in the docker handler
@@ -1881,12 +1881,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 self.toast.show_notification(NotificationType.ERROR, f"Failed to check Docker: {str(e)}")
                 return
         
-        # In pro mode, specifically check for edge_node_container
+        # In pro mode, specifically check for r1node containers
         if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-            # Check if edge_node_container exists
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+            # Check if r1node containers exist
+            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
             if return_code == 0:
-                containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+                containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
                 if containers:
                     self.add_log(f"Found container on remote host: {containers[0]}")
                     # Set the container in the docker handler
@@ -1898,11 +1898,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                     if index >= 0:
                         self.container_combo.setCurrentIndex(index)
                 else:
-                    self.add_log(f"No edge_node_container found on host {host_name}")
+                    self.add_log(f"No r1node container found on host {host_name}")
                     self.toggleButton.setText("No Container Found")
                     self.toggleButton.setStyleSheet("background-color: gray; color: white;")
                     self.toggleButton.setEnabled(False)
-                    self.toast.show_notification(NotificationType.WARNING, f"No edge_node_container found on host {host_name}")
+                    self.toast.show_notification(NotificationType.WARNING, f"No r1node container found on host {host_name}")
                     return
             else:
                 self.add_log(f"Error checking for containers on host {host_name}")
@@ -2118,12 +2118,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     layout.addWidget(QLabel(info_text))
     
     # Add node name input
-    # TODO: Add logic to use this
-    # layout.addWidget(QLabel("Node Display Name (optional):"))
-    # name_input = QLineEdit()
-    # name_input.setPlaceholderText("Enter a friendly name for your node")
-    # name_input.setStyleSheet(f"color: {text_color};")
-    # layout.addWidget(name_input)
+    layout.addWidget(QLabel("Node Alias (optional):"))
+    name_input = QLineEdit()
+    name_input.setPlaceholderText("Enter a friendly name for your node")
+    name_input.setStyleSheet(f"color: {text_color};")
+    layout.addWidget(name_input)
     
     # Add buttons
     button_layout = QHBoxLayout()
@@ -2259,8 +2258,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # If no containers found, create a default one
     if not containers:
         default_container = ContainerConfig(
-            name="edge_node_container",
-            volume="edge_node_volume",
+            name="r1node",
+            volume="r1vol",
             node_alias="Default Node"
         )
         self.config_manager.add_container(default_container)
@@ -2516,12 +2515,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           self.docker_handler.set_remote_connection(ssh_command)
           self.add_log(f"Connected to host: {host_name}")
           
-          # In pro mode, specifically check for edge_node_container
+          # In pro mode, specifically check for r1node containers
           if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-            # Check if edge_node_container exists and is running
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+            # Check if r1node containers exist and are running
+            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
             if return_code == 0:
-              containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+              containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
               if containers:
                 self.add_log(f"Found container on remote host: {containers[0]}")
                 # Set the container in the docker handler
@@ -2536,7 +2535,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 # Refresh container info
                 self._refresh_remote_containers()
               else:
-                self.add_log(f"No edge_node_container found on host {host_name}")
+                self.add_log(f"No r1node container found on host {host_name}")
                 self.toggleButton.setText("No Container Found")
                 self.toggleButton.setStyleSheet("background-color: gray; color: white;")
                 self.toggleButton.setEnabled(False)
@@ -2549,12 +2548,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Connection is already established, just refresh container info
         self.add_log(f"Connection to {host_name} is active, refreshing containers")
         
-        # In pro mode, specifically check for edge_node_container
+        # In pro mode, specifically check for r1node containers
         if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-          # Check if edge_node_container exists and is running
-          stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+          # Check if r1node containers exist and are running
+          stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
           if return_code == 0:
-            containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
             if containers:
               self.add_log(f"Found container on remote host: {containers[0]}")
               # Set the container in the docker handler
@@ -2735,10 +2734,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         self.add_log(f"Docker is available on host {host_name}")
         
-        # In pro mode, specifically check for edge_node_container
-        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=edge_node_container'])
+        # In pro mode, specifically check for r1node containers
+        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
         if return_code == 0:
-            containers = [name.strip() for name in stdout.split('\n') if name.strip() and (name.strip() == 'edge_node_container' or name.strip().startswith('edge_node_container'))]
+            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
             if containers:
                 self.add_log(f"Found container on remote host: {containers[0]}")
                 # Set the container in the docker handler
@@ -2750,11 +2749,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 if index >= 0:
                     self.container_combo.setCurrentIndex(index)
             else:
-                self.add_log(f"No edge_node_container found on host {host_name}")
+                self.add_log(f"No r1node container found on host {host_name}")
                 self.toggleButton.setText("No Container Found")
                 self.toggleButton.setStyleSheet("background-color: gray; color: white;")
                 self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.WARNING, f"No edge_node_container found on host {host_name}")
+                self.toast.show_notification(NotificationType.WARNING, f"No r1node container found on host {host_name}")
                 return
         else:
             self.add_log(f"Error checking for containers on host {host_name}")

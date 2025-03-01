@@ -10,7 +10,7 @@ CONFIG_DIR = ".ratio1/edge_node_launcher"
 DOCKER_VOLUME = 'naeural_vol'
 DOCKER_IMAGE = 'naeural/edge_node'
 DOCKER_TAG = 'testnet'
-DOCKER_CONTAINER_NAME = 'edge_node_container'
+DOCKER_CONTAINER_NAME = 'r1node'
 DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 
 # Application mode settings

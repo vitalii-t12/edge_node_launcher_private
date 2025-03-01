@@ -476,7 +476,7 @@ class DockerCommandHandler:
         command = [
             'docker', 'ps',
             '--format', '{{.Names}}\t{{.Status}}\t{{.ID}}',
-            '-f', 'name=edge_node_container_'
+            '-f', 'name=r1node'
         ]
         if all_containers:
             command.append('-a')
