@@ -14,7 +14,7 @@ from models.ConfigApp import ConfigApp
 from utils.const import DOCKER_VOLUME_PATH
 
 # Docker configuration
-DOCKER_IMAGE = "naeural/edge_node"
+DOCKER_IMAGE = "naeural/edge_node:testnet"
 
 @dataclass
 class ContainerInfo:

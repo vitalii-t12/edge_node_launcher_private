@@ -886,8 +886,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         # Update uptime and other metrics
         self.__current_node_uptime = history.uptime
-        self.__current_node_epoch = history.epoch
-        self.__current_node_epoch_avail = history.epoch_availability
+        self.__current_node_epoch = history.current_epoch
+        self.__current_node_epoch_avail = history.current_epoch_avail
         self.__current_node_ver = history.version
         
         self.maybe_refresh_uptime()
@@ -956,8 +956,23 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             elif len(data) < len(timestamps):
                 # Pad with zeros if needed
                 data = [0] * (len(timestamps) - len(data)) + data
-                
-            plot_widget.plot(timestamps, data, pen=color, name=name)
+            
+            # Convert string timestamps to numeric values for plotting
+            numeric_timestamps = []
+            for ts in timestamps:
+                try:
+                    if isinstance(ts, str):
+                        # Convert ISO format string to timestamp
+                        numeric_timestamps.append(datetime.fromisoformat(ts).timestamp())
+                    else:
+                        numeric_timestamps.append(float(ts))
+                except (ValueError, TypeError):
+                    # If conversion fails, use the index as a fallback
+                    self.add_log(f"Failed to convert timestamp: {ts}", debug=True)
+                    numeric_timestamps.append(len(numeric_timestamps))
+            
+            # Plot with numeric timestamps
+            plot_widget.plot(numeric_timestamps, data, pen=color, name=name)
     
     # CPU Plot
     cpu_date_axis = DateAxisItem(orientation='bottom')
