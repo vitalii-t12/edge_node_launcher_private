@@ -160,6 +160,55 @@ class ConfigManager:
             return self.save_containers()
         return False
     
+    def update_volume(self, container_name: str, volume_name: str) -> bool:
+        """Update the volume name for a container.
+        
+        Args:
+            container_name: Name of the container
+            volume_name: Volume name to save
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        container = self.get_container(container_name)
+        if container:
+            container.volume = volume_name
+            return self.save_containers()
+        return False
+    
+    def volume_exists_in_docker(self, volume_name: str) -> bool:
+        """Check if a volume exists in Docker.
+        
+        Args:
+            volume_name: Name of the volume to check
+            
+        Returns:
+            bool: True if the volume exists, False otherwise
+        """
+        try:
+            import subprocess
+            import os
+            
+            # Command to check if volume exists
+            command = ['docker', 'volume', 'inspect', volume_name]
+            
+            # Execute command
+            if os.name == 'nt':
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+            else:
+                result = subprocess.run(command, capture_output=True, text=True)
+                
+            # Return True if command was successful (volume exists)
+            return result.returncode == 0
+        except Exception as e:
+            logging.error(f"Error checking if volume exists: {str(e)}")
+            return False
+    
     def export_containers(self, export_file: str) -> bool:
         """Export container configurations to a file.
         

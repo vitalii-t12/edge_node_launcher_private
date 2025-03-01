@@ -5,11 +5,13 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
 from PyQt5.QtCore import QThread, pyqtSignal
+import logging
 
 from models.NodeInfo import NodeInfo
 from models.NodeHistory import NodeHistory
 from models.StartupConfig import StartupConfig
 from models.ConfigApp import ConfigApp
+from utils.const import DOCKER_VOLUME_PATH
 
 # Docker configuration
 DOCKER_IMAGE = "naeural/edge_node"
@@ -119,8 +121,11 @@ class DockerCommandThread(QThread):
             # Add remote prefix if needed
             if self.remote_ssh_command:
                 full_command = self.remote_ssh_command + full_command
-                print(f"Command: {' '.join(full_command)}")
-                print(f"Input data: {self.input_data}")
+                
+            # Always log the command before executing it
+            logging.info(f"Executing command: {' '.join(full_command)}")
+            if self.input_data:
+                logging.info(f"With input data: {self.input_data[:100]}{'...' if len(self.input_data) > 100 else ''}")
 
             # Use a longer timeout for remote commands
             timeout = 20 if self.remote_ssh_command else 10  # Increased timeout for remote commands
@@ -202,6 +207,9 @@ class DockerCommandHandler:
             # Add remote prefix if needed
             if self.remote_ssh_command:
                 command = self.remote_ssh_command + command
+            
+            # Log the command before executing it
+            logging.info(f"Executing command: {' '.join(command)}")
 
             if os.name == 'nt':
                 result = subprocess.run(
@@ -259,6 +267,35 @@ class DockerCommandHandler:
             if return_code != 0:
                 raise Exception(f"Failed to remove existing container: {stderr}")
         
+        # Get the command to run
+        command = self.get_launch_command(volume_name)
+        
+        # Log the full Docker command
+        logging.info(f"Launching container with command: {' '.join(command)}")
+        
+        # Execute the command
+        stdout, stderr, return_code = self.execute_command(command)
+        if return_code != 0:
+            raise Exception(f"Failed to launch container: {stderr}")
+
+        # Register the container with its volume
+        self.registry.add_container(self.container_name, volume_name)
+        
+        # Log successful launch with volume information
+        if volume_name:
+            logging.info(f"Container {self.container_name} launched successfully with volume {volume_name}")
+        else:
+            logging.info(f"Container {self.container_name} launched successfully without a specific volume")
+
+    def get_launch_command(self, volume_name: str = None) -> list:
+        """Get the Docker command that will be used to launch the container.
+        
+        Args:
+            volume_name: Optional volume name to mount
+            
+        Returns:
+            list: The Docker command as a list of strings
+        """
         # Base command with container name
         command = [
             'docker', 'run',
@@ -269,18 +306,15 @@ class DockerCommandHandler:
         
         # Add volume mount if specified
         if volume_name:
-            command.extend(['-v', f'{volume_name}:/data'])
+            command.extend(['-v', f'{volume_name}:{DOCKER_VOLUME_PATH}'])
+            logging.info(f"Using volume mount: {volume_name}:{DOCKER_VOLUME_PATH}")
+        else:
+            logging.warning(f"No volume specified for container {self.container_name}")
         
         # Add the image name from DOCKER_IMAGE constant
         command.append(DOCKER_IMAGE)
         
-        # Execute the command
-        stdout, stderr, return_code = self.execute_command(command)
-        if return_code != 0:
-            raise Exception(f"Failed to launch container: {stderr}")
-
-        # Register the container
-        self.registry.add_container(self.container_name, volume_name)
+        return command
 
     def set_remote_connection(self, ssh_command: str):
         """Set up remote connection using SSH command."""

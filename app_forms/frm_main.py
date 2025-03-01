@@ -991,105 +991,123 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return result
 
   def plot_data(self):
-    """Fetch and plot node history data.
+    """Plot container metrics data."""
+    # Get the currently selected container
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.add_log("No container selected, cannot plot data", debug=True)
+        return
+        
+    # Make sure we're working with the correct container
+    self.docker_handler.set_container_name(container_name)
     
-    This method fetches node history data from the container and plots it.
-    It handles errors and timeouts gracefully.
-    """
-    # Define success and error callbacks
+    if not self.is_container_running():
+        self.add_log(f"Container {container_name} is not running, skipping plot data", debug=True)
+        return
+
     def on_success(history: NodeHistory) -> None:
-      self.__current_node_epoch = history.current_epoch
-      self.__current_node_epoch_avail = history.current_epoch_avail
-      self.__current_node_uptime = history.uptime
-      self.__current_node_ver = history.version
+        # Make sure we're still on the same container
+        if container_name != self.container_combo.currentText():
+            self.add_log(f"Container changed during data plotting, ignoring results", debug=True)
+            return
+            
+        self.__last_plot_data = history
+        self.plot_graphs()
+        
+        # Update uptime and other metrics
+        self.__current_node_uptime = history.uptime
+        self.__current_node_epoch = history.epoch
+        self.__current_node_epoch_avail = history.epoch_availability
+        self.__current_node_ver = history.version
+        
+        self.maybe_refresh_uptime()
+        self.add_log(f"Updated metrics for container {container_name}", debug=True)
 
-      if history.timestamps != self.__last_timesteps:
-        self.__last_timesteps = history.timestamps.copy()
-        if len(history.timestamps) > MAX_HISTORY_QUEUE:
-          history.timestamps = history.timestamps[-MAX_HISTORY_QUEUE:]
-          history.cpu_load = history.cpu_load[-MAX_HISTORY_QUEUE:]
-          history.occupied_memory = history.occupied_memory[-MAX_HISTORY_QUEUE:]
-          if history.gpu_load:
-            history.gpu_load = history.gpu_load[-MAX_HISTORY_QUEUE:]
-          if history.gpu_occupied_memory:
-            history.gpu_occupied_memory = history.gpu_occupied_memory[-MAX_HISTORY_QUEUE:]
+    def on_error(error):
+        # Make sure we're still on the same container
+        if container_name != self.container_combo.currentText():
+            self.add_log(f"Container changed during data plotting, ignoring error", debug=True)
+            return
+            
+        self.add_log(f'Error getting metrics for {container_name}: {error}', debug=True)
+        
+        # If this is a timeout error, log it more prominently
+        if "timed out" in error.lower():
+            self.add_log(f"Metrics request for {container_name} timed out. This may indicate network issues or high load on the remote host.", color="red")
 
-        self.add_log(f'Data loaded & cleaned: {len(history.timestamps)} timestamps', debug=True)
-        self.plot_graphs(history)
-      else:
-        self.add_log('Data already up-to-date. No new data.', debug=True)
-
-    def on_error(error: str) -> None:
-      self.add_log(f'Error getting history: {error}', debug=True)
-      # Still try to plot with existing data if available
-      self.plot_graphs(None)
-      
-      # If this is a timeout error, log it more prominently
-      if "timed out" in error.lower():
-        self.add_log("Node history request timed out. This may indicate network issues or high load on the remote host.", color="red")
-
-    # Start the request
     try:
-      self.docker_handler.get_node_history(on_success, on_error)
+        self.add_log(f"Plotting data for container: {container_name}", debug=True)
+        self.docker_handler.get_node_history(on_success, on_error)
     except Exception as e:
-      self.add_log(f"Failed to start node history request: {str(e)}", debug=True, color="red")
-      # Try to plot with existing data
-      self.plot_graphs(None)
+        self.add_log(f"Failed to start metrics request for {container_name}: {str(e)}", debug=True, color="red")
+        on_error(str(e))
 
   def plot_graphs(self, history: Optional[NodeHistory] = None, limit: int = 100) -> None:
+    """Plot the graphs with the given history data.
+    
+    Args:
+        history: The history data to plot. If None, use the last data.
+        limit: The maximum number of points to plot.
+    """
+    # Get the currently selected container
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.add_log("No container selected, cannot plot graphs", debug=True)
+        return
+    
+    # Use provided history or last data
     if history is None:
-      data = self.__last_plot_data
-    else:
-      self.__last_plot_data = history
-
-    timestamps = [
-      datetime.fromisoformat(ts).timestamp()
-      for ts in history.timestamps[-limit:]
-    ] if history else [datetime.now().timestamp()]
-
-    start_time = datetime.fromtimestamp(timestamps[0]).strftime('%Y-%m-%d %H:%M:%S')
-    end_time = datetime.fromtimestamp(timestamps[-1]).strftime('%Y-%m-%d %H:%M:%S')
-
-    def update_plot(plot, timestamps, values, label, color):
-      plot.clear()
-      plot.addLegend()
-      values = [x for x in values if x is not None]
-      if values:
-        values = values[-limit:]
-        plot.plot(timestamps, values, pen=pg.mkPen(color=color, width=2), name=label)
-      else:
-        plot.plot([0], [0], pen=None, symbol='o', symbolBrush=color, name='NO DATA')
-      plot.setLabel('left', text=label, color=color)
-      plot.setLabel('bottom', text='Time', color=color)
-      if timestamps:
-        plot.setLabel('bottom', f"Time ({start_time} to {end_time})", color=color)
-      plot.getAxis('bottom').autoVisible = False
-      plot.getAxis('bottom').enableAutoSIPrefix(False)
-
-    color = 'white' if self._current_stylesheet == DARK_STYLESHEET else 'black'
-    self.add_log(f'Plotting data: {len(timestamps)} timestamps with color: {color}')
-
-    # CPU Load
-    cpu_data = history.cpu_load if history else []
+        history = self.__last_plot_data
+    
+    if history is None:
+        self.add_log(f"No history data available for container {container_name}", debug=True)
+        return
+    
+    # Make sure we have timestamps
+    if not history.timestamps or len(history.timestamps) == 0:
+        self.add_log(f"No timestamps in history data for container {container_name}", debug=True)
+        return
+    
+    # Clean and limit data
+    timestamps = history.timestamps
+    if len(timestamps) > limit:
+        timestamps = timestamps[-limit:]
+        
+    # Set color based on theme
+    color = 'w' if self._current_stylesheet == DARK_STYLESHEET else 'k'
+    
+    # Helper function to update a plot
+    def update_plot(plot_widget, timestamps, data, name, color):
+        plot_widget.clear()
+        if data and len(data) > 0:
+            # Ensure data length matches timestamps
+            if len(data) > len(timestamps):
+                data = data[-len(timestamps):]
+            elif len(data) < len(timestamps):
+                # Pad with zeros if needed
+                data = [0] * (len(timestamps) - len(data)) + data
+                
+            plot_widget.plot(timestamps, data, pen=color, name=name)
+    
+    # CPU Plot
     cpu_date_axis = DateAxisItem(orientation='bottom')
     cpu_date_axis.setTimestamps(timestamps, parent="cpu")
     self.cpu_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.cpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.cpu_plot.setAxisItems({'bottom': cpu_date_axis})
     self.cpu_plot.setTitle('CPU Load')
-    update_plot(self.cpu_plot, timestamps, cpu_data, 'CPU Load', color)
-
-    # Memory Load
-    mem_data = history.occupied_memory if history else []
+    update_plot(self.cpu_plot, timestamps, history.cpu_load, 'CPU Load', color)
+    
+    # Memory Plot
     mem_date_axis = DateAxisItem(orientation='bottom')
     mem_date_axis.setTimestamps(timestamps, parent="mem")
     self.memory_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.memory_plot.setAxisItems({'bottom': mem_date_axis})
-    self.memory_plot.setTitle('Memory Load')
-    update_plot(self.memory_plot, timestamps, mem_data, 'Occupied Memory', color)
-
-    # GPU Load if available
+    self.memory_plot.setTitle('Memory Usage')
+    update_plot(self.memory_plot, timestamps, history.occupied_memory, 'Occupied Memory', color)
+    
+    # GPU Plot if available
     if history and history.gpu_load:
       gpu_date_axis = DateAxisItem(orientation='bottom')
       gpu_date_axis.setTimestamps(timestamps, parent="gpu")
@@ -1108,6 +1126,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.gpu_memory_plot.setAxisItems({'bottom': gpumem_date_axis})
       self.gpu_memory_plot.setTitle('GPU Memory Load')
       update_plot(self.gpu_memory_plot, timestamps, history.gpu_occupied_memory, 'Occupied GPU Memory', color)
+      
+    self.add_log(f"Updated graphs for container {container_name} with {len(timestamps)} data points", debug=True)
 
   def refresh_local_address(self):
     """Fetch and display node address information.
@@ -1115,6 +1135,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     This method fetches node address information from the container and updates the UI.
     It handles errors and timeouts gracefully.
     """
+    # Get the currently selected container
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.add_log("No container selected, cannot refresh address", debug=True)
+        return
+        
+    # Make sure we're working with the correct container
+    self.docker_handler.set_container_name(container_name)
+    
     if not self.is_container_running():
         self.addressDisplay.setText('Address: Node not running')
         self.ethAddressDisplay.setText('ETH Address: Not available')
@@ -1124,6 +1153,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         return
 
     def on_success(node_info: NodeInfo) -> None:
+        # Make sure we're still on the same container
+        if container_name != self.container_combo.currentText():
+            self.add_log(f"Container changed during address refresh, ignoring results", debug=True)
+            return
+            
         self.node_name = node_info.alias
         self.nameDisplay.setText('Name: ' + node_info.alias)
 
@@ -1140,10 +1174,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             self.ethAddressDisplay.setText(str_eth_display)
             self.copyEthButton.setVisible(bool(node_info.eth_address))
             
-            self.add_log(f'Node info updated: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_address}')
+            self.add_log(f'Node info updated for {container_name}: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_address}')
             
-            # Save addresses to config
-            container_name = self.container_combo.currentText()
+            # Save addresses to config for this specific container
             if container_name:
                 # Update node address in config
                 self.config_manager.update_node_address(container_name, self.node_addr)
@@ -1152,7 +1185,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 self.add_log(f"Saved node and ETH addresses to config for {container_name}", debug=True)
 
     def on_error(error):
-        self.add_log(f'Error getting node info: {error}', debug=True)
+        # Make sure we're still on the same container
+        if container_name != self.container_combo.currentText():
+            self.add_log(f"Container changed during address refresh, ignoring error", debug=True)
+            return
+            
+        self.add_log(f'Error getting node info for {container_name}: {error}', debug=True)
         self.addressDisplay.setText('Address: Error getting node info')
         self.ethAddressDisplay.setText('ETH Address: Not available')
         self.nameDisplay.setText('')
@@ -1161,28 +1199,43 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         # If this is a timeout error, log it more prominently
         if "timed out" in error.lower():
-            self.add_log("Node info request timed out. This may indicate network issues or high load on the remote host.", color="red")
+            self.add_log(f"Node info request for {container_name} timed out. This may indicate network issues or high load on the remote host.", color="red")
 
     try:
+        self.add_log(f"Refreshing address for container: {container_name}", debug=True)
         self.docker_handler.get_node_info(on_success, on_error)
     except Exception as e:
-        self.add_log(f"Failed to start node info request: {str(e)}", debug=True, color="red")
+        self.add_log(f"Failed to start node info request for {container_name}: {str(e)}", debug=True, color="red")
         on_error(str(e))
 
   def maybe_refresh_uptime(self):
-    # update uptime, epoch and epoch avail
+    """Update uptime, epoch and epoch availability displays.
+    
+    This method updates the UI with the latest uptime, epoch, and epoch availability data.
+    It only updates if the data has changed.
+    """
+    # Get the currently selected container
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.add_log("No container selected, cannot refresh uptime", debug=True)
+        return
+    
+    # Get current values
     uptime = self.__current_node_uptime
     node_epoch = self.__current_node_epoch
     node_epoch_avail = self.__current_node_epoch_avail
     ver = self.__current_node_ver
     color = 'black'
-    if not self.container_last_run_status:
+    
+    # Check if container is running
+    if not self.is_container_running():
       uptime = "STOPPED"
       node_epoch = "N/A"
       node_epoch_avail = 0
       ver = "N/A"
       color = 'red'
-    #end if overwrite if stopped      
+      
+    # Only update if values have changed
     if uptime != self.__display_uptime:
       if self.__display_uptime is not None and node_epoch_avail is not None and node_epoch_avail > 0:
         color = 'green'
@@ -1201,26 +1254,55 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.node_version.setStyleSheet(f'color: {color}')
       
       self.__display_uptime = uptime
+      self.add_log(f"Updated uptime display for container {container_name}", debug=True)
     return
 
   def copy_address(self):
+    """Copy the node address to clipboard for the currently selected container."""
+    # Get the currently selected container
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.toast.show_notification(NotificationType.ERROR, "No container selected")
+        return
+    
+    # Check if we have an address
     if not self.node_addr:
-      self.toast.show_notification(NotificationType.ERROR, NOTIFICATION_ADDRESS_COPY_FAILED)
-      return
+      # Try to get from config
+      config_container = self.config_manager.get_container(container_name)
+      if config_container and config_container.node_address:
+          self.node_addr = config_container.node_address
+      else:
+          self.toast.show_notification(NotificationType.ERROR, NOTIFICATION_ADDRESS_COPY_FAILED)
+          return
 
     clipboard = QApplication.clipboard()
     clipboard.setText(self.node_addr)
     self.toast.show_notification(NotificationType.SUCCESS, NOTIFICATION_ADDRESS_COPIED.format(address=self.node_addr))
+    self.add_log(f"Copied node address for container {container_name}", debug=True)
     return
 
   def copy_eth_address(self):
+    """Copy the ETH address to clipboard for the currently selected container."""
+    # Get the currently selected container
+    container_name = self.container_combo.currentText()
+    if not container_name:
+        self.toast.show_notification(NotificationType.ERROR, "No container selected")
+        return
+    
+    # Check if we have an address
     if not self.node_eth_address:
-      self.toast.show_notification(NotificationType.ERROR, NOTIFICATION_ADDRESS_COPY_FAILED)
-      return
+      # Try to get from config
+      config_container = self.config_manager.get_container(container_name)
+      if config_container and config_container.eth_address:
+          self.node_eth_address = config_container.eth_address
+      else:
+          self.toast.show_notification(NotificationType.ERROR, NOTIFICATION_ADDRESS_COPY_FAILED)
+          return
 
     clipboard = QApplication.clipboard()
     clipboard.setText(self.node_eth_address)
     self.toast.show_notification(NotificationType.SUCCESS, NOTIFICATION_ADDRESS_COPIED.format(address=self.node_eth_address))
+    self.add_log(f"Copied ETH address for container {container_name}", debug=True)
     return
 
   def refresh_all(self):
@@ -1992,7 +2074,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_log(f"Failed to create new node: {str(e)}", color="red")
 
   def launch_container(self, volume_name: str = None):
-    """Launch the currently selected container"""
+    """Launch the currently selected container with a mounted volume.
+    
+    Args:
+        volume_name: Optional volume name to mount. If None, will be retrieved from config
+                    or generated based on container name.
+    """
     container_name = self.docker_handler.container_name
     
     # If volume_name is not provided, try to get it from config
@@ -2006,18 +2093,52 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             volume_name = get_volume_name(container_name)
             self.add_log(f"Generated volume name: {volume_name}", debug=True)
     
+    # Ensure volume_name is not None or empty
+    if not volume_name:
+        self.add_log(f"Warning: No volume name provided for container {container_name}. Using default.", color="yellow")
+        volume_name = get_volume_name(container_name)
+    
+    # Check if volume exists in Docker
+    volume_exists = self.config_manager.volume_exists_in_docker(volume_name)
+    if not volume_exists:
+        self.add_log(f"Volume {volume_name} does not exist. It will be created automatically.", debug=True)
+    else:
+        self.add_log(f"Using existing volume: {volume_name}", debug=True)
+    
     self.add_log(f'Launching container {container_name} with volume {volume_name}...')
-    self.docker_handler.launch_container(volume_name=volume_name)
     
-    # Update last used timestamp in config
-    from datetime import datetime
-    self.config_manager.update_last_used(container_name, datetime.now().isoformat())
-    
-    # Update UI after launch
-    self.post_launch_setup()
-    self.refresh_local_address()
-    self.plot_data()
-    self.update_toggle_button_text()
+    try:
+        # Get the Docker command that will be executed
+        command = self.docker_handler.get_launch_command(volume_name=volume_name)
+        # Log the command without debug flag to ensure it's always visible
+        self.add_log(f'Docker command: {" ".join(command)}', color="blue")
+        
+        # Launch the container
+        self.docker_handler.launch_container(volume_name=volume_name)
+        
+        # Update last used timestamp in config
+        from datetime import datetime
+        self.config_manager.update_last_used(container_name, datetime.now().isoformat())
+        
+        # Update volume name in config if it's not already set
+        container_config = self.config_manager.get_container(container_name)
+        if container_config and not container_config.volume:
+            self.config_manager.update_volume(container_name, volume_name)
+            self.add_log(f"Updated volume name in config: {volume_name}", debug=True)
+        
+        # Update UI after launch
+        self.post_launch_setup()
+        self.refresh_local_address()
+        self.plot_data()
+        self.update_toggle_button_text()
+        
+        # Show success notification
+        self.toast.show_notification(NotificationType.SUCCESS, f"Container {container_name} launched successfully")
+        
+    except Exception as e:
+        error_msg = f"Failed to launch container: {str(e)}"
+        self.add_log(error_msg, color="red")
+        self.toast.show_notification(NotificationType.ERROR, error_msg)
 
   def refresh_container_list(self):
     """Refresh the dropdown list of containers"""
@@ -2139,18 +2260,36 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         container_config = self.config_manager.get_container(container_name)
         if container_config:
             volume_name = container_config.volume
+            self.add_log(f"Using existing volume name from config: {volume_name}", debug=True)
         else:
             volume_name = get_volume_name(container_name)
+            self.add_log(f"Generated new volume name: {volume_name}", debug=True)
+        
+        # Check if volume exists in Docker
+        if volume_name:
+            volume_exists = self.config_manager.volume_exists_in_docker(volume_name)
+            if not volume_exists:
+                self.add_log(f"Volume {volume_name} does not exist. It will be created automatically.", debug=True)
+            else:
+                self.add_log(f"Using existing volume: {volume_name}", debug=True)
             
         # Stop and remove the container
         if self.is_container_running():
+            self.add_log(f"Stopping container {container_name}...")
             self.docker_handler.stop_container()
             
+        self.add_log(f"Removing container {container_name}...")
         self.docker_handler.remove_container()
         self.add_log(f"Container {container_name} removed")
         
         # Create a new container with the same name
         self.docker_handler.set_container_name(container_name)
+        
+        # Get the Docker command that will be executed
+        command = self.docker_handler.get_launch_command(volume_name=volume_name)
+        # Log the command without debug flag to ensure it's always visible
+        self.add_log(f'Docker command for new container: {" ".join(command)}', color="blue")
+        
         self.add_log(f"Creating new container {container_name} with volume {volume_name}")
         
         # Update config with new timestamp
@@ -2160,6 +2299,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if container_config:
             # Update existing config
             self.config_manager.update_last_used(container_name, current_time)
+            # Ensure volume name is set
+            if not container_config.volume:
+                self.config_manager.update_volume(container_name, volume_name)
         else:
             # Create new config if it doesn't exist
             new_config = ContainerConfig(
@@ -2184,8 +2326,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toast.show_notification(NotificationType.SUCCESS, f"Node {container_name} has been reset with a new address")
         
     except Exception as e:
-        self.add_log(f"Error resetting node: {str(e)}", debug=True, color="red")
-        self.toast.show_notification(NotificationType.ERROR, f"Error resetting node: {str(e)}")
+        error_msg = f"Error resetting node: {str(e)}"
+        self.add_log(error_msg, debug=True, color="red")
+        self.toast.show_notification(NotificationType.ERROR, error_msg)
 
   def container_exists_in_docker(self, container_name: str) -> bool:
     """Check if a container exists in Docker.

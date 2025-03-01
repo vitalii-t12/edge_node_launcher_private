@@ -11,6 +11,7 @@ DOCKER_VOLUME = 'naeural_vol'
 DOCKER_IMAGE = 'naeural/edge_node'
 DOCKER_TAG = 'develop'
 DOCKER_CONTAINER_NAME = 'edge_node_container'
+DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 
 # Files names
 E2_PEM_FILE = 'e2.pem'
