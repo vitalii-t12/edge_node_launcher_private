@@ -234,6 +234,13 @@ class HostSelector(QWidget):
         if not host_name:
             return
             
+        # Check if we're in simple mode - if so, skip SSH checks
+        if hasattr(self, '_is_pro_mode') and not self._is_pro_mode:
+            print(f"Simple mode: skipping SSH check for host {host_name}")
+            # Emit a fake "online" status to avoid blocking the UI
+            self.host_status_updated.emit(host_name, True)
+            return
+            
         try:
             # Stop any running status check
             if hasattr(self, 'status_thread') and self.status_thread and self.status_thread.isRunning():
@@ -520,6 +527,10 @@ class HostSelector(QWidget):
 
     def _check_current_host_status(self):
         """Periodically check the status of the current host."""
+        # Skip periodic checks in Simple mode
+        if hasattr(self, '_is_pro_mode') and not self._is_pro_mode:
+            return
+            
         if self.isVisible() and self.host_combo.isVisible():
             current_host = self.host_combo.currentText()
             if current_host:
