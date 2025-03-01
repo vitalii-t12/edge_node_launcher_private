@@ -1891,8 +1891,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     try:
         self.add_log(f"Selected container: {container_name}", debug=True)
         
-        # Update docker handler with new container
-        self.docker_handler.set_container_name(container_name)
+        # Get the current index and actual container name from the data
+        current_index = self.container_combo.currentIndex()
+        if current_index >= 0:
+            actual_container_name = self.container_combo.itemData(current_index)
+            if actual_container_name:
+                # Update both docker handler and mixin container name
+                self.docker_handler.set_container_name(actual_container_name)
+                self.docker_container_name = actual_container_name
+                self.add_log(f"Updated container name to: {actual_container_name}", debug=True)
         
         # Check if container exists in Docker
         container_exists = self.container_exists_in_docker(container_name)

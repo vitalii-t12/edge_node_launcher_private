@@ -209,7 +209,7 @@ class _DockerUtilsMixin:
     
     # Base commands without remote prefix
     base_clean = ['docker', 'rm', self.docker_container_name]
-    base_stop = ['docker', 'stop', self.docker_container_name]
+    base_stop = ['docker', 'stop']
     base_inspect = ['docker', 'inspect', '--format', '{{.State.Running}}', self.docker_container_name]
     
     if self._use_gpus:
@@ -481,10 +481,12 @@ class _DockerUtilsMixin:
     return
 
 
-  def stop_container(self):
+  def stop_container(self, container_name=None):
     try:
-      self.add_log('Stopping Edge Node container...')
-      stop_cmd = self.get_stop_command()
+      name_to_stop = container_name or self.docker_container_name
+      self.add_log(f'Stopping Edge Node container {name_to_stop}...')
+      stop_cmd = self.get_stop_command() + [name_to_stop]  # Append container name to stop command
+      
       if os.name == 'nt':
         subprocess.check_call(stop_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
       else:
@@ -495,6 +497,9 @@ class _DockerUtilsMixin:
       try:
         self.add_log('Cleaning Edge Node container...')
         clean_cmd = self.get_clean_cmd()
+        if container_name:
+          # Replace the default container name with the provided one
+          clean_cmd = clean_cmd[:-1] + [name_to_stop]
         if os.name == 'nt':
           subprocess.check_call(clean_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
         else:
