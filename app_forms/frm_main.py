@@ -1414,6 +1414,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def _refresh_local_containers(self):
     """Refresh local container list and info."""
     try:
+        # Clear any remote connection settings to ensure we're using local Docker
+        # Instead of calling clear_remote_connection(), directly set remote_ssh_command to None
+        if hasattr(self, 'docker_handler'):
+            self.docker_handler.remote_ssh_command = None
+        
+        if hasattr(self, 'ssh_service'):
+            self.ssh_service.clear_configuration()
+        
         # Refresh container list
         self.refresh_container_list()
         
@@ -1439,44 +1447,25 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.update_toggle_button_text()
 
   def _refresh_remote_containers(self):
-    """Refresh remote container list and info."""
-    try:
-        # Refresh container list
-        self.refresh_container_list()
+    """Refresh the list of remote containers."""
+    # Check if we're in simple mode - if so, skip remote operations
+    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
+    if is_simple_mode:
+        self.add_log("Simple mode: skipping remote container refresh")
+        self._refresh_local_containers()
+        return
         
-        # Update container info if running
-        if self.is_container_running():
-            # Set a timeout for these operations
-            self.add_log("Refreshing remote container information...", debug=True)
-            
-            # Use a timer to prevent UI freezing if operations take too long
-            refresh_timer = QTimer(self)
-            refresh_timer.setSingleShot(True)
-            refresh_timer.timeout.connect(lambda: self.add_log("Remote container refresh timed out, operations may be incomplete", color="red"))
-            refresh_timer.start(30000)  # 30 second timeout
-            
-            try:
-                # Refresh address first (usually faster)
-                self.refresh_local_address()
-                
-                # Then plot data (can be slower)
-                try:
-                    self.plot_data()
-                except Exception as e:
-                    self.add_log(f"Error plotting data for remote container: {str(e)}", debug=True, color="red")
-                
-                # Stop the timer if we completed successfully
-                refresh_timer.stop()
-            except Exception as e:
-                self.add_log(f"Error refreshing remote container info: {str(e)}", color="red")
-                refresh_timer.stop()
-        
-        # Always update the toggle button text
-        self.update_toggle_button_text()
-    except Exception as e:
-        self.add_log(f"Error in remote container refresh: {str(e)}", color="red")
-        # Ensure toggle button text is updated even if there's an error
-        self.update_toggle_button_text()
+    # Refresh container list
+    self.refresh_container_list()
+    
+    # Update toggle button
+    self.update_toggle_button_text()
+    
+    # Refresh container status if one is running
+    if self.is_container_running():
+        self.post_launch_setup()
+        self.refresh_local_address()
+        self.plot_data()
 
   def dapp_button_clicked(self):
     import webbrowser
@@ -1652,56 +1641,99 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Set text color based on theme
     text_color = "white" if self._current_stylesheet == DARK_STYLESHEET else "black"
     
-    # Set text and color for each label
-    self.addressDisplay.setText('Address: Not available')
-    self.addressDisplay.setStyleSheet(f"color: {text_color};")
-    self.copyAddrButton.hide()
+    # Clear any displayed information
+    if hasattr(self, 'nameDisplay'):
+        self.nameDisplay.setText('Name: -')
+        self.nameDisplay.setStyleSheet(f"color: {text_color};")
     
-    self.ethAddressDisplay.setText('ETH Address: Not available')
-    self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
-    self.copyEthButton.hide()
+    if hasattr(self, 'addressDisplay'):
+        self.addressDisplay.setText('Address: Not available')
+        self.addressDisplay.setStyleSheet(f"color: {text_color};")
+        if hasattr(self, 'copyAddrButton'):
+            self.copyAddrButton.hide()
     
-    self.nameDisplay.setText('')
-    self.nameDisplay.setStyleSheet(f"color: {text_color};")
+    if hasattr(self, 'ethAddressDisplay'):
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
+        if hasattr(self, 'copyEthButton'):
+            self.copyEthButton.hide()
     
-    self.node_uptime.setText(UPTIME_LABEL)
-    self.node_uptime.setStyleSheet(f"color: {text_color};")
+    if hasattr(self, 'local_address_label'):
+        self.local_address_label.setText("Local Address: -")
     
-    self.node_epoch.setText(EPOCH_LABEL)
-    self.node_epoch.setStyleSheet(f"color: {text_color};")
+    if hasattr(self, 'eth_address_label'):
+        self.eth_address_label.setText("ETH Address: -")
     
-    self.node_epoch_avail.setText(EPOCH_AVAIL_LABEL)
-    self.node_epoch_avail.setStyleSheet(f"color: {text_color};")
+    if hasattr(self, 'uptime_label'):
+        self.uptime_label.setText("Uptime: -")
     
-    self.node_version.setText('')
-    self.node_version.setStyleSheet(f"color: {text_color};")
+    if hasattr(self, 'node_uptime'):
+        self.node_uptime.setText(UPTIME_LABEL)
+        self.node_uptime.setStyleSheet(f"color: {text_color};")
+    
+    if hasattr(self, 'node_epoch'):
+        self.node_epoch.setText(EPOCH_LABEL)
+        self.node_epoch.setStyleSheet(f"color: {text_color};")
+    
+    if hasattr(self, 'node_epoch_avail'):
+        self.node_epoch_avail.setText(EPOCH_AVAIL_LABEL)
+        self.node_epoch_avail.setStyleSheet(f"color: {text_color};")
+    
+    if hasattr(self, 'node_version'):
+        self.node_version.setText('')
+        self.node_version.setStyleSheet(f"color: {text_color};")
     
     # Reset state variables
-    self.__display_uptime = None
+    if hasattr(self, '__display_uptime'):
+        self.__display_uptime = None
+    
     self.node_addr = None
     self.node_eth_address = None
-    self.__current_node_uptime = -1
-    self.__current_node_epoch = -1
-    self.__current_node_epoch_avail = -1
-    self.__current_node_ver = -1
-    self.__last_plot_data = None
-    self.__last_timesteps = []
+    self.node_name = None
+    
+    if hasattr(self, '__current_node_uptime'):
+        self.__current_node_uptime = -1
+    
+    if hasattr(self, '__current_node_epoch'):
+        self.__current_node_epoch = -1
+    
+    if hasattr(self, '__current_node_epoch_avail'):
+        self.__current_node_epoch_avail = -1
+    
+    if hasattr(self, '__current_node_ver'):
+        self.__current_node_ver = -1
+    
+    if hasattr(self, '__last_plot_data'):
+        self.__last_plot_data = None
+    
+    if hasattr(self, '__last_timesteps'):
+        self.__last_timesteps = []
     
     # Clear all graphs
-    self.cpu_plot.clear()
-    self.memory_plot.clear()
-    self.gpu_plot.clear()
-    self.gpu_memory_plot.clear()
+    if hasattr(self, 'cpu_plot'):
+        self.cpu_plot.clear()
+    
+    if hasattr(self, 'memory_plot'):
+        self.memory_plot.clear()
+    
+    if hasattr(self, 'gpu_plot'):
+        self.gpu_plot.clear()
+    
+    if hasattr(self, 'gpu_memory_plot'):
+        self.gpu_memory_plot.clear()
     
     # Reset graph titles and labels with current theme color
-    for plot in [self.cpu_plot, self.memory_plot, self.gpu_plot, self.gpu_memory_plot]:
-        plot.setTitle('')
-        plot.setLabel('left', '')
-        plot.setLabel('bottom', '')
+    for plot_name in ['cpu_plot', 'memory_plot', 'gpu_plot', 'gpu_memory_plot']:
+        if hasattr(self, plot_name):
+            plot = getattr(self, plot_name)
+            plot.setTitle('')
+            plot.setLabel('left', '')
+            plot.setLabel('bottom', '')
     
     # Update toggle button state and color
-    self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-    self.toggleButton.setStyleSheet("background-color: green; color: white;")
+    if hasattr(self, 'toggleButton'):
+        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+        self.toggleButton.setStyleSheet("background-color: green; color: white;")
 
   def _on_host_selected(self, host_name: str):
     """Handle host selection."""
@@ -2306,6 +2338,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toast.show_notification(NotificationType.ERROR, "No container selected")
         return
         
+    # Set the container name in the docker handler
+    self.docker_handler.set_container_name(container_name)
+    
+    # Check if container is running
+    if not self.is_container_running():
+        self.toast.show_notification(NotificationType.ERROR, "Container is not running")
+        return
+    
     # Confirm with the user
     from PyQt5.QtWidgets import QMessageBox
     msg = QMessageBox()
@@ -2318,51 +2358,60 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     if msg.exec_() != QMessageBox.Yes:
         return
-        
+    
     try:
-        # Set the container name in the docker handler
-        self.docker_handler.set_container_name(container_name)
-        
-        # Get volume name before deleting
+        # Get volume name before resetting
         volume_name = None
         container_config = self.config_manager.get_container(container_name)
         if container_config:
             volume_name = container_config.volume
             self.add_log(f"Using existing volume name from config: {volume_name}", debug=True)
-        else:
-            volume_name = get_volume_name(container_name)
-            self.add_log(f"Generated new volume name: {volume_name}", debug=True)
         
-        # Check if volume exists in Docker
-        if volume_name:
-            volume_exists = self.config_manager.volume_exists_in_docker(volume_name)
-            if not volume_exists:
-                self.add_log(f"Volume {volume_name} does not exist. It will be created automatically.", debug=True)
-            else:
-                self.add_log(f"Using existing volume: {volume_name}", debug=True)
+        # Define callbacks for reset_address
+        def on_success(data):
+            self.add_log("Successfully reset node address", color="green")
             
-        # Stop and remove the container
-        if self.is_container_running():
+            # Stop the container
             self.add_log(f"Stopping container {container_name}...")
             self.docker_handler.stop_container(container_name)
             
-        self.add_log(f"Removing container {container_name}...")
-        self.docker_handler.remove_container(container_name)
-        self.add_log(f"Container {container_name} removed")
+            # Launch a new container with the same name and volume
+            self.add_log(f"Launching new container {container_name}...")
+            self.launch_container(volume_name)
+            
+            # Update UI
+            self.post_launch_setup()
+            self.refresh_local_address()
+            
+            # Show success message
+            self.toast.show_notification(
+                NotificationType.SUCCESS,
+                "Node reset successfully"
+            )
         
-        # Launch a new container with the same name
-        self.add_log(f"Launching new container {container_name}...")
-        self.launch_container(volume_name)
+        def on_error(error):
+            self.add_log(f"Error resetting node address: {error}", color="red")
+            
+            # Still try to restart the container
+            self.add_log(f"Stopping container {container_name}...")
+            self.docker_handler.stop_container(container_name)
+            
+            self.add_log(f"Launching new container {container_name}...")
+            self.launch_container(volume_name)
+            
+            # Update UI
+            self.post_launch_setup()
+            self.refresh_local_address()
+            
+            # Show warning message
+            self.toast.show_notification(
+                NotificationType.WARNING,
+                f"Node restarted but address reset failed: {error}"
+            )
         
-        # Update UI
-        self.post_launch_setup()
-        self.refresh_local_address()
-        
-        # Show success message
-        self.toast.show_notification(
-            NotificationType.SUCCESS,
-            "Node reset successfully"
-        )
+        # Call reset_address with callbacks
+        self.add_log("Resetting node address...")
+        self.docker_handler.reset_address(on_success, on_error)
         
     except Exception as e:
         self.add_log(f"Error resetting node: {str(e)}", color="red")
@@ -2737,31 +2786,118 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         return
 
   def _clear_info_display(self):
-    """Clear all displayed information."""
+    """Clear all information displays."""
+    # Set text color based on theme
+    text_color = "white" if self._current_stylesheet == DARK_STYLESHEET else "black"
+    
     # Clear any displayed information
+    if hasattr(self, 'nameDisplay'):
+        self.nameDisplay.setText('Name: -')
+        self.nameDisplay.setStyleSheet(f"color: {text_color};")
+    
+    if hasattr(self, 'addressDisplay'):
+        self.addressDisplay.setText('Address: Not available')
+        self.addressDisplay.setStyleSheet(f"color: {text_color};")
+        if hasattr(self, 'copyAddrButton'):
+            self.copyAddrButton.hide()
+    
+    if hasattr(self, 'ethAddressDisplay'):
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
+        if hasattr(self, 'copyEthButton'):
+            self.copyEthButton.hide()
+    
     if hasattr(self, 'local_address_label'):
         self.local_address_label.setText("Local Address: -")
+    
     if hasattr(self, 'eth_address_label'):
         self.eth_address_label.setText("ETH Address: -")
+    
     if hasattr(self, 'uptime_label'):
         self.uptime_label.setText("Uptime: -")
     
-    # Clear graphs
+    if hasattr(self, 'node_uptime'):
+        self.node_uptime.setText(UPTIME_LABEL)
+        self.node_uptime.setStyleSheet(f"color: {text_color};")
+    
+    if hasattr(self, 'node_epoch'):
+        self.node_epoch.setText(EPOCH_LABEL)
+        self.node_epoch.setStyleSheet(f"color: {text_color};")
+    
+    if hasattr(self, 'node_epoch_avail'):
+        self.node_epoch_avail.setText(EPOCH_AVAIL_LABEL)
+        self.node_epoch_avail.setStyleSheet(f"color: {text_color};")
+    
+    if hasattr(self, 'node_version'):
+        self.node_version.setText('')
+        self.node_version.setStyleSheet(f"color: {text_color};")
+    
+    # Reset state variables
+    if hasattr(self, '__display_uptime'):
+        self.__display_uptime = None
+    
+    self.node_addr = None
+    self.node_eth_address = None
+    self.node_name = None
+    
+    if hasattr(self, '__current_node_uptime'):
+        self.__current_node_uptime = -1
+    
+    if hasattr(self, '__current_node_epoch'):
+        self.__current_node_epoch = -1
+    
+    if hasattr(self, '__current_node_epoch_avail'):
+        self.__current_node_epoch_avail = -1
+    
+    if hasattr(self, '__current_node_ver'):
+        self.__current_node_ver = -1
+    
+    if hasattr(self, '__last_plot_data'):
+        self.__last_plot_data = None
+    
+    if hasattr(self, '__last_timesteps'):
+        self.__last_timesteps = []
+    
+    # Clear all graphs
     if hasattr(self, 'cpu_plot'):
         self.cpu_plot.clear()
+    
     if hasattr(self, 'memory_plot'):
         self.memory_plot.clear()
+    
     if hasattr(self, 'gpu_plot'):
         self.gpu_plot.clear()
+    
     if hasattr(self, 'gpu_memory_plot'):
         self.gpu_memory_plot.clear()
+    
+    # Reset graph titles and labels with current theme color
+    for plot_name in ['cpu_plot', 'memory_plot', 'gpu_plot', 'gpu_memory_plot']:
+        if hasattr(self, plot_name):
+            plot = getattr(self, plot_name)
+            plot.setTitle('')
+            plot.setLabel('left', '')
+            plot.setLabel('bottom', '')
+    
+    # Update toggle button state and color
+    if hasattr(self, 'toggleButton'):
+        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+        self.toggleButton.setStyleSheet("background-color: green; color: white;")
 
   def clear_remote_connection(self):
-    """Clear remote connection settings."""
+    """Clear the remote SSH connection."""
     if hasattr(self, 'ssh_service'):
         self.ssh_service.clear_configuration()
-    self.is_remote = False
-    self.remote_ssh_command = None
+        
+    # Reset the docker handler's remote command
+    if hasattr(self, 'docker_handler'):
+        self.docker_handler.remote_ssh_command = None
+        
+    # Update UI
+    self.add_log("Cleared remote connection")
+    
+    # Don't call _refresh_local_containers here to avoid circular dependency
+    return
 
   def set_remote_connection(self, ssh_command: str):
     """Set up remote connection using SSH command."""
@@ -2798,23 +2934,39 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.remote_ssh_command = ssh_command.split()
 
   def _refresh_local_containers(self):
-    """Refresh the list of local containers."""
-    # Clear any remote connection settings to ensure we're using local Docker
-    self.clear_remote_connection()
-    if hasattr(self, 'docker_handler'):
-        self.docker_handler.clear_remote_connection()
-    
-    # Refresh container list
-    self.refresh_container_list()
-    
-    # Update toggle button
-    self.update_toggle_button_text()
-    
-    # Refresh container status if one is running
-    if self.is_container_running():
-        self.post_launch_setup()
-        self.refresh_local_address()
-        self.plot_data()
+    """Refresh local container list and info."""
+    try:
+        # Clear any remote connection settings to ensure we're using local Docker
+        # Instead of calling clear_remote_connection(), directly set remote_ssh_command to None
+        if hasattr(self, 'docker_handler'):
+            self.docker_handler.remote_ssh_command = None
+        
+        if hasattr(self, 'ssh_service'):
+            self.ssh_service.clear_configuration()
+        
+        # Refresh container list
+        self.refresh_container_list()
+        
+        # Update container info if running
+        if self.is_container_running():
+            try:
+                # Refresh address first (usually faster)
+                self.refresh_local_address()
+                
+                # Then plot data (can be slower)
+                try:
+                    self.plot_data()
+                except Exception as e:
+                    self.add_log(f"Error plotting data for local container: {str(e)}", debug=True, color="red")
+            except Exception as e:
+                self.add_log(f"Error refreshing local container info: {str(e)}", color="red")
+        
+        # Always update the toggle button text
+        self.update_toggle_button_text()
+    except Exception as e:
+        self.add_log(f"Error in local container refresh: {str(e)}", color="red")
+        # Ensure toggle button text is updated even if there's an error
+        self.update_toggle_button_text()
 
   def _refresh_remote_containers(self):
     """Refresh the list of remote containers."""
