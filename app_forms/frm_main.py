@@ -730,15 +730,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
   
   
-  # def edit_addrs(self):
-  #   self.edit_file(
-  #     file_path=self.addrs_file,
-  #     func=self.save_addrs_file,
-  #     title='Edit authorized addrs file'
-  #   )
-  #   return
-
-
   def edit_addrs(self):
     """Edit authorized addresses for the current container."""
     # Get the current index and container name from the data
@@ -1453,6 +1444,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toast.show_notification(NotificationType.ERROR, "No container selected")
         return
     
+    # Check if container is running
+    if not self.is_container_running():
+        self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not change node name.")
+        return
+    
     # Get current node alias if it exists
     container_config = self.config_manager.get_container(container_name)
     current_alias = container_config.node_alias if container_config and container_config.node_alias else ""
@@ -1472,6 +1468,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     name_input = QLineEdit()
     name_input.setText(current_alias)
     name_input.setPlaceholderText("Enter node name")
+    
+    # Apply theme-appropriate styles
+    is_dark = hasattr(self, 'is_dark_mode') and self.is_dark_mode
+    text_color = "white" if is_dark else "black"
+    name_input.setStyleSheet(f"color: {text_color};")
     layout.addWidget(name_input)
     
     # Add buttons
@@ -1984,7 +1985,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def show_add_node_dialog(self):
     """Show confirmation dialog for adding a new node."""
     from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
-    
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    text_color = "white" if is_dark else "black"
+
     # Generate the container name that would be used
     container_name = generate_container_name()
     volume_name = get_volume_name(container_name)
@@ -2002,6 +2005,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     layout.addWidget(QLabel("Node Display Name (optional):"))
     name_input = QLineEdit()
     name_input.setPlaceholderText("Enter a friendly name for your node")
+    name_input.setStyleSheet(f"color: {text_color};")
     layout.addWidget(name_input)
     
     # Add buttons
@@ -2187,7 +2191,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
       # Log the container count
       self.add_log(f"Showing {len(config_containers)} containers in dropdown", debug=True)
-      
+        
     except Exception as e:
       self.add_log(f"Error refreshing container list: {str(e)}", debug=True, color="red")
 
