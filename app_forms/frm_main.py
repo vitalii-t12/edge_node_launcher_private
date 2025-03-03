@@ -373,11 +373,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.renameNodeButton.clicked.connect(self.show_rename_dialog)
     bottom_button_area.addWidget(self.renameNodeButton)
 
-    self.btn_edit_addrs = QPushButton(EDIT_AUTHORIZED_ADDRS)
-    self.btn_edit_addrs.clicked.connect(self.edit_addrs)
-    bottom_button_area.addWidget(self.btn_edit_addrs)
-
-
     # Toggle theme button
     self.themeToggleButton = QPushButton(LIGHT_DASHBOARD_BUTTON_TEXT)
     # self.themeToggleButton.setCheckable(True)
@@ -669,112 +664,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       file.write(content)
     dialog.accept()
     return
-  
-  
-  def edit_addrs(self):
-    """Edit authorized addresses for the current container."""
-    # Get the current index and container name from the data
-    current_index = self.container_combo.currentIndex()
-    if current_index < 0:
-        self.toast.show_notification(NotificationType.ERROR, "No container selected")
-        return
-        
-    container_name = self.container_combo.itemData(current_index)
-    if not container_name:
-        self.toast.show_notification(NotificationType.ERROR, "No container selected")
-        return
-    
-    # Set the container name in the docker handler
-    self.docker_handler.set_container_name(container_name)
-    
-    # Check if container is running
-    if not self.is_container_running():
-        self.toast.show_notification(NotificationType.ERROR, "Container not running. Could not edit authorized addresses.")
-        return
-    
-    # Get the current node address
-    node_address = self.node_addr
-    if not node_address:
-        self.toast.show_notification(NotificationType.ERROR, "Node address not available. Please refresh the address first.")
-        return
-    
-    # Create and show the dialog with a loading indicator
-    from widgets.dialogs.AuthorizedAddressedDialog import AuthorizedAddressesDialog
-    dialog = AuthorizedAddressesDialog(self)
-    
-    # Define callbacks for get_allowed_addresses
-    def success_callback(allowed_dict):
-        try:
-            # Format the data for the dialog
-            formatted_data = []
-            for address, alias in allowed_dict.items():
-                formatted_data.append({
-                    'address': address,
-                    'alias': alias
-                })
-            
-            # Load the formatted data into the dialog
-            dialog.load_data(formatted_data)
-            
-            # Define a save callback function to handle saving the addresses
-            def save_callback(processed_data):
-                try:
-                    # The processed_data is a string with format: "address1 alias1\naddress2 alias2\n..."
-                    self.add_log(f"Saving authorized addresses for {container_name}", color="green")
-                    
-                    # Parse the processed_data into a list of dictionaries
-                    addresses_data = []
-                    for line in processed_data.strip().split('\n'):
-                        if line.strip():
-                            parts = line.strip().split(' ', 1)
-                            address = parts[0]
-                            alias = parts[1] if len(parts) > 1 else ""
-                            addresses_data.append({
-                                'address': address,
-                                'alias': alias
-                            })
-                    
-                    # Define callbacks for update_allowed_batch
-                    def update_success():
-                        self.add_log("Successfully updated authorized addresses", color="green")
-                        self.toast.show_notification(NotificationType.SUCCESS, "Authorized addresses updated successfully")
-                        dialog.accept()  # Close the dialog on success
-                    
-                    def update_error(error_message):
-                        self.add_log(f"Error updating authorized addresses: {error_message}", color="red")
-                        self.toast.show_notification(NotificationType.ERROR, f"Error: {error_message}")
-                    
-                    # Call update_allowed_batch with the parsed data
-                    self.docker_handler.update_allowed_batch(addresses_data, update_success, update_error)
-                    
-                    # Return True to indicate that the save process has started
-                    return True
-                except Exception as e:
-                    self.add_log(f"Error saving authorized addresses: {str(e)}", color="red")
-                    return False
-            
-            # Set the save callback
-            dialog.on_save_callback = save_callback
-            
-        except Exception as e:
-            self.add_log(f"Error processing allowed addresses: {str(e)}", color="red")
-            self.toast.show_notification(NotificationType.ERROR, f"Error: {str(e)}")
-    
-    def error_callback(error_message):
-        self.add_log(f"Error getting authorized addresses: {error_message}", color="red")
-        self.toast.show_notification(NotificationType.ERROR, f"Error: {error_message}")
-        dialog.reject()  # Close the dialog on error
-    
-    try:
-        # Call get_allowed_addresses with the callbacks
-        self.docker_handler.get_allowed_addresses(success_callback, error_callback)
-        
-        # Show the dialog
-        dialog.exec_()
-    except Exception as e:
-        self.add_log(f"Error loading authorized addresses: {str(e)}", color="red")
-        self.toast.show_notification(NotificationType.ERROR, f"Error loading authorized addresses: {str(e)}")
-        
+
 
   def show_config_dialog(self, startup_text_edit, app_text_edit):
     # Create the dialog
@@ -903,7 +793,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     container_name = self.container_combo.currentText()
     if not container_name:
         self.add_log("No container selected, cannot plot graphs", debug=True)
-       return
+        return
      
     # Use provided history or last data
     if history is None:
