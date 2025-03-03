@@ -278,8 +278,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     top_button_area.addWidget(self.toggleButton)
 
     # Docker download button right under Launch Edge Node
-    self.docker_download_button = QPushButton('Download Docker')
-    self.docker_download_button.setToolTip('Ratio1 Edge Node requires Docker Desktop running in parallel')
+    self.docker_download_button = QPushButton(DOWNLOAD_DOCKER_BUTTON_TEXT)
+    self.docker_download_button.setToolTip(DOCKER_DOWNLOAD_TOOLTIP)
     self.docker_download_button.clicked.connect(self.open_docker_download)
     top_button_area.addWidget(self.docker_download_button)
 
@@ -316,9 +316,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.addressDisplay.setFont(QFont("Courier New"))
     addr_layout.addWidget(self.addressDisplay)
     
+    # Add copy address button
     self.copyAddrButton = QPushButton()
     self.copyAddrButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
-    self.copyAddrButton.setToolTip('Copy address')
+    self.copyAddrButton.setToolTip(COPY_ADDRESS_TOOLTIP)
     self.copyAddrButton.clicked.connect(self.copy_address)
     self.copyAddrButton.setFixedSize(24, 24)
     self.copyAddrButton.hide()  # Initially hidden
@@ -332,9 +333,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.ethAddressDisplay.setFont(QFont("Courier New"))
     eth_addr_layout.addWidget(self.ethAddressDisplay)
     
+    # Add copy ethereum address button
     self.copyEthButton = QPushButton()
     self.copyEthButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
-    self.copyEthButton.setToolTip('Copy Ethereum address')
+    self.copyEthButton.setToolTip(COPY_ETH_ADDRESS_TOOLTIP)
     self.copyEthButton.clicked.connect(self.copy_eth_address)
     self.copyEthButton.setFixedSize(24, 24)
     self.copyEthButton.hide()  # Initially hidden
@@ -481,11 +483,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def toggle_theme(self):
     if self._current_stylesheet == DARK_STYLESHEET:
       self._current_stylesheet = LIGHT_STYLESHEET
-      self.themeToggleButton.setText('Switch to Dark Theme')
+      self.themeToggleButton.setText(DARK_DASHBOARD_BUTTON_TEXT)
       self.host_selector.apply_stylesheet(False)  # Light theme
     else:
       self._current_stylesheet = DARK_STYLESHEET
-      self.themeToggleButton.setText('Switch to Light Theme')
+      self.themeToggleButton.setText(LIGHT_DASHBOARD_BUTTON_TEXT)
       self.host_selector.apply_stylesheet(True)  # Dark theme
     self.apply_stylesheet()
     self.plot_graphs()
@@ -966,12 +968,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     container_name = self.container_combo.currentText()
     if not container_name:
         self.add_log("No container selected, cannot plot graphs", debug=True)
-        return
-    
+       return
+     
     # Use provided history or last data
     if history is None:
-        history = self.__last_plot_data
-    
+       history = self.__last_plot_data
+     
     if history is None:
         self.add_log(f"No history data available for container {container_name}", debug=True)
         return
@@ -985,7 +987,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     timestamps = history.timestamps
     if len(timestamps) > limit:
         timestamps = timestamps[-limit:]
-        
+     
     # Set color based on theme
     color = 'w' if self._current_stylesheet == DARK_STYLESHEET else 'k'
     
@@ -1023,7 +1025,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.cpu_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.cpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.cpu_plot.setAxisItems({'bottom': cpu_date_axis})
-    self.cpu_plot.setTitle('CPU Load')
+    self.cpu_plot.setTitle(CPU_LOAD_TITLE)
     update_plot(self.cpu_plot, timestamps, history.cpu_load, 'CPU Load', color)
     
     # Memory Plot
@@ -1032,7 +1034,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.memory_plot.getAxis('bottom').setTickSpacing(60, 10)
     self.memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.memory_plot.setAxisItems({'bottom': mem_date_axis})
-    self.memory_plot.setTitle('Memory Usage')
+    self.memory_plot.setTitle(MEMORY_USAGE_TITLE)
     update_plot(self.memory_plot, timestamps, history.occupied_memory, 'Occupied Memory', color)
     
     # GPU Plot if available
@@ -1042,7 +1044,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.gpu_plot.getAxis('bottom').setTickSpacing(60, 10)
       self.gpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
       self.gpu_plot.setAxisItems({'bottom': gpu_date_axis})
-      self.gpu_plot.setTitle('GPU Load')
+      self.gpu_plot.setTitle(GPU_LOAD_TITLE)
       update_plot(self.gpu_plot, timestamps, history.gpu_load, 'GPU Load', color)
 
     # GPU Memory if available
@@ -1052,111 +1054,87 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.gpu_memory_plot.getAxis('bottom').setTickSpacing(60, 10)
       self.gpu_memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
       self.gpu_memory_plot.setAxisItems({'bottom': gpumem_date_axis})
-      self.gpu_memory_plot.setTitle('GPU Memory Load')
+      self.gpu_memory_plot.setTitle(GPU_MEMORY_LOAD_TITLE)
       update_plot(self.gpu_memory_plot, timestamps, history.gpu_occupied_memory, 'Occupied GPU Memory', color)
       
     self.add_log(f"Updated graphs for container {container_name} with {len(timestamps)} data points", debug=True)
 
+  def update_plot(plot_widget, timestamps, data, name, color):
+    """Update a plot with the given data."""
+    plot_widget.setTitle(name)
+
   def refresh_local_address(self):
-    """Refresh the node address display."""
-    # Get the current index and container name from the data
-    current_index = self.container_combo.currentIndex()
-    if current_index < 0:
-        self.addressDisplay.setText('Address: No container selected')
-        self.ethAddressDisplay.setText('ETH Address: Not available')
-        self.nameDisplay.setText('')
-        self.copyAddrButton.hide()
-        self.copyEthButton.hide()
-        return
-        
-    # Get the actual container name from the item data
-    container_name = self.container_combo.itemData(current_index)
+    """Refresh the local address display."""
+    # Get the currently selected container
+    container_name = self.container_combo.currentText()
     if not container_name:
-        self.addressDisplay.setText('Address: No container selected')
-        self.ethAddressDisplay.setText('ETH Address: Not available')
-        self.nameDisplay.setText('')
-        self.copyAddrButton.hide()
-        self.copyEthButton.hide()
-        return
-        
-    # Make sure we're working with the correct container
-    self.docker_handler.set_container_name(container_name)
+      self.add_log("No container selected, cannot refresh local address", debug=True)
+      self.addressDisplay.setText(NO_CONTAINER_SELECTED_TEXT)
+      self.ethAddressDisplay.setText(ETH_ADDRESS_NOT_AVAILABLE_TEXT)
+      self.nameDisplay.setText('')
+      self.copyAddrButton.hide()
+      self.copyEthButton.hide()
+      return
     
+    # Check if container is running
     if not self.is_container_running():
-        self.addressDisplay.setText('Address: Node not running')
-        self.ethAddressDisplay.setText('ETH Address: Not available')
-        self.nameDisplay.setText('')
-        self.copyAddrButton.hide()
-        self.copyEthButton.hide()
-        return
-
+      self.add_log(f"Container {container_name} is not running, cannot refresh local address", debug=True)
+      self.addressDisplay.setText(NODE_NOT_RUNNING_TEXT)
+      self.ethAddressDisplay.setText(ETH_ADDRESS_NOT_AVAILABLE_TEXT)
+      self.nameDisplay.setText('')
+      self.copyAddrButton.hide()
+      self.copyEthButton.hide()
+      return
+    
+    # Get the node info
+    self.docker_handler.get_node_info(
+      on_success=on_success,
+      on_error=on_error
+    )
+    
     def on_success(node_info: NodeInfo) -> None:
-        # Make sure we're still on the same container
-        current_index_now = self.container_combo.currentIndex()
-        if current_index_now < 0:
-            return
-            
-        current_container_now = self.container_combo.itemData(current_index_now)
-        if container_name != current_container_now:
-            self.add_log(f"Container changed during address refresh, ignoring results", debug=True)
-            return
-            
-        self.node_name = node_info.alias
-        self.nameDisplay.setText('Name: ' + node_info.alias)
-
-        if node_info.address != self.node_addr:
-            self.node_addr = node_info.address
-            self.node_eth_address = node_info.eth_address
-
-            # Format addresses with clear labels and truncated values
-            str_display = f"Address: {node_info.address[:16]}...{node_info.address[-8:]}"
-            self.addressDisplay.setText(str_display)
-            self.copyAddrButton.setVisible(bool(node_info.address))
-            
-            str_eth_display = f"ETH Address: {node_info.eth_address[:16]}...{node_info.eth_address[-8:]}"
-            self.ethAddressDisplay.setText(str_eth_display)
-            self.copyEthButton.setVisible(bool(node_info.eth_address))
-            
-            self.add_log(f'Node info updated for {container_name}: {self.node_addr} : {self.node_name}, ETH: {self.node_eth_address}')
-            
-            # Save addresses to config for this specific container
-            if container_name:
-                # Update node address in config
-                self.config_manager.update_node_address(container_name, self.node_addr)
-                # Update ETH address in config
-                self.config_manager.update_eth_address(container_name, self.node_eth_address)
-                # Update node alias in config
-                self.config_manager.update_node_alias(container_name, self.node_name)
-                self.add_log(f"Saved node address, ETH address, and alias to config for {container_name}", debug=True)
-
+      # Make sure we're still on the same container
+      if container_name != self.container_combo.currentText():
+        self.add_log(f"Container changed while getting node info, ignoring result", debug=True)
+        return
+      
+      # Update the display
+      self.node_info = node_info
+      self.nameDisplay.setText(f'{NAME_PREFIX_TEXT}{node_info.alias}')
+      
+      # Update the address display
+      self.node_addr = node_info.address
+      str_display = f'{ADDRESS_PREFIX_TEXT}{node_info.address}'
+      self.addressDisplay.setText(str_display)
+      self.copyAddrButton.show()
+      
+      # Update the ethereum address display
+      self.node_eth_address = node_info.eth_address
+      str_eth_display = f'{ETH_ADDRESS_PREFIX_TEXT}{node_info.eth_address}'
+      self.ethAddressDisplay.setText(str_eth_display)
+      self.copyEthButton.show()
+      
+      # Refresh uptime
+      self.maybe_refresh_uptime()
+      
+      self.add_log(f"Successfully refreshed local address for container {container_name}", debug=True)
+      return
+    
     def on_error(error):
-        # Make sure we're still on the same container
-        current_index_now = self.container_combo.currentIndex()
-        if current_index_now < 0:
-            return
-            
-        current_container_now = self.container_combo.itemData(current_index_now)
-        if container_name != current_container_now:
-            self.add_log(f"Container changed during address refresh, ignoring error", debug=True)
-            return
-            
-        self.add_log(f'Error getting node info for {container_name}: {error}', debug=True)
-        self.addressDisplay.setText('Address: Error getting node info')
-        self.ethAddressDisplay.setText('ETH Address: Not available')
-        self.nameDisplay.setText('')
-        self.copyAddrButton.hide()
-        self.copyEthButton.hide()
-        
-        # If this is a timeout error, log it more prominently
-        if "timed out" in error.lower():
-            self.add_log(f"Node info request for {container_name} timed out. This may indicate network issues or high load on the remote host.", color="red")
-
-    try:
-        self.add_log(f"Refreshing address for container: {container_name}", debug=True)
-        self.docker_handler.get_node_info(on_success, on_error)
-    except Exception as e:
-        self.add_log(f"Failed to start node info request for {container_name}: {str(e)}", debug=True, color="red")
-        on_error(str(e))
+      # Make sure we're still on the same container
+      if container_name != self.container_combo.currentText():
+        self.add_log(f"Container changed while getting node info, ignoring error", debug=True)
+        return
+      
+      # Update the display
+      self.addressDisplay.setText(ERROR_GETTING_NODE_INFO_TEXT)
+      self.ethAddressDisplay.setText(ETH_ADDRESS_NOT_AVAILABLE_TEXT)
+      self.nameDisplay.setText('')
+      self.copyAddrButton.hide()
+      self.copyEthButton.hide()
+      
+      self.add_log(f"Error getting node info for container {container_name}: {error}", debug=True)
+      return
 
   def maybe_refresh_uptime(self):
     """Update uptime, epoch and epoch availability displays.

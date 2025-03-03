@@ -46,22 +46,79 @@ COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
 COPY_ETHEREUM_ADDRESS_BUTTON_TEXT = 'Copy Ethereum Address'
 RENAME_NODE_BUTTON_TEXT = 'Change Node Alias'
 LIGHT_DASHBOARD_BUTTON_TEXT = 'Switch to Light Theme'
+DARK_DASHBOARD_BUTTON_TEXT = 'Switch to Dark Theme'
+DOWNLOAD_DOCKER_BUTTON_TEXT = 'Download Docker'
 
 # Label texts
 LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 UPTIME_LABEL = 'Up Time:'
 EPOCH_LABEL = 'Epoch:'
 EPOCH_AVAIL_LABEL = 'Epochs avail:'
+NODE_VERSION_LABEL = 'Running ver:'
 
-# Notification messages
-NOTIFICATION_TITLE_STRINGS_ENUM = {
-    'success': 'Success',
-    'error': 'Error',
-    'warning': 'Warning',
-    'info': 'Information'
-}
-NOTIFICATION_ADDRESS_COPIED = "Address {address} copied to clipboard"
-NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again after launching the Edge Node."
+# Status texts
+NO_CONTAINER_SELECTED_TEXT = 'Address: No container selected'
+ETH_ADDRESS_NOT_AVAILABLE_TEXT = 'ETH Address: Not available'
+NODE_NOT_RUNNING_TEXT = 'Address: Node not running'
+ERROR_GETTING_NODE_INFO_TEXT = 'Address: Error getting node info'
+NAME_PREFIX_TEXT = 'Name: '
+ADDRESS_PREFIX_TEXT = 'Address: '
+LOCAL_ADDRESS_PREFIX_TEXT = 'Local Address: '
+ETH_ADDRESS_PREFIX_TEXT = 'ETH Address: '
+UPTIME_PREFIX_TEXT = 'Uptime: '
+EMPTY_DASH_TEXT = '-'
+
+# Button states
+NO_CONTAINER_FOUND_TEXT = 'No Container Found'
+HOST_OFFLINE_TEXT = 'Host Offline'
+CHECKING_HOST_TEXT = 'Checking Host...'
+SSH_ERROR_TEXT = 'SSH Error'
+DOCKER_NOT_FOUND_TEXT = 'Docker Not Found'
+DOCKER_NOT_RUNNING_TEXT = 'Docker Not Running'
+DOCKER_CHECK_FAILED_TEXT = 'Docker Check Failed'
+CONTAINER_CHECK_FAILED_TEXT = 'Container Check Failed'
+CONNECTION_FAILED_TEXT = 'Connection Failed'
+SELECT_HOST_TEXT = 'Select Host...'
+
+# Plot titles
+CPU_LOAD_TITLE = 'CPU Load'
+MEMORY_USAGE_TITLE = 'Memory Usage'
+GPU_LOAD_TITLE = 'GPU Load'
+GPU_MEMORY_LOAD_TITLE = 'GPU Memory Load'
+
+# ============================================================================
+# TOOLTIP TEXTS
+# ============================================================================
+DOCKER_DOWNLOAD_TOOLTIP = 'Ratio1 Edge Node requires Docker Desktop running in parallel'
+COPY_ADDRESS_TOOLTIP = 'Copy address'
+COPY_ETH_ADDRESS_TOOLTIP = 'Copy Ethereum address'
+
+# ============================================================================
+# DIALOG TEXTS
+# ============================================================================
+# Dialog titles
+ADD_NEW_NODE_DIALOG_TITLE = 'Add New Node'
+RENAME_NODE_DIALOG_TITLE = 'Rename Node'
+EDIT_AUTHORIZED_ADDRESSES_DIALOG_TITLE = 'Edit Authorized Addresses'
+VIEW_CONFIG_FILES_DIALOG_TITLE = 'View Configuration Files'
+EDIT_ENV_FILE_DIALOG_TITLE = 'Edit .env File'
+
+# Dialog messages
+RESET_NODE_CONFIRMATION_TEXT = 'Are you sure you want to reset this node?'
+ENTER_NODE_NAME_TEXT = 'Enter a friendly name for this node:'
+RESETTING_NODE_ADDRESS_TEXT = 'Resetting node address...'
+
+# Input placeholders
+ENTER_NODE_NAME_PLACEHOLDER = 'Enter node name'
+ENTER_FRIENDLY_NODE_NAME_PLACEHOLDER = 'Enter a friendly name for your node'
+ENTER_ADDRESS_PLACEHOLDER = 'Enter address'
+ENTER_ALIAS_PLACEHOLDER = 'Enter alias'
+
+# ============================================================================
+# LOG MESSAGES
+# ============================================================================
+SUCCESS_NODE_CREATION_LOG = 'Successfully created new node: {}'
+FAILED_NODE_CREATION_LOG = 'Failed to create new node: {}'
 
 # ============================================================================
 # ENVIRONMENT SETTINGS
@@ -381,4 +438,14 @@ LIGHT_STYLESHEET = """
     color: black;
   }
 """
+
+# Notification messages
+NOTIFICATION_TITLE_STRINGS_ENUM = {
+    'success': 'Success',
+    'error': 'Error',
+    'warning': 'Warning',
+    'info': 'Information'
+}
+NOTIFICATION_ADDRESS_COPIED = "Address {address} copied to clipboard"
+NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again after launching the Edge Node."
 
