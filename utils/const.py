@@ -188,7 +188,16 @@ DARK_COLORS = {
     "text_edit_bg": "#0D1F2D",
     "text_edit_border": "#1E90FF",
     "plot_bg": "#243447",
-    "plot_border": "#87CEEB"
+    "plot_border": "#87CEEB",
+    "combo_bg": "#2b2b2b",
+    "combo_border": "#555555",
+    "combo_hover_bg": "#3b3b3b",
+    "combo_hover_border": "#4CAF50",
+    "combo_arrow_color": "white",
+    "combo_dropdown_bg": "#2b2b2b",
+    "combo_dropdown_select_bg": "#3b3b3b",
+    "combo_dropdown_select_color": "white",
+    "green_highlight": "#4CAF50"
 }
 
 # Color definitions for light theme
@@ -206,7 +215,16 @@ LIGHT_COLORS = {
     "text_edit_bg": "#FFFFFF",
     "text_edit_border": "#D3D3D3",
     "plot_bg": "#FFFFFF",
-    "plot_border": "#A9A9A9"
+    "plot_border": "#A9A9A9",
+    "combo_bg": "white",
+    "combo_border": "#cccccc",
+    "combo_hover_bg": "#f5f5f5",
+    "combo_hover_border": "#4CAF50",
+    "combo_arrow_color": "black",
+    "combo_dropdown_bg": "white",
+    "combo_dropdown_select_bg": "#f5f5f5",
+    "combo_dropdown_select_color": "black",
+    "green_highlight": "#4CAF50"
 }
 
 # Checkbox style template
@@ -217,179 +235,179 @@ CHECKBOX_STYLE_TEMPLATE = """
 """
 
 DARK_STYLESHEET = """
-  QLabel {
+  QLabel {{
     font-size: 14px;
-    color: white;
-  }
-  QProgressBar {
-    border: 2px solid #1E90FF;
+    color: {text_color};
+  }}
+  QProgressBar {{
+    border: 2px solid {progress_border};
     border-radius: 5px;
     text-align: center;
     height: 30px;
-    color: white;
-  }
-  QProgressBar::chunk {
-    background-color: #1E90FF;
-  }
-  QDialog, QWidget {
-    background-color: #0D1F2D;
-  }
-  QTextEdit {
-    background-color: #0D1F2D;
-    color: white;
+    color: {text_color};
+  }}
+  QProgressBar::chunk {{
+    background-color: {progress_chunk};
+  }}
+  QDialog, QWidget {{
+    background-color: {widget_bg};
+  }}
+  QTextEdit {{
+    background-color: {text_edit_bg};
+    color: {text_color};
     font-size: 14px;
-    border: 1px solid #1E90FF;
+    border: 1px solid {text_edit_border};
     border-radius: 5px;
-  }
+  }}
   
-  PlotWidget {
-    background-color: #243447;
-    border: 1px solid #87CEEB;
-    color: white;  
-  }
+  PlotWidget {{
+    background-color: {plot_bg};
+    border: 1px solid {plot_border};
+    color: {text_color};  
+  }}
 
-  PlotWidget LabelItem {
-    color: white;
-  }
+  PlotWidget LabelItem {{
+    color: {text_color};
+  }}
   
-  QComboBox {
-    color: white;
-    background-color: #2b2b2b;
-    border: 1px solid #555555;
+  QComboBox {{
+    color: {text_color};
+    background-color: {combo_bg};
+    border: 1px solid {combo_border};
     border-radius: 4px;
     padding: 4px;
     min-width: 100px;
-  }
-  QComboBox:hover {
-    background-color: #3b3b3b;
-    border: 1px solid #4CAF50;
-  }
-  QComboBox::drop-down {
+  }}
+  QComboBox:hover {{
+    background-color: {combo_hover_bg};
+    border: 1px solid {green_highlight};
+  }}
+  QComboBox::drop-down {{
     border: none;
     width: 20px;
-  }
-  QComboBox::down-arrow {
+  }}
+  QComboBox::down-arrow {{
     image: none;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-top: 5px solid white;
+    border-top: 5px solid {combo_arrow_color};
     margin-right: 8px;
-  }
-  QComboBox QAbstractItemView {
-    color: white;
-    background-color: #2b2b2b;
-    selection-background-color: #3b3b3b;
-    selection-color: white;
-  }
+  }}
+  QComboBox QAbstractItemView {{
+    color: {text_color};
+    background-color: {combo_dropdown_bg};
+    selection-background-color: {combo_dropdown_select_bg};
+    selection-color: {combo_dropdown_select_color};
+  }}
   
-  QCheckBox {
-    color: white;
-  }
+  QCheckBox {{
+    color: {text_color};
+  }}
   
-  QPushButton {
-    background-color: #1E90FF; 
-    color: white; 
-    border: 2px solid #87CEEB; 
+  QPushButton {{
+    background-color: {button_bg}; 
+    color: {text_color}; 
+    border: 2px solid {button_border}; 
     padding: 10px 20px; 
     font-size: 16px; 
     margin: 4px 2px;
     border-radius: 15px;
-  }
-  QPushButton:hover {
-    background-color: #104E8B;
-  }
-"""
+  }}
+  QPushButton:hover {{
+    background-color: {button_hover};
+  }}
+""".format(**DARK_COLORS)
 
 LIGHT_STYLESHEET = """
-  QLabel {
+  QLabel {{
     font-size: 14px;
-    color: black;
-  }
-  QProgressBar {
-    border: 2px solid #D3D3D3;
+    color: {text_color};
+  }}
+  QProgressBar {{
+    border: 2px solid {progress_border};
     border-radius: 5px;
     text-align: center;
     height: 30px;
-    color: black;
-  }
-  QProgressBar::chunk {
-    background-color: #D3D3D3;
-  }
-  QDialog, QWidget {
-    background-color: #F0F0F0;
-  }
-  QTextEdit {
-    background-color: #FFFFFF;
-    color: black;
+    color: {text_color};
+  }}
+  QProgressBar::chunk {{
+    background-color: {progress_chunk};
+  }}
+  QDialog, QWidget {{
+    background-color: {widget_bg};
+  }}
+  QTextEdit {{
+    background-color: {text_edit_bg};
+    color: {text_color};
     font-size: 14px;
-    border: 1px solid #D3D3D3;
+    border: 1px solid {text_edit_border};
     border-radius: 5px;
-  }
+  }}
   
-  PlotWidget {
-    background-color: #FFFFFF;
-    border: 1px solid #A9A9A9;
-  }
+  PlotWidget {{
+    background-color: {plot_bg};
+    border: 1px solid {plot_border};
+  }}
 
-  PlotWidget LabelItem {
-    color: black;
-  }
+  PlotWidget LabelItem {{
+    color: {text_color};
+  }}
 
-  PlotWidget .axis {
-    color: black;
-  }
+  PlotWidget .axis {{
+    color: {text_color};
+  }}
 
-  PlotWidget .plotLabel {
-    color: black;
-  }
+  PlotWidget .plotLabel {{
+    color: {text_color};
+  }}
   
-  QComboBox {
-    color: black;
-    background-color: white;
-    border: 1px solid #cccccc;
+  QComboBox {{
+    color: {text_color};
+    background-color: {combo_bg};
+    border: 1px solid {combo_border};
     border-radius: 4px;
     padding: 4px;
     min-width: 100px;
-  }
-  QComboBox:hover {
-    background-color: #f5f5f5;
-    border: 1px solid #4CAF50;
-  }
-  QComboBox::drop-down {
+  }}
+  QComboBox:hover {{
+    background-color: {combo_hover_bg};
+    border: 1px solid {green_highlight};
+  }}
+  QComboBox::drop-down {{
     border: none;
     width: 20px;
-  }
-  QComboBox::down-arrow {
+  }}
+  QComboBox::down-arrow {{
     image: none;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-top: 5px solid black;
+    border-top: 5px solid {combo_arrow_color};
     margin-right: 8px;
-  }
-  QComboBox QAbstractItemView {
-    color: black;
-    background-color: white;
-    selection-background-color: #f5f5f5;
-    selection-color: black;
-  }
+  }}
+  QComboBox QAbstractItemView {{
+    color: {text_color};
+    background-color: {combo_dropdown_bg};
+    selection-background-color: {combo_dropdown_select_bg};
+    selection-color: {combo_dropdown_select_color};
+  }}
   
-  QCheckBox {
-    color: black;
-  }
+  QCheckBox {{
+    color: {text_color};
+  }}
   
-  QPushButton {
-    background-color: #D3D3D3;
-    color: black;
-    border: 2px solid #A9A9A9;
+  QPushButton {{
+    background-color: {button_bg};
+    color: {text_color};
+    border: 2px solid {button_border};
     padding: 10px 20px;
     font-size: 16px;
     margin: 4px 2px;
     border-radius: 15px;
-  }
-  QPushButton:hover {
-    background-color: #A9A9A9;
-  }
-"""
+  }}
+  QPushButton:hover {{
+    background-color: {button_hover};
+  }}
+""".format(**LIGHT_COLORS)
 
 # Notification messages
 NOTIFICATION_TITLE_STRINGS_ENUM = {
