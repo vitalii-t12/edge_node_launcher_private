@@ -498,31 +498,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.memory_plot.setBackground(None)
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
-    
-    # Get the appropriate color set based on the theme
-    colors = DARK_COLORS if is_dark else LIGHT_COLORS
-    
-    # Apply styles using templates from const.py
-    combobox_style = COMBOBOX_STYLE_TEMPLATE.format(
-        text_color=colors["text_color"],
-        bg_color=colors["bg_color"],
-        border_color=colors["border_color"],
-        hover_color=colors["hover_color"]
-    )
-    
-    button_style = BUTTON_STYLE_TEMPLATE.format(
-        text_color=colors["text_color"],
-        bg_color=colors["bg_color"],
-        border_color=colors["border_color"],
-        hover_color=colors["hover_color"]
-    )
-    
-    self.container_combo.setStyleSheet(combobox_style)
-    self.add_node_button.setStyleSheet(button_style)
-    
-    if hasattr(self, 'mode_switch'):
-      self.mode_switch.apply_stylesheet(is_dark)
-    return
 
   def toggle_container(self):
     # Get the current index and container name from the data
