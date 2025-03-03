@@ -173,6 +173,22 @@ EE_HF_TOKEN=token_for_accessing_huggingface_api
 # STYLESHEETS
 # ============================================================================
 
+# Common style properties that don't depend on theme
+COMMON_STYLES = {
+    "font_size": "14px",
+    "border_radius": "5px",
+    "progress_height": "30px",
+    "button_padding": "10px 20px",
+    "button_font_size": "16px",
+    "button_margin": "4px 2px",
+    "button_border_radius": "15px",
+    "combo_border_radius": "4px",
+    "combo_padding": "4px",
+    "combo_min_width": "100px",
+    "combo_dropdown_width": "20px",
+    "text_align_center": "center"
+}
+
 # Color definitions for dark theme
 DARK_COLORS = {
     "text_color": "white",
@@ -229,6 +245,10 @@ LIGHT_COLORS = {
     "button_copy_address_bg": "transparent"
 }
 
+# Merge common styles with theme-specific colors
+DARK_THEME = {**COMMON_STYLES, **DARK_COLORS}
+LIGHT_THEME = {**COMMON_STYLES, **LIGHT_COLORS}
+
 # Checkbox style template
 CHECKBOX_STYLE_TEMPLATE = """
     QCheckBox {{
@@ -236,16 +256,17 @@ CHECKBOX_STYLE_TEMPLATE = """
     }}
 """
 
-DARK_STYLESHEET = """
+# Common stylesheet template with placeholders for theme-specific values
+COMMON_STYLESHEET_TEMPLATE = """
   QLabel {{
-    font-size: 14px;
+    font-size: {font_size};
     color: {text_color};
   }}
   QProgressBar {{
     border: 2px solid {progress_border};
-    border-radius: 5px;
-    text-align: center;
-    height: 30px;
+    border-radius: {border_radius};
+    text-align: {text_align_center};
+    height: {progress_height};
     color: {text_color};
   }}
   QProgressBar::chunk {{
@@ -257,9 +278,9 @@ DARK_STYLESHEET = """
   QTextEdit {{
     background-color: {text_edit_bg};
     color: {text_color};
-    font-size: 14px;
+    font-size: {font_size};
     border: 1px solid {text_edit_border};
-    border-radius: 5px;
+    border-radius: {border_radius};
   }}
   
   PlotWidget {{
@@ -276,9 +297,9 @@ DARK_STYLESHEET = """
     color: {text_color};
     background-color: {combo_bg};
     border: 1px solid {combo_border};
-    border-radius: 4px;
-    padding: 4px;
-    min-width: 100px;
+    border-radius: {combo_border_radius};
+    padding: {combo_padding};
+    min-width: {combo_min_width};
   }}
   QComboBox:hover {{
     background-color: {combo_hover_bg};
@@ -286,7 +307,7 @@ DARK_STYLESHEET = """
   }}
   QComboBox::drop-down {{
     border: none;
-    width: 20px;
+    width: {combo_dropdown_width};
   }}
   QComboBox::down-arrow {{
     image: none;
@@ -310,10 +331,10 @@ DARK_STYLESHEET = """
     background-color: {button_bg}; 
     color: {text_color}; 
     border: 2px solid {button_border}; 
-    padding: 10px 20px; 
-    font-size: 16px; 
-    margin: 4px 2px;
-    border-radius: 15px;
+    padding: {button_padding}; 
+    font-size: {button_font_size}; 
+    margin: {button_margin};
+    border-radius: {button_border_radius};
   }}
   QPushButton:hover {{
     background-color: {button_hover};
@@ -325,105 +346,21 @@ DARK_STYLESHEET = """
     padding: 0px;
     margin: 0px;
   }}
-""".format(**DARK_COLORS)
+"""
 
-LIGHT_STYLESHEET = """
-  QLabel {{
-    font-size: 14px;
-    color: {text_color};
-  }}
-  QProgressBar {{
-    border: 2px solid {progress_border};
-    border-radius: 5px;
-    text-align: center;
-    height: 30px;
-    color: {text_color};
-  }}
-  QProgressBar::chunk {{
-    background-color: {progress_chunk};
-  }}
-  QDialog, QWidget {{
-    background-color: {widget_bg};
-  }}
-  QTextEdit {{
-    background-color: {text_edit_bg};
-    color: {text_color};
-    font-size: 14px;
-    border: 1px solid {text_edit_border};
-    border-radius: 5px;
-  }}
-  
-  PlotWidget {{
-    background-color: {plot_bg};
-    border: 1px solid {plot_border};
-  }}
+# Apply the common template with dark theme values
+DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME)
 
-  PlotWidget LabelItem {{
-    color: {text_color};
-  }}
+# Apply the common template with light theme values, with additional light-specific styles
+LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
+  PlotWidget .axis {
+    color: black;
+  }
 
-  PlotWidget .axis {{
-    color: {text_color};
-  }}
-
-  PlotWidget .plotLabel {{
-    color: {text_color};
-  }}
-  
-  QComboBox {{
-    color: {text_color};
-    background-color: {combo_bg};
-    border: 1px solid {combo_border};
-    border-radius: 4px;
-    padding: 4px;
-    min-width: 100px;
-  }}
-  QComboBox:hover {{
-    background-color: {combo_hover_bg};
-    border: 1px solid {green_highlight};
-  }}
-  QComboBox::drop-down {{
-    border: none;
-    width: 20px;
-  }}
-  QComboBox::down-arrow {{
-    image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 5px solid {combo_arrow_color};
-    margin-right: 8px;
-  }}
-  QComboBox QAbstractItemView {{
-    color: {text_color};
-    background-color: {combo_dropdown_bg};
-    selection-background-color: {combo_dropdown_select_bg};
-    selection-color: {combo_dropdown_select_color};
-  }}
-  
-  QCheckBox {{
-    color: {text_color};
-  }}
-  
-  QPushButton {{
-    background-color: {button_bg};
-    color: {text_color};
-    border: 2px solid {button_border};
-    padding: 10px 20px;
-    font-size: 16px;
-    margin: 4px 2px;
-    border-radius: 15px;
-  }}
-  QPushButton:hover {{
-    background-color: {button_hover};
-  }}
-  
-  #copyAddrButton, #copyEthButton {{
-    background-color: {button_copy_address_bg};
-    border: none;
-    padding: 0px;
-    margin: 0px;
-  }}
-""".format(**LIGHT_COLORS)
+  PlotWidget .plotLabel {
+    color: black;
+  }
+"""
 
 # Notification messages
 NOTIFICATION_TITLE_STRINGS_ENUM = {
