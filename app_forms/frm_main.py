@@ -377,10 +377,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.btn_edit_addrs.clicked.connect(self.edit_addrs)
     bottom_button_area.addWidget(self.btn_edit_addrs)
 
-    
-    self.deleteButton = QPushButton(DELETE_AND_RESTART_BUTTON_TEXT)
-    self.deleteButton.clicked.connect(self.delete_and_restart)
-    bottom_button_area.addWidget(self.deleteButton)
 
     # Toggle theme button
     self.themeToggleButton = QPushButton(LIGHT_DASHBOARD_BUTTON_TEXT)
@@ -2206,100 +2202,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_log(f"Error checking if container is running: {str(e)}", debug=True, color="red")
         return False
 
-  def delete_and_restart(self):
-    """Delete the current container and restart it with a new address."""
-    # Get the current index and container name from the data
-    current_index = self.container_combo.currentIndex()
-    if current_index < 0:
-        self.toast.show_notification(NotificationType.ERROR, "No container selected")
-        return
-        
-    container_name = self.container_combo.itemData(current_index)
-    if not container_name:
-        self.toast.show_notification(NotificationType.ERROR, "No container selected")
-        return
-        
-    # Set the container name in the docker handler
-    self.docker_handler.set_container_name(container_name)
-    
-    # Check if container is running
-    if not self.is_container_running():
-        self.toast.show_notification(NotificationType.ERROR, "Container is not running")
-        return
-    
-    # Confirm with the user
-    from PyQt5.QtWidgets import QMessageBox
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Warning)
-    msg.setWindowTitle("Confirm Reset")
-    msg.setText("Are you sure you want to reset this node?")
-    msg.setInformativeText("This will delete the container and create a new one with a fresh address.")
-    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-    msg.setDefaultButton(QMessageBox.No)
-    
-    if msg.exec_() != QMessageBox.Yes:
-        return
-    
-    try:
-        # Get volume name before resetting
-        volume_name = None
-        container_config = self.config_manager.get_container(container_name)
-        if container_config:
-            volume_name = container_config.volume
-            self.add_log(f"Using existing volume name from config: {volume_name}", debug=True)
-        
-        # Define callbacks for reset_address
-        def on_success(data):
-            self.add_log("Successfully reset node address", color="green")
-            
-            # Stop the container
-            self.add_log(f"Stopping container {container_name}...")
-            self.docker_handler.stop_container(container_name)
-            
-            # Launch a new container with the same name and volume
-            self.add_log(f"Launching new container {container_name}...")
-            self.launch_container(volume_name)
-            
-            # Update UI
-            self.post_launch_setup()
-            self.refresh_local_address()
-            
-            # Show success message
-            self.toast.show_notification(
-                NotificationType.SUCCESS,
-                "Node reset successfully"
-            )
-        
-        def on_error(error):
-            self.add_log(f"Error resetting node address: {error}", color="red")
-            
-            # Still try to restart the container
-            self.add_log(f"Stopping container {container_name}...")
-            self.docker_handler.stop_container(container_name)
-            
-            self.add_log(f"Launching new container {container_name}...")
-            self.launch_container(volume_name)
-            
-            # Update UI
-            self.post_launch_setup()
-            self.refresh_local_address()
-            
-            # Show warning message
-            self.toast.show_notification(
-                NotificationType.WARNING,
-                f"Node restarted but address reset failed: {error}"
-            )
-        
-        # Call reset_address with callbacks
-        self.add_log("Resetting node address...")
-        self.docker_handler.reset_address(on_success, on_error)
-        
-    except Exception as e:
-        self.add_log(f"Error resetting node: {str(e)}", color="red")
-        self.toast.show_notification(
-            NotificationType.ERROR,
-            f"Error resetting node: {str(e)}"
-        )
 
   def container_exists_in_docker(self, container_name: str) -> bool:
     """Check if a container exists in Docker.

@@ -513,30 +513,6 @@ class _DockerUtilsMixin:
     return
 
 
-  def delete_and_restart(self):
-    if not self.is_container_running():
-        QMessageBox.warning(self, 'Restart Edge Node', 'Edge Node is not running.')
-    else:
-        # now we ask for confirmation
-        reply = QMessageBox.question(self, 'Restart Edge Node', 'Are you sure you want to reset the local node?', QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            try:
-                # Call reset_address with callbacks
-                def on_success(data):
-                    self.stop_container()
-                    self.launch_container()
-                    QMessageBox.information(self, 'Restart Edge Node', f'{E2_PEM_FILE} deleted and Edge Node restarted.')
-                
-                def on_error(error):
-                    self.stop_container()
-                    self.launch_container()
-                    QMessageBox.warning(self, 'Restart Edge Node', f'Failed to do proper cleanup: {error}')
-                
-                self.docker_commands.reset_address(on_success, on_error)
-            except Exception as e:
-                QMessageBox.warning(self, 'Restart Edge Node', f'Failed to reset Edge Node: {e}')
-    return
-
   def set_remote_connection(self, ssh_command: str):
     """Set up remote connection using SSH command."""
     if not ssh_command:
