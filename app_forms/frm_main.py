@@ -317,6 +317,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.copyAddrButton.setToolTip(COPY_ADDRESS_TOOLTIP)
     self.copyAddrButton.clicked.connect(self.copy_address)
     self.copyAddrButton.setFixedSize(24, 24)
+    self.copyAddrButton.setObjectName("copyAddrButton")
     self.copyAddrButton.hide()  # Initially hidden
     addr_layout.addWidget(self.copyAddrButton)
     addr_layout.addStretch()
@@ -334,6 +335,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.copyEthButton.setToolTip(COPY_ETH_ADDRESS_TOOLTIP)
     self.copyEthButton.clicked.connect(self.copy_eth_address)
     self.copyEthButton.setFixedSize(24, 24)
+    self.copyEthButton.setObjectName("copyEthButton")
     self.copyEthButton.hide()  # Initially hidden
     eth_addr_layout.addWidget(self.copyEthButton)
     eth_addr_layout.addStretch()

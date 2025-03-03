@@ -197,7 +197,8 @@ DARK_COLORS = {
     "combo_dropdown_bg": "#2b2b2b",
     "combo_dropdown_select_bg": "#3b3b3b",
     "combo_dropdown_select_color": "white",
-    "green_highlight": "#4CAF50"
+    "green_highlight": "#4CAF50",
+    "button_copy_address_bg": "transparent"
 }
 
 # Color definitions for light theme
@@ -224,7 +225,8 @@ LIGHT_COLORS = {
     "combo_dropdown_bg": "white",
     "combo_dropdown_select_bg": "#f5f5f5",
     "combo_dropdown_select_color": "black",
-    "green_highlight": "#4CAF50"
+    "green_highlight": "#4CAF50",
+    "button_copy_address_bg": "transparent"
 }
 
 # Checkbox style template
@@ -316,6 +318,13 @@ DARK_STYLESHEET = """
   QPushButton:hover {{
     background-color: {button_hover};
   }}
+  
+  #copyAddrButton, #copyEthButton {{
+    background-color: {button_copy_address_bg};
+    border: none;
+    padding: 0px;
+    margin: 0px;
+  }}
 """.format(**DARK_COLORS)
 
 LIGHT_STYLESHEET = """
@@ -406,6 +415,13 @@ LIGHT_STYLESHEET = """
   }}
   QPushButton:hover {{
     background-color: {button_hover};
+  }}
+  
+  #copyAddrButton, #copyEthButton {{
+    background-color: {button_copy_address_bg};
+    border: none;
+    padding: 0px;
+    margin: 0px;
   }}
 """.format(**LIGHT_COLORS)
 
