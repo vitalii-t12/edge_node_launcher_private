@@ -265,18 +265,6 @@ CHECKBOX_STYLE_TEMPLATE = """
 """
 
 DARK_STYLESHEET = """
-  QPushButton {
-    background-color: #1E90FF; 
-    color: white; 
-    border: 2px solid #87CEEB; 
-    padding: 10px 20px; 
-    font-size: 16px; 
-    margin: 4px 2px;
-    border-radius: 15px;
-  }
-  QPushButton:hover {
-    background-color: #104E8B;
-  }
   QLabel {
     font-size: 14px;
     color: white;
@@ -345,21 +333,22 @@ DARK_STYLESHEET = """
   QCheckBox {
     color: white;
   }
-"""
-
-LIGHT_STYLESHEET = """
+  
   QPushButton {
-    background-color: #D3D3D3;
-    color: black;
-    border: 2px solid #A9A9A9;
-    padding: 10px 20px;
-    font-size: 16px;
+    background-color: #1E90FF; 
+    color: white; 
+    border: 2px solid #87CEEB; 
+    padding: 10px 20px; 
+    font-size: 16px; 
     margin: 4px 2px;
     border-radius: 15px;
   }
   QPushButton:hover {
-    background-color: #A9A9A9;
+    background-color: #104E8B;
   }
+"""
+
+LIGHT_STYLESHEET = """
   QLabel {
     font-size: 14px;
     color: black;
@@ -434,6 +423,19 @@ LIGHT_STYLESHEET = """
   
   QCheckBox {
     color: black;
+  }
+  
+  QPushButton {
+    background-color: #D3D3D3;
+    color: black;
+    border: 2px solid #A9A9A9;
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 4px 2px;
+    border-radius: 15px;
+  }
+  QPushButton:hover {
+    background-color: #A9A9A9;
   }
 """
 
