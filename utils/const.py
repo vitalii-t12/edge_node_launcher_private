@@ -21,7 +21,6 @@ DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 # ============================================================================
 # APPLICATION SETTINGS
 # ============================================================================
-SHOW_MODE_SWITCH = False  # Whether to show the Simple/Pro mode switch in the UI
 REFRESH_TIME = 20_000
 MAX_HISTORY_QUEUE = 5 * 60 // 10  # 5 minutes @ 10 seconds each hb
 AUTO_UPDATE_CHECK_INTERVAL = 60

@@ -42,7 +42,6 @@ from utils.docker_commands import DockerCommandHandler
 from utils.updater import _UpdaterMixin
 from utils.docker_utils import get_volume_name, generate_container_name
 from utils.config_manager import ConfigManager, ContainerConfig
-from utils.ssh_service import SSHConfig
 
 from utils.icon import ICON_BASE64
 
@@ -245,14 +244,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     menu_layout.setAlignment(Qt.AlignTop)
     menu_layout.setContentsMargins(0, 0, 0, 0)
     
-    # Add host selector
-    self.host_selector = HostSelector()
-    self.host_selector.host_selected.connect(self._on_host_selected)
-    self.host_selector.mode_changed.connect(self._on_host_mode_changed)
-    self.host_selector.apply_stylesheet(self._current_stylesheet == DARK_STYLESHEET)
-    self.host_selector.hide()  # Initially hidden in simple mode
-    menu_layout.addWidget(self.host_selector)
-    
     top_button_area = QVBoxLayout()
 
     # Container selector area
@@ -403,21 +394,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     right_container_layout.setContentsMargins(0, 0, 0, 0)
     right_container_layout.setSpacing(0)
 
-    # Mode switch at the top
-    mode_switch_layout = QHBoxLayout()
-    mode_switch_layout.setContentsMargins(10, 5, 10, 5)
-    mode_switch_layout.setSpacing(0)
-    mode_switch_layout.addStretch(1)
-    self.mode_switch = ModeSwitch()
-    self.mode_switch.mode_changed.connect(self._on_simple_pro_mode_changed)
-    self.mode_switch.apply_stylesheet(self._current_stylesheet == DARK_STYLESHEET)
-    mode_switch_layout.addWidget(self.mode_switch, 0, Qt.AlignRight | Qt.AlignVCenter)
-    right_container_layout.addLayout(mode_switch_layout)
-    
-    # Hide the mode switch if not enabled in constants
-    if not SHOW_MODE_SWITCH:
-        self.mode_switch.setVisible(False)
-
     # Add a small spacer between mode switch and graphs
     right_container_layout.addSpacing(5)
     
@@ -476,11 +452,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     if self._current_stylesheet == DARK_STYLESHEET:
       self._current_stylesheet = LIGHT_STYLESHEET
       self.themeToggleButton.setText(DARK_DASHBOARD_BUTTON_TEXT)
-      self.host_selector.apply_stylesheet(False)  # Light theme
     else:
       self._current_stylesheet = DARK_STYLESHEET
       self.themeToggleButton.setText(LIGHT_DASHBOARD_BUTTON_TEXT)
-      self.host_selector.apply_stylesheet(True)  # Dark theme
     self.apply_stylesheet()
     self.plot_graphs()
     self.change_text_color()
@@ -524,9 +498,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             self.docker_handler.stop_container(container_name)
             self._clear_info_display()
             
-            # Update button state immediately
-            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.toggleButton.setStyleSheet("background-color: green; color: white;")
+            # Update button state using the update method
+            self.update_toggle_button_text()
         else:
             self.add_log(f'Starting container {container_name}...')
             
@@ -553,18 +526,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def update_toggle_button_text(self):
     # Get the current index and container name from the data
     current_index = self.container_combo.currentIndex()
+    
+    # Store current button state
+    current_text = self.toggleButton.text()
+    current_enabled = self.toggleButton.isEnabled()
+    current_style = self.toggleButton.styleSheet()
+    
     if current_index < 0:
-        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
+        # Only update if state changed
+        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+            self.toggleButton.setEnabled(False)
         return
         
     # Get the actual container name from the item data
     container_name = self.container_combo.itemData(current_index)
     if not container_name:
-        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
+        # Only update if state changed
+        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+            self.toggleButton.setEnabled(False)
         return
     
     # Check if container exists in Docker
@@ -574,9 +557,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     if not container_exists:
         config_container = self.config_manager.get_container(container_name)
         if config_container:
-            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.toggleButton.setStyleSheet("background-color: green; color: white;")
-            self.toggleButton.setEnabled(True)
+            # Only update if state changed
+            if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or not current_enabled:
+                self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+                self.toggleButton.setStyleSheet("background-color: green; color: white;")
+                self.toggleButton.setEnabled(True)
             return
     
     # Make sure the docker handler has the correct container name
@@ -585,15 +570,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Check if the container is running using docker_handler directly
     is_running = self.docker_handler.is_container_running()
     
-    self.toggleButton.setEnabled(True)
-    if is_running:
-        self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
-        self.toggleButton.setStyleSheet("background-color: red; color: white;")
-        self.add_log(f"Container {container_name} is running, setting button to red", debug=True)
-    else:
-        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-        self.toggleButton.setStyleSheet("background-color: green; color: white;")
-        self.add_log(f"Container {container_name} is not running, setting button to green", debug=True)
+    # Determine the new state
+    new_text = STOP_CONTAINER_BUTTON_TEXT if is_running else LAUNCH_CONTAINER_BUTTON_TEXT
+    new_style = "background-color: red; color: white;" if is_running else "background-color: green; color: white;"
+    
+    # Only update if state changed
+    if current_text != new_text or not current_enabled or current_style != new_style:
+        self.toggleButton.setEnabled(True)
+        self.toggleButton.setText(new_text)
+        self.toggleButton.setStyleSheet(new_style)
+        self.add_log(f"Container {container_name} is {'running' if is_running else 'not running'}, updating button state", debug=True)
     return
   
   def edit_file(self, file_path, func, title='Edit File'):
@@ -1073,136 +1059,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def refresh_all(self):
     """Refresh all data and UI elements."""
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-      # For simple mode, just refresh container list and info
-      self.add_log("Simple mode: skipping SSH connection, using local Docker")
-      self._refresh_local_containers()
-    else:
-      # Pro mode - Check if we're in remote mode
-      if hasattr(self, 'host_selector') and self.host_selector.is_multi_host_mode():
-        # Get current host
-        current_host = self.host_selector.get_current_host()
-        if not current_host:
-          return
-          
-        # Check host status in a non-blocking way
-        # Connect to the host_status_updated signal for a one-time update
-        self.host_selector.host_status_updated.connect(self._on_refresh_host_status_updated)
-        
-        # Start the status check
-        self.host_selector.check_host_status(current_host)
-      else:
-        # For local mode, just refresh container list and info
-        self._refresh_local_containers()
-    
+    self._refresh_local_containers()
+
     # Check for updates periodically
     if (time() - self.__last_auto_update_check) > AUTO_UPDATE_CHECK_INTERVAL:
       verbose = self.__last_auto_update_check == 0
       self.__last_auto_update_check = time()
       self.check_for_updates(verbose=verbose or FULL_DEBUG)
 
-  def _on_refresh_host_status_updated(self, host_name, is_online):
-    """Handle host status update during refresh."""
-    # Disconnect from the signal to avoid multiple connections
-    self.host_selector.host_status_updated.disconnect(self._on_refresh_host_status_updated)
-    
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-        # In simple mode, skip SSH connection and proceed with local Docker
-        self.add_log("Simple mode: skipping SSH connection, using local Docker")
-        self._refresh_local_containers()
-        return
-    
-    # Log the status update
-    self.add_log(f"Host {host_name} status update: {'online' if is_online else 'offline'}")
-    
-    # If status has changed, handle it
-    if is_online:
-      # If host is online but we don't have a connection, try to reconnect
-      if not hasattr(self, 'ssh_service') or not self.ssh_service or not self.ssh_service.check_connection():
-        self.add_log(f"Host {host_name} is online, checking connection...")
-        # Get SSH command for the host
-        ssh_command = self.host_selector.get_ssh_command(host_name)
-        if ssh_command:
-          # Set up remote connection
-          self.set_remote_connection(ssh_command)
-          self.docker_handler.set_remote_connection(ssh_command)
-          self.add_log(f"Connected to host: {host_name}")
-          
-          # In pro mode, specifically check for r1node containers
-          if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-            # Check if r1node containers exist and are running
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
-            if return_code == 0:
-              containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
-              if containers:
-                self.add_log(f"Found container on remote host: {containers[0]}")
-                # Set the container in the docker handler
-                self.docker_handler.set_container_name(containers[0])
-                
-                # Update the container combo box
-                self.refresh_container_list()
-                index = self.container_combo.findText(containers[0])
-                if index >= 0:
-                  self.container_combo.setCurrentIndex(index)
-                  
-                # Refresh container info
-                self._refresh_remote_containers()
-              else:
-                self.add_log(f"No r1node container found on host {host_name}")
-                self.toggleButton.setText("No Container Found")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-            else:
-              self.add_log(f"Error checking for containers on host {host_name}")
-          else:
-            # For non-pro mode, just refresh container list and info
-            self._refresh_remote_containers()
-      else:
-        # Connection is already established, just refresh container info
-        self.add_log(f"Connection to {host_name} is active, refreshing containers")
-        
-        # In pro mode, specifically check for r1node containers
-        if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-          # Check if r1node containers exist and are running
-          stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
-          if return_code == 0:
-            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
-            if containers:
-              self.add_log(f"Found container on remote host: {containers[0]}")
-              # Set the container in the docker handler
-              self.docker_handler.set_container_name(containers[0])
-              
-              # Update the container combo box
-              self.refresh_container_list()
-              index = self.container_combo.findText(containers[0])
-              if index >= 0:
-                self.container_combo.setCurrentIndex(index)
-        
-        self._refresh_remote_containers()
-    else:
-      # Host is offline
-      self.add_log(f"Host {host_name} is offline")
-      self.toggleButton.setText("Host Offline")
-      self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-      self.toggleButton.setEnabled(False)
-
   def _refresh_local_containers(self):
     """Refresh local container list and info."""
     try:
-        # Clear any remote connection settings to ensure we're using local Docker
-        # Instead of calling clear_remote_connection(), directly set remote_ssh_command to None
-        if hasattr(self, 'docker_handler'):
-            self.docker_handler.remote_ssh_command = None
-        
-        if hasattr(self, 'ssh_service'):
-            self.ssh_service.clear_configuration()
-        
         # Refresh container list
         self.refresh_container_list()
         
@@ -1227,26 +1094,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Ensure toggle button text is updated even if there's an error
         self.update_toggle_button_text()
 
-  def _refresh_remote_containers(self):
-    """Refresh the list of remote containers."""
-    # Check if we're in simple mode - if so, skip remote operations
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    if is_simple_mode:
-        self.add_log("Simple mode: skipping remote container refresh")
-        self._refresh_local_containers()
-        return
-        
-    # Refresh container list
-    self.refresh_container_list()
-    
-    # Update toggle button
-    self.update_toggle_button_text()
-    
-    # Refresh container status if one is running
-    if self.is_container_running():
-        self.post_launch_setup()
-        self.refresh_local_address()
-        self.plot_data()
 
   def dapp_button_clicked(self):
     import webbrowser
@@ -1516,275 +1363,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
         self.toggleButton.setStyleSheet("background-color: green; color: white;")
 
-  def _on_host_selected(self, host_name: str):
-    """Handle host selection."""
-    # Clear current display and state
-    self._clear_info_display()
-    
-    if not host_name:
-        return
-    
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-        # In simple mode, skip SSH connection and proceed with local Docker
-        self.add_log("Simple mode: skipping SSH connection, using local Docker")
-        self.toggleButton.setEnabled(True)
-        self.update_toggle_button_text()
-        self.refresh_container_list()
-        return
-        
-    # Disable button and show checking status
-    self.toggleButton.setText("Checking Host...")
-    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-    self.toggleButton.setEnabled(False)
-    
-    self.add_log(f"Host selected: {host_name}, checking status...")
-        
-    ssh_command = self.host_selector.get_ssh_command(host_name)
-    if not ssh_command:
-        self.add_log(f"Failed to get SSH command for host: {host_name}")
-        self.toast.show_notification(NotificationType.ERROR, f"Failed to get SSH command for host: {host_name}")
-        self.toggleButton.setText("SSH Error")
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
-        return
 
-    # Connect to the host_status_updated signal
-    self.host_selector.host_status_updated.connect(self._on_host_status_updated)
-    
-    # Force a fresh status check
-    self.host_selector.check_host_status(host_name)
-
-  def _on_host_status_updated(self, host_name: str, is_online: bool):
-    """Handle host status update."""
-    # Disconnect from the signal to avoid multiple connections
-    self.host_selector.host_status_updated.disconnect(self._on_host_status_updated)
-    
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-        # In simple mode, skip SSH connection and proceed with local Docker
-        self.add_log("Simple mode: skipping SSH connection, using local Docker")
-        self.toggleButton.setEnabled(True)
-        self.update_toggle_button_text()
-        self.refresh_container_list()
-        return
-    
-    if not is_online:
-        self.add_log(f"Host {host_name} is offline")
-        self.toggleButton.setText("Host Offline")
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
-        self.toast.show_notification(NotificationType.ERROR, f"Host {host_name} is offline")
-        return
-    
-    # Only proceed with connection if host is online
-    ssh_command = self.host_selector.get_ssh_command(host_name)
-    if ssh_command:
-        self._check_host_connection(host_name, ssh_command)
-
-  def _check_host_connection(self, host_name: str, ssh_command: str):
-    """Check connection and Docker status for a host."""
-    try:
-        # Check if we're in simple mode - if so, skip SSH connection
-        is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-        
-        if not is_simple_mode:
-            # Set up remote connection only in pro mode
-            self.set_remote_connection(ssh_command)
-            
-            # Test SSH connection first
-            if not self.ssh_service.check_connection():
-                raise Exception("Failed to establish SSH connection")
-                
-            self.docker_handler.set_remote_connection(ssh_command)
-            self.add_log(f"Connected to remote host: {host_name}")
-            
-            # Check if Docker is available on the remote host
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', '--version'])
-            if return_code != 0:
-                self.add_log(f"Docker not found on host {host_name}")
-                self.toggleButton.setText("Docker Not Found")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.ERROR, f"Docker not found on host {host_name}")
-                return
-            
-            # Check if Docker daemon is running
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'info'])
-            if return_code != 0:
-                self.add_log(f"Docker daemon not running on host {host_name}")
-                self.toggleButton.setText("Docker Not Running")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.ERROR, f"Docker daemon not running on host {host_name}")
-                return
-            
-            self.add_log(f"Docker is available on host {host_name}")
-        else:
-            # In simple mode, just check if Docker is available locally
-            self.add_log("Simple mode: skipping SSH connection, using local Docker")
-            
-            # Clear any remote connection settings to ensure we're using local Docker
-            self.clear_remote_connection()
-            self.docker_handler.clear_remote_connection()
-            
-            # Check if Docker is available locally
-            try:
-                import subprocess
-                result = subprocess.run(['docker', '--version'], capture_output=True, text=True)
-                if result.returncode != 0:
-                    self.add_log("Docker not found locally")
-                    self.toggleButton.setText("Docker Not Found")
-                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                    self.toggleButton.setEnabled(False)
-                    self.toast.show_notification(NotificationType.ERROR, "Docker not found locally")
-                    return
-                
-                result = subprocess.run(['docker', 'info'], capture_output=True, text=True)
-                if result.returncode != 0:
-                    self.add_log("Docker daemon not running locally")
-                    self.toggleButton.setText("Docker Not Running")
-                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                    self.toggleButton.setEnabled(False)
-                    self.toast.show_notification(NotificationType.ERROR, "Docker daemon not running locally")
-                    return
-                
-                self.add_log("Docker is available locally")
-            except Exception as e:
-                self.add_log(f"Error checking Docker: {str(e)}")
-                self.toggleButton.setText("Docker Check Failed")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.ERROR, f"Failed to check Docker: {str(e)}")
-                return
-        
-        # In pro mode, specifically check for r1node containers
-        if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-            # Check if r1node containers exist
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
-            if return_code == 0:
-                containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
-                if containers:
-                    self.add_log(f"Found container on remote host: {containers[0]}")
-                    # Set the container in the docker handler
-                    self.docker_handler.set_container_name(containers[0])
-                    
-                    # Update the container combo box
-                    self.refresh_container_list()
-                    index = self.container_combo.findText(containers[0])
-                    if index >= 0:
-                        self.container_combo.setCurrentIndex(index)
-                else:
-                    self.add_log(f"No r1node container found on host {host_name}")
-                    self.toggleButton.setText("No Container Found")
-                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                    self.toggleButton.setEnabled(False)
-                    self.toast.show_notification(NotificationType.WARNING, f"No r1node container found on host {host_name}")
-                    return
-            else:
-                self.add_log(f"Error checking for containers on host {host_name}")
-                self.toggleButton.setText("Container Check Failed")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.ERROR, f"Failed to check for containers on host {host_name}")
-                return
-        else:
-            # For non-pro mode, just refresh the container list
-            self.refresh_container_list()
-        
-        self.toggleButton.setEnabled(True)
-        
-        # Refresh container status
-        if self.is_container_running():
-            self.post_launch_setup()
-            self.refresh_local_address()
-            self.plot_data()
-        self.update_toggle_button_text()
-        
-    except Exception as e:
-        # Clear any partial connection state
-        self.clear_remote_connection()
-        self.docker_handler.clear_remote_connection()
-        
-        self.add_log(f"Connection failed to host {host_name}: {str(e)}")
-        self.toggleButton.setText("Connection Failed")
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
-        self.toast.show_notification(NotificationType.ERROR, f"Failed to connect to host {host_name}")
-        return
-
-  def _on_host_mode_changed(self, is_multi_host: bool):
-    """Handle mode change for host selector (multi-host mode)"""
-    # Clear current display and state
-    self._clear_info_display()
-    
-    if not is_multi_host:
-        self.clear_remote_connection()
-        self.docker_handler.clear_remote_connection()  # Clear remote connection for docker_handler
-        self.add_log("Switched to local mode")
-        self.toggleButton.setEnabled(True)
-        # Refresh container status
-        if self.is_container_running():
-            self.post_launch_setup()
-            self.refresh_local_address()
-            self.plot_data()
-        self.update_toggle_button_text()
-    else:
-        self.add_log("Switched to multi-host mode")
-        self.toggleButton.setEnabled(False)  # Disable toggle button until a host is selected
-        
-        # Check the initial host if one is selected
-        current_host = self.host_selector.get_current_host()
-        if current_host:
-            self._on_host_selected(current_host)  # This will check the host's status
-
-  def _on_simple_pro_mode_changed(self, is_pro_mode):
-    """Handle mode change between simple and pro"""
-    self.add_log(f'Switched to {"pro" if is_pro_mode else "simple"} mode')
-    
-    # Update host selector pro mode state
-    self.host_selector.set_pro_mode(is_pro_mode)
-    
-    # Handle UI visibility and functionality based on mode
-    if is_pro_mode:
-      # Show host selector for remote connections
-      self.host_selector.show()
-      
-      # Hide container dropdown and add node button in pro mode
-      self.container_combo.hide()
-      self.add_node_button.hide()
-      
-      # Clear any existing container info
-      self._clear_info_display()
-      
-      # Disable toggle button until a host is selected and verified
-      self.toggleButton.setText("Select Host...")
-      self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-      self.toggleButton.setEnabled(False)
-      
-      # Check the initial host if one is selected
-      current_host = self.host_selector.get_current_host()
-      if current_host:
-        # Use QTimer to delay the host selection to avoid blocking the UI
-        QTimer.singleShot(100, lambda: self._on_host_selected(current_host))
-    else:
-      # Hide host selector in simple mode
-      self.host_selector.hide()
-      
-      # Show container dropdown and add node button in simple mode
-      self.container_combo.show()
-      self.add_node_button.show()
-      
-      # Clear any remote connections
-      self.clear_remote_connection()
-      self.docker_handler.clear_remote_connection()
-      
-      # Reset toggle button
-      self.update_toggle_button_text()
 
   def open_docker_download(self):
     """Open Docker download page in default browser."""
@@ -2072,9 +1651,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def is_container_running(self):
     """Check if the currently selected container is running.
     
-    This method uses the docker_handler to check if the container is running.
-    It properly handles both local and remote containers.
-    
     Returns:
         bool: True if the container is running, False otherwise
     """
@@ -2171,305 +1747,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     return
 
-  def _on_refresh_host_status_updated(self, host_name, is_online):
-    """Handle host status update during refresh."""
-    # Disconnect from the signal to avoid multiple connections
-    self.host_selector.host_status_updated.disconnect(self._on_refresh_host_status_updated)
-    
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-        # In simple mode, skip SSH connection and proceed with local Docker
-        self.add_log("Simple mode: skipping SSH connection, using local Docker")
-        self._refresh_local_containers()
-        return
-    
-    # Pro mode - continue with SSH operations
-    # Log the status update
-    self.add_log(f"Host {host_name} status update: {'online' if is_online else 'offline'}")
-    
-    # If status has changed, handle it
-    if is_online:
-      # If host is online but we don't have a connection, try to reconnect
-      if not hasattr(self, 'ssh_service') or not self.ssh_service or not self.ssh_service.check_connection():
-        self.add_log(f"Host {host_name} is online, checking connection...")
-        # Get SSH command for the host
-        ssh_command = self.host_selector.get_ssh_command(host_name)
-        if ssh_command:
-          # Set up remote connection
-          self.set_remote_connection(ssh_command)
-          self.docker_handler.set_remote_connection(ssh_command)
-          self.add_log(f"Connected to host: {host_name}")
-          
-          # In pro mode, specifically check for r1node containers
-          if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-            # Check if r1node containers exist and are running
-            stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
-            if return_code == 0:
-              containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
-              if containers:
-                self.add_log(f"Found container on remote host: {containers[0]}")
-                # Set the container in the docker handler
-                self.docker_handler.set_container_name(containers[0])
-                
-                # Update the container combo box
-                self.refresh_container_list()
-                index = self.container_combo.findText(containers[0])
-                if index >= 0:
-                  self.container_combo.setCurrentIndex(index)
-                  
-                # Refresh container info
-                self._refresh_remote_containers()
-              else:
-                self.add_log(f"No r1node container found on host {host_name}")
-                self.toggleButton.setText("No Container Found")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-            else:
-              self.add_log(f"Error checking for containers on host {host_name}")
-          else:
-            # For non-pro mode, just refresh container list and info
-            self._refresh_remote_containers()
-      else:
-        # Connection is already established, just refresh container info
-        self.add_log(f"Connection to {host_name} is active, refreshing containers")
-        
-        # In pro mode, specifically check for r1node containers
-        if hasattr(self, 'mode_switch') and self.mode_switch.is_pro_mode():
-          # Check if r1node containers exist and are running
-          stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
-          if return_code == 0:
-            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
-            if containers:
-              self.add_log(f"Found container on remote host: {containers[0]}")
-              # Set the container in the docker handler
-              self.docker_handler.set_container_name(containers[0])
-              
-              # Update the container combo box
-              self.refresh_container_list()
-              index = self.container_combo.findText(containers[0])
-              if index >= 0:
-                self.container_combo.setCurrentIndex(index)
-        
-        self._refresh_remote_containers()
-    else:
-      # Host is offline
-      self.add_log(f"Host {host_name} is offline")
-      self.toggleButton.setText("Host Offline")
-      self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-      self.toggleButton.setEnabled(False)
-
-  def _on_host_selected(self, host_name: str):
-    """Handle host selection."""
-    # Clear current display and state
-    self._clear_info_display()
-    
-    if not host_name:
-        return
-    
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-        # In simple mode, skip SSH connection and proceed with local Docker
-        self.add_log("Simple mode: skipping SSH connection, using local Docker")
-        self.toggleButton.setEnabled(True)
-        self.update_toggle_button_text()
-        self.refresh_container_list()
-        return
-        
-    # Pro mode - continue with SSH operations
-    # Disable button and show checking status
-    self.toggleButton.setText("Checking Host...")
-    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-    self.toggleButton.setEnabled(False)
-    
-    self.add_log(f"Host selected: {host_name}, checking status...")
-        
-    ssh_command = self.host_selector.get_ssh_command(host_name)
-    if not ssh_command:
-        self.add_log(f"Failed to get SSH command for host: {host_name}")
-        self.toast.show_notification(NotificationType.ERROR, f"Failed to get SSH command for host: {host_name}")
-        self.toggleButton.setText("SSH Error")
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
-        return
-
-    # Connect to the host_status_updated signal
-    self.host_selector.host_status_updated.connect(self._on_host_status_updated)
-    
-    # Force a fresh status check
-    self.host_selector.check_host_status(host_name)
-
-  def _on_host_status_updated(self, host_name: str, is_online: bool):
-    """Handle host status update."""
-    # Disconnect from the signal to avoid multiple connections
-    self.host_selector.host_status_updated.disconnect(self._on_host_status_updated)
-    
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-        # In simple mode, skip SSH connection and proceed with local Docker
-        self.add_log("Simple mode: skipping SSH connection, using local Docker")
-        self.toggleButton.setEnabled(True)
-        self.update_toggle_button_text()
-        self.refresh_container_list()
-        return
-    
-    if not is_online:
-        self.add_log(f"Host {host_name} is offline")
-        self.toggleButton.setText("Host Offline")
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
-        self.toast.show_notification(NotificationType.ERROR, f"Host {host_name} is offline")
-        return
-    
-    # Only proceed with connection if host is online
-    ssh_command = self.host_selector.get_ssh_command(host_name)
-    if ssh_command:
-        self._check_host_connection(host_name, ssh_command)
-
-  def _check_host_connection(self, host_name: str, ssh_command: str):
-    """Check connection and Docker status for a host."""
-    try:
-        # Check if we're in simple mode
-        is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-        
-        if is_simple_mode:
-            # In simple mode, just check if Docker is available locally
-            self.add_log("Simple mode: skipping SSH connection, using local Docker")
-            
-            # Clear any remote connection settings to ensure we're using local Docker
-            self.clear_remote_connection()
-            self.docker_handler.clear_remote_connection()
-            
-            # Check if Docker is available locally
-            try:
-                import subprocess
-                result = subprocess.run(['docker', '--version'], capture_output=True, text=True)
-                if result.returncode != 0:
-                    self.add_log("Docker not found locally")
-                    self.toggleButton.setText("Docker Not Found")
-                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                    self.toggleButton.setEnabled(False)
-                    self.toast.show_notification(NotificationType.ERROR, "Docker not found locally")
-                    return
-                
-                result = subprocess.run(['docker', 'info'], capture_output=True, text=True)
-                if result.returncode != 0:
-                    self.add_log("Docker daemon not running locally")
-                    self.toggleButton.setText("Docker Not Running")
-                    self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                    self.toggleButton.setEnabled(False)
-                    self.toast.show_notification(NotificationType.ERROR, "Docker daemon not running locally")
-                    return
-                
-                self.add_log("Docker is available locally")
-                
-                # For simple mode, just refresh the container list
-                self.refresh_container_list()
-                self.toggleButton.setEnabled(True)
-                
-                # Refresh container status
-                if self.is_container_running():
-                    self.post_launch_setup()
-                    self.refresh_local_address()
-                    self.plot_data()
-                self.update_toggle_button_text()
-                
-            except Exception as e:
-                self.add_log(f"Error checking Docker: {str(e)}")
-                self.toggleButton.setText("Docker Check Failed")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.ERROR, f"Failed to check Docker: {str(e)}")
-                return
-                
-            return  # Exit early for Simple mode
-        
-        # Pro mode - Set up remote connection
-        self.set_remote_connection(ssh_command)
-        
-        # Test SSH connection first
-        if not self.ssh_service.check_connection():
-            raise Exception("Failed to establish SSH connection")
-            
-        self.docker_handler.set_remote_connection(ssh_command)
-        self.add_log(f"Connected to remote host: {host_name}")
-        
-        # Check if Docker is available on the remote host
-        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', '--version'])
-        if return_code != 0:
-            self.add_log(f"Docker not found on host {host_name}")
-            self.toggleButton.setText("Docker Not Found")
-            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-            self.toggleButton.setEnabled(False)
-            self.toast.show_notification(NotificationType.ERROR, f"Docker not found on host {host_name}")
-            return
-        
-        # Check if Docker daemon is running
-        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'info'])
-        if return_code != 0:
-            self.add_log(f"Docker daemon not running on host {host_name}")
-            self.toggleButton.setText("Docker Not Running")
-            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-            self.toggleButton.setEnabled(False)
-            self.toast.show_notification(NotificationType.ERROR, f"Docker daemon not running on host {host_name}")
-            return
-        
-        self.add_log(f"Docker is available on host {host_name}")
-        
-        # In pro mode, specifically check for r1node containers
-        stdout, stderr, return_code = self.ssh_service.execute_command(['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', 'name=r1node'])
-        if return_code == 0:
-            containers = [name.strip() for name in stdout.split('\n') if name.strip() and name.strip().startswith('r1node')]
-            if containers:
-                self.add_log(f"Found container on remote host: {containers[0]}")
-                # Set the container in the docker handler
-                self.docker_handler.set_container_name(containers[0])
-                
-                # Update the container combo box
-                self.refresh_container_list()
-                index = self.container_combo.findText(containers[0])
-                if index >= 0:
-                    self.container_combo.setCurrentIndex(index)
-            else:
-                self.add_log(f"No r1node container found on host {host_name}")
-                self.toggleButton.setText("No Container Found")
-                self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-                self.toggleButton.setEnabled(False)
-                self.toast.show_notification(NotificationType.WARNING, f"No r1node container found on host {host_name}")
-                return
-        else:
-            self.add_log(f"Error checking for containers on host {host_name}")
-            self.toggleButton.setText("Container Check Failed")
-            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-            self.toggleButton.setEnabled(False)
-            self.toast.show_notification(NotificationType.ERROR, f"Failed to check for containers on host {host_name}")
-            return
-        
-        self.toggleButton.setEnabled(True)
-        
-        # Refresh container status
-        if self.is_container_running():
-            self.post_launch_setup()
-            self.refresh_local_address()
-            self.plot_data()
-        self.update_toggle_button_text()
-        
-    except Exception as e:
-        # Clear any partial connection state
-        self.clear_remote_connection()
-        self.docker_handler.clear_remote_connection()
-        
-        self.add_log(f"Connection failed to host {host_name}: {str(e)}")
-        self.toggleButton.setText("Connection Failed")
-        self.toggleButton.setStyleSheet("background-color: gray; color: white;")
-        self.toggleButton.setEnabled(False)
-        self.toast.show_notification(NotificationType.ERROR, f"Failed to connect to host {host_name}")
-        return
 
   def _clear_info_display(self):
     """Clear all information displays."""
@@ -2585,39 +1862,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Don't call _refresh_local_containers here to avoid circular dependency
     return
 
-  def set_remote_connection(self, ssh_command: str):
-    """Set up remote connection using SSH command."""
-    # Check if we're in simple mode - if so, skip SSH connection
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    if is_simple_mode:
-        self.add_log("Simple mode: skipping SSH connection setup")
-        return
-        
-    if not ssh_command:
-      self.clear_remote_connection()
-      return
-
-    # Get current host configuration
-    current_host = self.host_selector.get_current_host()
-    host_config = self.host_selector.hosts_manager.get_host(current_host)
-    
-    if not host_config:
-      return
-
-    # Configure SSH service
-    ssh_config = SSHConfig(
-      host=host_config.ansible_host,
-      user=host_config.ansible_user,
-      password=host_config.ansible_become_password,
-      private_key=host_config.ansible_ssh_private_key_file,
-      ssh_args=host_config.ansible_ssh_common_args.split() if host_config.ansible_ssh_common_args else None
-    )
-    
-    self.ssh_service.configure(ssh_config)
-    
-    # Update Docker settings
-    self.is_remote = True
-    self.remote_ssh_command = ssh_command.split()
 
   def _refresh_local_containers(self):
     """Refresh local container list and info."""
@@ -2654,56 +1898,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Ensure toggle button text is updated even if there's an error
         self.update_toggle_button_text()
 
-  def _refresh_remote_containers(self):
-    """Refresh the list of remote containers."""
-    # Check if we're in simple mode - if so, skip remote operations
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    if is_simple_mode:
-        self.add_log("Simple mode: skipping remote container refresh")
-        self._refresh_local_containers()
-        return
-        
-    # Refresh container list
-    self.refresh_container_list()
-    
-    # Update toggle button
-    self.update_toggle_button_text()
-    
-    # Refresh container status if one is running
-    if self.is_container_running():
-        self.post_launch_setup()
-        self.refresh_local_address()
-        self.plot_data()
-
-  def _on_host_mode_changed(self, is_multi_host: bool):
-    """Handle host mode change between single and multi-host."""
-    self.add_log(f'Host selector mode changed to {"multi-host" if is_multi_host else "single-host"}')
-    
-    # Check if we're in simple mode
-    is_simple_mode = hasattr(self, 'mode_switch') and not self.mode_switch.is_pro_mode()
-    
-    if is_simple_mode:
-        # In simple mode, always use local Docker regardless of host mode
-        self.add_log("Simple mode: using local Docker regardless of host mode")
-        self.clear_remote_connection()
-        if hasattr(self, 'docker_handler'):
-            self.docker_handler.clear_remote_connection()
-        self.refresh_container_list()
-        return
-    
-    # In pro mode, handle multi-host mode changes
-    if is_multi_host:
-        # Multi-host mode enabled, check the current host
-        current_host = self.host_selector.get_current_host()
-        if current_host:
-            # Use QTimer to delay the host selection to avoid blocking the UI
-            QTimer.singleShot(100, lambda: self._on_host_selected(current_host))
-    else:
-        # Multi-host mode disabled, clear any remote connections
-        self.clear_remote_connection()
-        if hasattr(self, 'docker_handler'):
-            self.docker_handler.clear_remote_connection()
-        self.refresh_container_list()
 
   def dapp_button_clicked(self):
     import webbrowser
