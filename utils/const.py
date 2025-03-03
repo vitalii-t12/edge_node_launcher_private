@@ -35,7 +35,6 @@ WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
 
 # Button texts
 EDIT_AUTHORIZED_ADDRS = 'Edit Authorized Addresses'
-VIEW_CONFIGS_BUTTON_TEXT = 'View Configs'
 LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Edge Node'
 STOP_CONTAINER_BUTTON_TEXT = 'Stop Edge Node'
 DAPP_BUTTON_TEXT = 'Launch dApp'

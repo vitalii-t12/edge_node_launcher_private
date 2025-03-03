@@ -378,12 +378,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     bottom_button_area.addWidget(self.btn_edit_addrs)
 
     
-    # view_config_files
-    self.btn_view_configs = QPushButton(VIEW_CONFIGS_BUTTON_TEXT)
-    self.btn_view_configs.clicked.connect(self.view_config_files)
-    bottom_button_area.addWidget(self.btn_view_configs)
-
-    
     self.deleteButton = QPushButton(DELETE_AND_RESTART_BUTTON_TEXT)
     self.deleteButton.clicked.connect(self.delete_and_restart)
     bottom_button_area.addWidget(self.deleteButton)
@@ -785,61 +779,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_log(f"Error loading authorized addresses: {str(e)}", color="red")
         self.toast.show_notification(NotificationType.ERROR, f"Error loading authorized addresses: {str(e)}")
         
-  def view_config_files(self):
-    startup_config = None
-    config_app = None
-    error_occurred = False
-
-    def check_and_show_configs():
-        if error_occurred:
-            return
-        if startup_config is not None and config_app is not None:
-            # Both configs are loaded, show them
-            config_startup_content = json.dumps(dataclasses.asdict(startup_config), indent=2)
-            config_app_content = json.dumps(dataclasses.asdict(config_app), indent=2)
-
-            # Create the text edit widgets
-            startup_text_edit = QTextEdit()
-            startup_text_edit.setText(config_startup_content)
-            startup_text_edit.setFont(QFont("Courier New", 11))
-            startup_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
-
-            app_text_edit = QTextEdit()
-            app_text_edit.setText(config_app_content)
-            app_text_edit.setFont(QFont("Courier New", 11))
-            app_text_edit.setStyleSheet("color: #FFFFFF; background-color: #0D1F2D;")
-
-            # Create and show dialog
-            self.show_config_dialog(startup_text_edit, app_text_edit)
-
-    def on_startup_success(config: StartupConfig) -> None:
-        nonlocal startup_config
-        startup_config = config
-        check_and_show_configs()
-
-    def on_startup_error(error: str) -> None:
-        nonlocal error_occurred
-        error_occurred = True
-        self.add_log(f'Error getting startup config: {error}', debug=True)
-        self.toast.show_notification(NotificationType.ERROR, 'Failed to load startup config')
-
-    def on_config_app_success(config: ConfigApp) -> None:
-        nonlocal config_app
-        config_app = config
-        check_and_show_configs()
-
-    def on_config_app_error(error: str) -> None:
-        nonlocal error_occurred
-        error_occurred = True
-        self.add_log(f'Error getting config app: {error}', debug=True)
-        self.toast.show_notification(NotificationType.ERROR, 'Failed to load config app')
-
-    if self.is_container_running():
-        # Start both requests in parallel
-        self.docker_handler.get_startup_config(on_startup_success, on_startup_error)
-        self.docker_handler.get_config_app(on_config_app_success, on_config_app_error)
-    else:
-        self.toast.show_notification(NotificationType.ERROR, 'Container not running')
 
   def show_config_dialog(self, startup_text_edit, app_text_edit):
     # Create the dialog
