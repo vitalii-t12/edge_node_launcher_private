@@ -492,12 +492,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.change_text_color()
     return  
 
-  # TODO: Find a better approach. It's a hotfix for the text color issue.
   def change_text_color(self):
     if self._current_stylesheet == DARK_STYLESHEET:
-      self.force_debug_checkbox.setStyleSheet("color: white;")
+      self.force_debug_checkbox.setStyleSheet(CHECKBOX_STYLE_TEMPLATE.format(text_color=DARK_COLORS["text_color"]))
     else:
-      self.force_debug_checkbox.setStyleSheet("color: black;")
+      self.force_debug_checkbox.setStyleSheet(CHECKBOX_STYLE_TEMPLATE.format(text_color=LIGHT_COLORS["text_color"]))
 
   def apply_stylesheet(self):
     is_dark = self._current_stylesheet == DARK_STYLESHEET
@@ -508,57 +507,23 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
     
-    # Style container selector
-    text_color = "white" if is_dark else "black"
-    bg_color = "#2b2b2b" if is_dark else "white"
-    border_color = "#555555" if is_dark else "#cccccc"
-    hover_color = "#3b3b3b" if is_dark else "#f5f5f5"
+    # Get the appropriate color set based on the theme
+    colors = DARK_COLORS if is_dark else LIGHT_COLORS
     
-    combobox_style = f"""
-        QComboBox {{
-            color: {text_color};
-            background-color: {bg_color};
-            border: 1px solid {border_color};
-            border-radius: 4px;
-            padding: 4px;
-            min-width: 100px;
-        }}
-        QComboBox:hover {{
-            background-color: {hover_color};
-            border: 1px solid #4CAF50;
-        }}
-        QComboBox::drop-down {{
-            border: none;
-            width: 20px;
-        }}
-        QComboBox::down-arrow {{
-            image: none;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid {text_color};
-            margin-right: 8px;
-        }}
-        QComboBox QAbstractItemView {{
-            color: {text_color};
-            background-color: {bg_color};
-            selection-background-color: {hover_color};
-            selection-color: {text_color};
-        }}
-    """
+    # Apply styles using templates from const.py
+    combobox_style = COMBOBOX_STYLE_TEMPLATE.format(
+        text_color=colors["text_color"],
+        bg_color=colors["bg_color"],
+        border_color=colors["border_color"],
+        hover_color=colors["hover_color"]
+    )
     
-    button_style = f"""
-        QPushButton {{
-            color: {text_color};
-            background-color: {bg_color};
-            border: 1px solid {border_color};
-            border-radius: 4px;
-            padding: 4px 12px;
-        }}
-        QPushButton:hover {{
-            background-color: {hover_color};
-            border: 1px solid #4CAF50;
-        }}
-    """
+    button_style = BUTTON_STYLE_TEMPLATE.format(
+        text_color=colors["text_color"],
+        bg_color=colors["bg_color"],
+        border_color=colors["border_color"],
+        hover_color=colors["hover_color"]
+    )
     
     self.container_combo.setStyleSheet(combobox_style)
     self.add_node_button.setStyleSheet(button_style)

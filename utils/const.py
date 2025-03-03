@@ -117,6 +117,98 @@ EE_HF_TOKEN=token_for_accessing_huggingface_api
 # ============================================================================
 # STYLESHEETS
 # ============================================================================
+
+# Color definitions for dark theme
+DARK_COLORS = {
+    "text_color": "white",
+    "bg_color": "#2b2b2b",
+    "border_color": "#555555",
+    "hover_color": "#3b3b3b",
+    "button_bg": "#1E90FF",
+    "button_border": "#87CEEB",
+    "button_hover": "#104E8B",
+    "progress_border": "#1E90FF",
+    "progress_chunk": "#1E90FF",
+    "widget_bg": "#0D1F2D",
+    "text_edit_bg": "#0D1F2D",
+    "text_edit_border": "#1E90FF",
+    "plot_bg": "#243447",
+    "plot_border": "#87CEEB"
+}
+
+# Color definitions for light theme
+LIGHT_COLORS = {
+    "text_color": "black",
+    "bg_color": "white",
+    "border_color": "#cccccc",
+    "hover_color": "#f5f5f5",
+    "button_bg": "#D3D3D3",
+    "button_border": "#A9A9A9",
+    "button_hover": "#A9A9A9",
+    "progress_border": "#D3D3D3",
+    "progress_chunk": "#D3D3D3",
+    "widget_bg": "#F0F0F0",
+    "text_edit_bg": "#FFFFFF",
+    "text_edit_border": "#D3D3D3",
+    "plot_bg": "#FFFFFF",
+    "plot_border": "#A9A9A9"
+}
+
+# ComboBox style template
+COMBOBOX_STYLE_TEMPLATE = """
+    QComboBox {{
+        color: {text_color};
+        background-color: {bg_color};
+        border: 1px solid {border_color};
+        border-radius: 4px;
+        padding: 4px;
+        min-width: 100px;
+    }}
+    QComboBox:hover {{
+        background-color: {hover_color};
+        border: 1px solid #4CAF50;
+    }}
+    QComboBox::drop-down {{
+        border: none;
+        width: 20px;
+    }}
+    QComboBox::down-arrow {{
+        image: none;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid {text_color};
+        margin-right: 8px;
+    }}
+    QComboBox QAbstractItemView {{
+        color: {text_color};
+        background-color: {bg_color};
+        selection-background-color: {hover_color};
+        selection-color: {text_color};
+    }}
+"""
+
+# Button style template
+BUTTON_STYLE_TEMPLATE = """
+    QPushButton {{
+        color: {text_color};
+        background-color: {bg_color};
+        border: 1px solid {border_color};
+        border-radius: 4px;
+        padding: 4px 12px;
+    }}
+    QPushButton:hover {{
+        background-color: {hover_color};
+        border: 1px solid #4CAF50;
+    }}
+"""
+
+# Checkbox style template
+CHECKBOX_STYLE_TEMPLATE = """
+    QCheckBox {{
+        color: {text_color};
+    }}
+"""
+
 DARK_STYLESHEET = """
   QPushButton {
     background-color: #1E90FF; 
@@ -162,6 +254,40 @@ DARK_STYLESHEET = """
   }
 
   PlotWidget LabelItem {
+    color: white;
+  }
+  
+  QComboBox {
+    color: white;
+    background-color: #2b2b2b;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    padding: 4px;
+    min-width: 100px;
+  }
+  QComboBox:hover {
+    background-color: #3b3b3b;
+    border: 1px solid #4CAF50;
+  }
+  QComboBox::drop-down {
+    border: none;
+    width: 20px;
+  }
+  QComboBox::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid white;
+    margin-right: 8px;
+  }
+  QComboBox QAbstractItemView {
+    color: white;
+    background-color: #2b2b2b;
+    selection-background-color: #3b3b3b;
+    selection-color: white;
+  }
+  
+  QCheckBox {
     color: white;
   }
 """
@@ -218,6 +344,40 @@ LIGHT_STYLESHEET = """
   }
 
   PlotWidget .plotLabel {
+    color: black;
+  }
+  
+  QComboBox {
+    color: black;
+    background-color: white;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    padding: 4px;
+    min-width: 100px;
+  }
+  QComboBox:hover {
+    background-color: #f5f5f5;
+    border: 1px solid #4CAF50;
+  }
+  QComboBox::drop-down {
+    border: none;
+    width: 20px;
+  }
+  QComboBox::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid black;
+    margin-right: 8px;
+  }
+  QComboBox QAbstractItemView {
+    color: black;
+    background-color: white;
+    selection-background-color: #f5f5f5;
+    selection-color: black;
+  }
+  
+  QCheckBox {
     color: black;
   }
 """
