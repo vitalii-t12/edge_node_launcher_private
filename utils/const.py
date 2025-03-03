@@ -2,25 +2,38 @@ from ver import __VER__
 
 FULL_DEBUG = True
 
-
+# ============================================================================
+# DIRECTORY AND FILE CONSTANTS
+# ============================================================================
 HOME_SUBFOLDER = ".naeural_launcher"
 CONFIG_DIR = ".ratio1/edge_node_launcher"
+E2_PEM_FILE = 'e2.pem'
 
-# Docker
+# ============================================================================
+# DOCKER CONSTANTS
+# ============================================================================
 DOCKER_VOLUME = 'naeural_vol'
 DOCKER_IMAGE = 'naeural/edge_node'
 DOCKER_TAG = 'testnet'
 DOCKER_CONTAINER_NAME = 'r1node'
 DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 
-# Application mode settings
+# ============================================================================
+# APPLICATION SETTINGS
+# ============================================================================
 SHOW_MODE_SWITCH = False  # Whether to show the Simple/Pro mode switch in the UI
+REFRESH_TIME = 20_000
+MAX_HISTORY_QUEUE = 5 * 60 // 10  # 5 minutes @ 10 seconds each hb
+AUTO_UPDATE_CHECK_INTERVAL = 60
+MAX_ALIAS_LENGTH = 15  # Maximum length for aliases (node name and authorized addresses)
 
-# Files names
-E2_PEM_FILE = 'e2.pem'
-
-# titles, buttons, labels, captions
+# ============================================================================
+# UI TEXT CONSTANTS
+# ============================================================================
+# Window and titles
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
+
+# Button texts
 EDIT_AUTHORIZED_ADDRS = 'Edit Authorized Addresses'
 VIEW_CONFIGS_BUTTON_TEXT = 'View Configs'
 LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Edge Node'
@@ -28,21 +41,17 @@ STOP_CONTAINER_BUTTON_TEXT = 'Stop Edge Node'
 DAPP_BUTTON_TEXT = 'Launch dApp'
 EXPLORER_BUTTON_TEXT = 'Ratio1 Explorer'
 DELETE_AND_RESTART_BUTTON_TEXT = 'Reset Node Address'
-LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 REFRESH_LOCAL_ADDRESS_BUTTON_TEXT = 'Refresh Local Address'
 COPY_ADDRESS_BUTTON_TEXT = 'Copy Address'
 COPY_ETHEREUM_ADDRESS_BUTTON_TEXT = 'Copy Ethereum Address'
 RENAME_NODE_BUTTON_TEXT = 'Change Node Alias'
 LIGHT_DASHBOARD_BUTTON_TEXT = 'Switch to Light Theme'
 
+# Label texts
+LOCAL_NODE_ADDRESS_LABEL_TEXT = 'Local Node Address'
 UPTIME_LABEL = 'Up Time:'
 EPOCH_LABEL = 'Epoch:'
 EPOCH_AVAIL_LABEL = 'Epochs avail:'
-
-REFRESH_TIME = 20_000
-MAX_HISTORY_QUEUE = 5 * 60 // 10 # 5 minutes @ 10 seconds each hb
-
-AUTO_UPDATE_CHECK_INTERVAL = 60
 
 # Notification messages
 NOTIFICATION_TITLE_STRINGS_ENUM = {
@@ -51,10 +60,29 @@ NOTIFICATION_TITLE_STRINGS_ENUM = {
     'warning': 'Warning',
     'info': 'Information'
 }
-
 NOTIFICATION_ADDRESS_COPIED = "Address {address} copied to clipboard"
 NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again after launching the Edge Node."
 
+# ============================================================================
+# ENVIRONMENT SETTINGS
+# ============================================================================
+ENVIRONMENTS = {
+    'mainnet': 'Mainnet',
+    'testnet': 'Testnet',
+    'devnet': 'Devnet'
+}
+
+DAPP_URLS = {
+    'mainnet': 'https://app.ratio1.ai/',
+    'testnet': 'https://testnet-app.ratio1.ai/',
+    'devnet': 'https://devnet-app.ratio1.ai/'
+}
+
+DEFAULT_ENVIRONMENT = 'testnet'
+
+# ============================================================================
+# TEMPLATES
+# ============================================================================
 ENV_TEMPLATE = '''
 # LOCAL FILE TEMPLATE
 
@@ -86,6 +114,9 @@ EE_OPENAI=token_for_accessing_openai_api
 EE_HF_TOKEN=token_for_accessing_huggingface_api
 '''
 
+# ============================================================================
+# STYLESHEETS
+# ============================================================================
 DARK_STYLESHEET = """
   QPushButton {
     background-color: #1E90FF; 
@@ -190,22 +221,4 @@ LIGHT_STYLESHEET = """
     color: black;
   }
 """
-
-# Environment settings
-ENVIRONMENTS = {
-    'mainnet': 'Mainnet',
-    'testnet': 'Testnet',
-    'devnet': 'Devnet'
-}
-
-DAPP_URLS = {
-    'mainnet': 'https://app.ratio1.ai/',
-    'testnet': 'https://testnet-app.ratio1.ai/',
-    'devnet': 'https://devnet-app.ratio1.ai/'
-}
-
-DEFAULT_ENVIRONMENT = 'testnet'
-
-# Maximum length for aliases (node name and authorized addresses)
-MAX_ALIAS_LENGTH = 15
 
