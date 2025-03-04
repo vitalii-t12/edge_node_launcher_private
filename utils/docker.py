@@ -18,6 +18,7 @@ from .const import *
 from .docker_commands import DockerCommandHandler
 from .ssh_service import SSHService, SSHConfig
 from .service_manager import ServiceManager
+from widgets.dialogs.DockerCheckDialog import DockerCheckDialog
 
 def get_user_folder():
   """
@@ -333,6 +334,14 @@ class _DockerUtilsMixin:
     return
 
   def check_docker(self):
+    """Check if Docker is installed and running.
+    
+    Returns:
+        tuple: (is_installed, is_running, error_message)
+            - is_installed: bool indicating if Docker is installed
+            - is_running: bool indicating if Docker daemon is running
+            - error_message: str with error details if any, None otherwise
+    """
     self.add_log('Checking Docker status...')
     try:
         # First check if Docker is installed
@@ -349,21 +358,11 @@ class _DockerUtilsMixin:
             subprocess.check_output(['docker', 'info'], stderr=subprocess.STDOUT, universal_newlines=True)
         
         self.add_log("Docker daemon is running")
-        return True
+        return True, True, None
     except FileNotFoundError:
-        QMessageBox.warning(
-            self, 'Docker Check', 
-            'Docker is not installed. Please install Docker and restart the application.\n\n'
-            'Click the "Download Docker" button to visit the Docker installation page.'
-        )
-        return False
+        return False, False, "Docker is not installed"
     except subprocess.CalledProcessError:
-        QMessageBox.warning(
-            self, 'Docker Check', 
-            'Docker daemon is not running. Please start Docker and try again.\n\n'
-            'If Docker is not installed, click the "Download Docker" button to visit the Docker installation page.'
-        )
-        return False
+        return True, False, "Docker daemon is not running"
 
 
   def is_container_running(self):

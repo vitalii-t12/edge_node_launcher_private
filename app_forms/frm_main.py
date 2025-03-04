@@ -56,6 +56,7 @@ from models.StartupConfig import StartupConfig
 from models.ConfigApp import ConfigApp
 from widgets.HostSelector import HostSelector
 from widgets.ModeSwitch import ModeSwitch
+from widgets.dialogs.DockerCheckDialog import DockerCheckDialog
 
 
 def get_platform_and_os_info():
@@ -100,7 +101,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.__current_node_ver = -1
     self.__display_uptime = None
 
-
     self._current_stylesheet = DARK_STYLESHEET
     self.__last_plot_data = None
     self.__last_auto_update_check = 0
@@ -122,13 +122,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.add_log(f'Edge Node Launcher v{self.__version__} started. Running in production: {self.runs_in_production}, running with debugger: {self.runs_with_debugger()}, running in ipython: {self.runs_from_ipython()},  running from exe: {not self.not_running_from_exe()}')
     self.add_log(f'Running from: {self.__cwd}')
 
-
     platform_info, os_name, os_version = get_platform_and_os_info()
     self.add_log(f'Platform: {platform_info}')
     self.add_log(f'OS: {os_name} {os_version}')
 
-    if not self.check_docker():
-      sys.exit(1)    
+    # Check Docker and handle UI interactions
+    if not self.check_docker_with_ui():
+        self.close()
+        sys.exit(1)
 
     self.docker_initialize()
     self.docker_handler = DockerCommandHandler(DOCKER_CONTAINER_NAME)
@@ -141,12 +142,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Check if container is running and update UI accordingly
     if self.is_container_running():
-      self.add_log("Container is running on startup, updating UI", debug=True)
-      self.post_launch_setup()
-      self.refresh_local_address()
-      self.plot_data()  # Initial plot
+        self.add_log("Container is running on startup, updating UI", debug=True)
+        self.post_launch_setup()
+        self.refresh_local_address()
+        self.plot_data()  # Initial plot
     else:
-      self.add_log("No running container found on startup", debug=True)
+        self.add_log("No running container found on startup", debug=True)
 
     # Ensure button state is correct
     self.update_toggle_button_text()
@@ -158,6 +159,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     return
 
+  def check_docker_with_ui(self):
+    """Check Docker status and handle UI interactions.
+    
+    Returns:
+        bool: True if Docker is ready to use, False otherwise
+    """
+    while True:
+        is_installed, is_running, error_msg = super().check_docker()
+        if is_installed and is_running:
+            return True
+            
+        # Show the Docker check dialog
+        dialog = DockerCheckDialog(self, self._icon)
+        if error_msg:
+            dialog.message.setText(error_msg + '\nPlease install/start Docker and try again.')
+        
+        result = dialog.exec_()
+        if result == QDialog.Accepted:  # User clicked "Try Again"
+            continue
+        else:  # User clicked "Quit" or closed the dialog
+            return False
+  
   @staticmethod
   def not_running_from_exe():
     """
