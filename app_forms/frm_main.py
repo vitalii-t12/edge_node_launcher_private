@@ -271,7 +271,26 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Container selector area
     container_selector_layout = QVBoxLayout()  # Changed to QVBoxLayout
-    
+    container_selector_layout.setContentsMargins(0, 11, 0, 0)
+    # Add Node button
+    self.add_node_button = QPushButton("Add New Node")
+    self.add_node_button.setFont(QFont("Courier New", 10))
+    self.add_node_button.clicked.connect(self.show_add_node_dialog)
+    self.add_node_button.setMinimumHeight(50)  # Match dropdown height
+    self.add_node_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1E90FF;
+                color: white;
+                border: 2px solid #87CEEB;
+                padding: 5px 10px;
+                border-radius: 15px;
+            }
+            QPushButton:hover {
+                background-color: #104E8B;
+            }
+        """)
+    container_selector_layout.addWidget(self.add_node_button)
+
     # Container dropdown
     self.container_combo = QComboBox()
     self.container_combo.setFont(QFont("Courier New", 10))
@@ -310,25 +329,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         }
     """)
     container_selector_layout.addWidget(self.container_combo)
-    
-    # Add Node button
-    self.add_node_button = QPushButton("Add New Node")
-    self.add_node_button.setFont(QFont("Courier New", 10))
-    self.add_node_button.clicked.connect(self.show_add_node_dialog)
-    self.add_node_button.setMinimumHeight(50)  # Match dropdown height
-    self.add_node_button.setStyleSheet("""
-        QPushButton {
-            background-color: #1E90FF;
-            color: white;
-            border: 2px solid #87CEEB;
-            padding: 5px 10px;
-            border-radius: 15px;
-        }
-        QPushButton:hover {
-            background-color: #104E8B;
-        }
-    """)
-    container_selector_layout.addWidget(self.add_node_button)
     
     top_button_area.addLayout(container_selector_layout)
 
@@ -490,8 +490,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Right side layout (for graphs)
     right_panel = QWidget()
     right_panel_layout = QVBoxLayout(right_panel)
-    # right_panel_layout.setContentsMargins(10, 10, 10, 10)  # Set consistent padding for right panel
-    
+    right_panel_layout.setContentsMargins(10, 0, 0, 10)  # Set consistent padding for right panel
+
     # the graph area
     self.graphView = QWidget()
     graph_layout = QGridLayout()
