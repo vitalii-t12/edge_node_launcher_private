@@ -10,24 +10,24 @@ from typing import Optional
 import re
 
 from PyQt5.QtWidgets import (
-  QApplication, 
-  QWidget, 
-  QVBoxLayout, 
-  QPushButton, 
-  QLabel, 
+  QApplication,
+  QWidget,
+  QVBoxLayout,
+  QPushButton,
+  QLabel,
   QGridLayout,
   QFrame,
   QTextEdit,
-  QDialog, 
-  QHBoxLayout, 
-  QSpacerItem, 
+  QDialog,
+  QHBoxLayout,
+  QSpacerItem,
   QSizePolicy,
   QCheckBox,
   QStyle,
   QComboBox,
   QMessageBox,
   QFileDialog,
-  QLineEdit
+  QLineEdit, QGroupBox
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
@@ -326,10 +326,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     top_button_area.addSpacing(10)
     
     # Info box
-    info_box = QFrame()
-    info_box.setFrameShape(QFrame.Box)
-    info_box.setLineWidth(2)
-    info_box.setMidLineWidth(1)
+    info_box = QGroupBox()
     info_box.setObjectName("infoBox")
     info_box_layout = QVBoxLayout()
 
@@ -473,7 +470,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.graphView.setLayout(graph_layout)
     right_panel_layout.addWidget(self.graphView)
-    
+
+    right_panel_layout.setSpacing(10)
+
     # the log scroll text area
     self.logView = QTextEdit()
     self.logView.setReadOnly(True)

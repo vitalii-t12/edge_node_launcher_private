@@ -417,8 +417,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: {widget_bg};
     border: 1px solid {info_box_border};
     border-radius: 8px;
-    margin: 10px;
-    padding: 15px;
+    margin: 6px;
+    padding: 8px;
     color: {text_color};
   }}
   #infoBox QLabel {{
