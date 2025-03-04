@@ -346,6 +346,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     addr_layout = QHBoxLayout()
     self.addressDisplay = QLabel('')
     self.addressDisplay.setFont(QFont("Courier New"))
+    self.addressDisplay.setObjectName("infoBoxText")
     addr_layout.addWidget(self.addressDisplay)
     
     # Add copy address button
@@ -363,6 +364,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # ETH address display with copy button
     eth_addr_layout = QHBoxLayout()
     self.ethAddressDisplay = QLabel('')
+    self.ethAddressDisplay.setObjectName("infoBoxText")
     self.ethAddressDisplay.setFont(QFont("Courier New"))
     eth_addr_layout.addWidget(self.ethAddressDisplay)
     
@@ -380,21 +382,26 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     self.nameDisplay = QLabel('')
     self.nameDisplay.setFont(QFont("Courier New"))
+    self.nameDisplay.setObjectName("infoBoxText")
     info_box_layout.addWidget(self.nameDisplay)
 
     self.node_uptime = QLabel(UPTIME_LABEL)
+    self.node_uptime.setObjectName("infoBoxText")
     self.node_uptime.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.node_uptime)
 
     self.node_epoch = QLabel(EPOCH_LABEL)
+    self.node_epoch.setObjectName("infoBoxText")
     self.node_epoch.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.node_epoch)
 
     self.node_epoch_avail = QLabel(EPOCH_AVAIL_LABEL)
+    self.node_epoch_avail.setObjectName("infoBoxText")
     self.node_epoch_avail.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.node_epoch_avail)
 
     self.node_version = QLabel()
+    self.node_version.setObjectName("infoBoxText")
     self.node_version.setFont(QFont("Courier New"))
     info_box_layout.addWidget(self.node_version)
     
@@ -1113,18 +1120,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         color = 'green'
         
       self.node_uptime.setText(f'Up Time: {uptime}')
-      self.node_uptime.setStyleSheet(f'color: {color}')
-      
+
       self.node_epoch.setText(f'Epoch: {node_epoch}')
-      self.node_epoch.setStyleSheet(f'color: {color}')
-      
+
       prc = round(node_epoch_avail * 100 if node_epoch_avail > 0 else node_epoch_avail, 2) if node_epoch_avail is not None else 0
       self.node_epoch_avail.setText(f'Epoch avail: {prc}%')
-      self.node_epoch_avail.setStyleSheet(f'color: {color}')
-      
+
       self.node_version.setText(f'Running ver: {ver}')
-      self.node_version.setStyleSheet(f'color: {color}')
-      
+
       self.__display_uptime = uptime
       self.add_log(f"Updated uptime display for container {container_name}", debug=True)
     return
@@ -1442,36 +1445,31 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Update displays with cached data but indicate node is not running
         if hasattr(self, 'nameDisplay') and self.node_name:
             self.nameDisplay.setText('Name: ' + self.node_name)
-            self.nameDisplay.setStyleSheet(f"color: {text_color};")
-        
+
         if hasattr(self, 'addressDisplay') and self.node_addr:
             str_display = f"Address: {self.node_addr[:16]}...{self.node_addr[-8:]}"
             self.addressDisplay.setText(str_display)
-            self.addressDisplay.setStyleSheet(f"color: {text_color};")
+            # self.addressDisplay.setStyleSheet(f"color: {text_color};")
             if hasattr(self, 'copyAddrButton'):
                 self.copyAddrButton.setVisible(True)
         
         if hasattr(self, 'ethAddressDisplay') and self.node_eth_address:
             str_eth_display = f"ETH Address: {self.node_eth_address[:16]}...{self.node_eth_address[-8:]}"
             self.ethAddressDisplay.setText(str_eth_display)
-            self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
             if hasattr(self, 'copyEthButton'):
                 self.copyEthButton.setVisible(True)
     else:
         # No cached data, clear displays
         if hasattr(self, 'nameDisplay'):
             self.nameDisplay.setText('Name: -')
-            self.nameDisplay.setStyleSheet(f"color: {text_color};")
-        
+
         if hasattr(self, 'addressDisplay'):
             self.addressDisplay.setText('Address: Not available')
-            self.addressDisplay.setStyleSheet(f"color: {text_color};")
             if hasattr(self, 'copyAddrButton'):
                 self.copyAddrButton.hide()
         
         if hasattr(self, 'ethAddressDisplay'):
             self.ethAddressDisplay.setText('ETH Address: Not available')
-            self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
             if hasattr(self, 'copyEthButton'):
                 self.copyEthButton.hide()
         
@@ -1491,20 +1489,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     if hasattr(self, 'node_uptime'):
         self.node_uptime.setText(UPTIME_LABEL)
-        self.node_uptime.setStyleSheet(f"color: {text_color};")
-    
+
     if hasattr(self, 'node_epoch'):
         self.node_epoch.setText(EPOCH_LABEL)
-        self.node_epoch.setStyleSheet(f"color: {text_color};")
-    
+
     if hasattr(self, 'node_epoch_avail'):
         self.node_epoch_avail.setText(EPOCH_AVAIL_LABEL)
-        self.node_epoch_avail.setStyleSheet(f"color: {text_color};")
-    
+
     if hasattr(self, 'node_version'):
         self.node_version.setText('')
-        self.node_version.setStyleSheet(f"color: {text_color};")
-    
+
     # Reset state variables
     if hasattr(self, '__display_uptime'):
         self.__display_uptime = None

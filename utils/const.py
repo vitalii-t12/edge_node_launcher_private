@@ -217,7 +217,8 @@ DARK_COLORS = {
     "add_node_button_bg": "#1E90FF",
     "add_node_button_border": "#87CEEB",
     "add_node_button_hover": "#104E8B",
-    "info_box_border": "white"
+    "info_box_border": "white",
+    "infoBoxTextColor": "white"
 }
 
 # Color definitions for light theme
@@ -249,7 +250,8 @@ LIGHT_COLORS = {
     "add_node_button_bg": "#D3D3D3",
     "add_node_button_border": "#A9A9A9",
     "add_node_button_hover": "#A9A9A9",
-    "info_box_border": "black"
+    "info_box_border": "black",
+    "infoBoxTextColor": "black"
 }
 
 # Merge common styles with theme-specific colors
@@ -289,17 +291,14 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {text_edit_border};
     border-radius: {border_radius};
   }}
-  
   PlotWidget {{
     background-color: {plot_bg};
     border: 1px solid {plot_border};
     color: {text_color};  
   }}
-
   PlotWidget LabelItem {{
     color: {text_color};
   }}
-  
   QComboBox {{
     color: {text_color};
     background-color: {combo_bg};
@@ -348,11 +347,9 @@ COMMON_STYLESHEET_TEMPLATE = """
   QComboBox QAbstractItemView::item:selected {{
     background-color: {combo_dropdown_select_bg};
   }}
-  
   QCheckBox {{
     color: {text_color};
   }}
-  
   QPushButton {{
     background-color: {button_bg}; 
     color: {text_color}; 
@@ -365,14 +362,12 @@ COMMON_STYLESHEET_TEMPLATE = """
   QPushButton:hover {{
     background-color: {button_hover};
   }}
-  
   #copyAddrButton, #copyEthButton {{
     background-color: {button_copy_address_bg};
     border: none;
     padding: 0px;
     margin: 0px;
   }}
-
   #addNodeButton {{
     background-color: {add_node_button_bg};
     color: {text_color};
@@ -385,38 +380,43 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: {add_node_button_hover};
   }}
   #infoBox {{
-  background-color: {widget_bg};
-  border: 1px solid {info_box_border};
-  border-radius: 8px;
-  margin: 10px;
-  padding: 15px;
-}}
-#infoBox QLabel {{
-  color: {text_color};
-  font-family: "Courier New";
-  font-size: 10pt;
-  margin: 2px;
-}}
-#infoBox QPushButton {{
-  background-color: {button_copy_address_bg};
-  border: none;
-  padding: 0px;
-  margin: 0px;
-}}
-"""
+    background-color: {widget_bg};
+    border: 1px solid {info_box_border};
+    border-radius: 8px;
+    margin: 10px;
+    padding: 15px;
+    color: {text_color};
+  }}
+  #infoBox QLabel {{
+    color: {text_color};
+    font-family: "Courier New";
+    font-size: 10pt;
+    margin: 2px;
+  }}
+  #infoBox QPushButton {{
+    background-color: {button_copy_address_bg};
+    border: none;
+    padding: 0px;
+    margin: 0px;
+    color: {text_color};
+  }}
+  #infoBoxText QLabel {{
+    color: {infoBoxTextColor};
+  }}
+  """
 
 # Apply the common template with dark theme values
 DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME)
 
 # Apply the common template with light theme values, with additional light-specific styles
 LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
-  PlotWidget .axis {
+  PlotWidget .axis {{
     color: black;
-  }
+  }}
 
-  PlotWidget .plotLabel {
+  PlotWidget .plotLabel {{
     color: black;
-  }
+  }}
 """
 
 # Notification messages
