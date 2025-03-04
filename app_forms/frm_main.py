@@ -46,7 +46,7 @@ from utils.config_manager import ConfigManager, ContainerConfig
 from utils.icon import ICON_BASE64
 
 from app_forms.frm_utils import (
-  get_icon_from_base64, DateAxisItem
+  get_icon_from_base64, DateAxisItem, LoadingIndicator
 )
 
 from ver import __VER__ as __version__
@@ -296,6 +296,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     info_box_layout = QVBoxLayout()
     info_box_layout.setContentsMargins(15, 15, 15, 15)  # Add padding around the content (left, top, right, bottom)
 
+    # Add loading indicator
+    self.loading_indicator = LoadingIndicator(size=30)
+    self.loading_indicator.hide()  # Initially hidden
+    loading_layout = QHBoxLayout()
+    loading_layout.addStretch()
+    loading_layout.addWidget(self.loading_indicator)
+    loading_layout.addStretch()
+    info_box_layout.addLayout(loading_layout)
+
     # Address display with copy button
     addr_layout = QHBoxLayout()
     self.addressDisplay = QLabel('')
@@ -494,15 +503,22 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         if self.is_container_running():
             self.add_log(f'Stopping container {container_name}...')
+            
+            # Show loading indicator and clear info displays
+            self._clear_info_display()
+            self.loading_indicator.start()
+            
             # Pass the container name explicitly to ensure we're stopping the right one
             self.docker_handler.stop_container(container_name)
             
             # Clear and update all UI elements
-            self._clear_info_display()
             self.update_toggle_button_text()
             self.refresh_local_address()  # Updates address displays with cached data
             self.maybe_refresh_uptime()   # Updates uptime displays
             self.plot_data()              # Clears plots
+            
+            # Stop loading indicator
+            self.loading_indicator.stop()
             
             # Process events to ensure immediate UI update
             QApplication.processEvents()
@@ -526,6 +542,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             QTimer.singleShot(2000, self.update_toggle_button_text)
             
     except Exception as e:
+        # Stop loading indicator in case of error
+        self.loading_indicator.stop()
         self.add_log(f"Error toggling container: {str(e)}", color="red")
         self.toast.show_notification(NotificationType.ERROR, f"Error toggling container: {str(e)}")
 
@@ -940,6 +958,22 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_log(f"Container changed during address refresh, ignoring results", debug=True)
         return
 
+      # Get current config to check for changes
+      config_container = self.config_manager.get_container(container_name)
+      
+      # Check if node alias has changed
+      if config_container and node_info.alias != config_container.node_alias:
+          self.add_log(f"Node alias changed from '{config_container.node_alias}' to '{node_info.alias}', updating config", debug=True)
+          self.config_manager.update_node_alias(container_name, node_info.alias)
+          # Refresh container list to update display in dropdown
+          current_container = container_name  # Store current selection
+          self.refresh_container_list()
+          # Restore the selection
+          for i in range(self.container_combo.count()):
+              if self.container_combo.itemData(i) == current_container:
+                  self.container_combo.setCurrentIndex(i)
+                  break
+
       self.node_name = node_info.alias
       self.nameDisplay.setText('Name: ' + node_info.alias)
 
@@ -965,9 +999,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           self.config_manager.update_node_address(container_name, self.node_addr)
           # Update ETH address in config
           self.config_manager.update_eth_address(container_name, self.node_eth_address)
-          # Update node alias in config
-          self.config_manager.update_node_alias(container_name, self.node_name)
-          self.add_log(f"Saved node address, ETH address, and alias to config for {container_name}", debug=True)
+          self.add_log(f"Saved node address and ETH address to config for {container_name}", debug=True)
 
     def on_error(error):
       # Make sure we're still on the same container
@@ -1246,37 +1278,38 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     dialog.exec_()
 
   def validate_and_save_node_name(self, new_name: str, dialog: QDialog, container_name: str = None):
+    """Validate and save a new node name.
+    
+    Args:
+        new_name: The new name to save
+        dialog: The dialog to close on success
+        container_name: Optional container name. If not provided, will use current selection.
+    """
+    # Strip whitespace
     new_name = new_name.strip()
     
-    # If container_name is not provided, get it from the combo box
-    if container_name is None:
+    # If container_name not provided, get from current selection
+    if not container_name:
         current_index = self.container_combo.currentIndex()
         if current_index < 0:
             self.toast.show_notification(NotificationType.ERROR, "No container selected")
-            dialog.reject()
             return
-            
         container_name = self.container_combo.itemData(current_index)
         if not container_name:
             self.toast.show_notification(NotificationType.ERROR, "No container selected")
-            dialog.reject()
             return
     
+    # Check if name exceeds max length
     if len(new_name) > MAX_ALIAS_LENGTH:
         # Show warning dialog
-        warning_dialog = QDialog(dialog)
-        warning_dialog.setWindowTitle("Warning: Name Too Long")
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+        warning_dialog = QDialog(self)
+        warning_dialog.setWindowTitle("Warning")
         layout = QVBoxLayout()
         
-        # Add message
-        warning_msg = f"The node name is too long ({len(new_name)} characters).\n\n"
-        warning_msg += f"'{new_name}' will be truncated to '{new_name[:MAX_ALIAS_LENGTH]}'\n\n"
-        warning_msg += "Do you want to proceed?"
+        warning_text = f"Node name exceeds maximum length of {MAX_ALIAS_LENGTH} characters.\nIt will be truncated to: {new_name[:MAX_ALIAS_LENGTH]}"
+        layout.addWidget(QLabel(warning_text))
         
-        label = QLabel(warning_msg)
-        layout.addWidget(label)
-        
-        # Add buttons
         button_layout = QHBoxLayout()
         proceed_btn = QPushButton("Proceed")
         cancel_btn = QPushButton("Cancel")
@@ -1304,9 +1337,32 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         )
         dialog.accept()
         
-        # Save the new name to the config
-        self.config_manager.update_node_alias(container_name, new_name)
-        self.add_log(f"Saved new node alias '{new_name}' to config for {container_name}", debug=True)
+        # Get the actual node name from the container
+        def update_config_with_container_name(node_info: NodeInfo) -> None:
+            # Update config with the name from the container
+            if node_info.alias:
+                self.config_manager.update_node_alias(container_name, node_info.alias)
+                self.add_log(f"Saved node alias '{node_info.alias}' from container to config", debug=True)
+                
+                # Refresh the container list to update the display name in the dropdown
+                current_container = container_name  # Store current selection
+                self.refresh_container_list()
+                # Restore the selection
+                for i in range(self.container_combo.count()):
+                    if self.container_combo.itemData(i) == current_container:
+                        self.container_combo.setCurrentIndex(i)
+                        break
+        
+        def on_node_info_error(error):
+            self.add_log(f"Error getting node info after rename: {error}", debug=True)
+            # Still proceed with restart even if we couldn't get the node info
+            self.stop_container()
+            self.launch_container()
+            self.post_launch_setup()
+            self.refresh_local_address()
+        
+        # Get node info to update config with actual container name
+        self.docker_handler.get_node_info(update_config_with_container_name, on_node_info_error)
         
         # Stop and restart the container
         self.stop_container()
@@ -1665,6 +1721,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.add_log(f'Launching container {container_name} with volume {volume_name}...')
     
     try:
+        # Show loading indicator and clear info displays
+        self._clear_info_display()
+        self.loading_indicator.start()
+        
         # Get the Docker command that will be executed
         command = self.docker_handler.get_launch_command(volume_name=volume_name)
         # Log the command without debug flag to ensure it's always visible
@@ -1689,10 +1749,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.plot_data()
         self.update_toggle_button_text()
         
+        # Stop loading indicator
+        self.loading_indicator.stop()
+        
         # Show success notification
         self.toast.show_notification(NotificationType.SUCCESS, f"Container {container_name} launched successfully")
         
     except Exception as e:
+        # Stop loading indicator on error
+        self.loading_indicator.stop()
         error_msg = f"Failed to launch container: {str(e)}"
         self.add_log(error_msg, color="red")
         self.toast.show_notification(NotificationType.ERROR, error_msg)
