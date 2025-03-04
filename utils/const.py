@@ -33,7 +33,7 @@ MAX_ALIAS_LENGTH = 15  # Maximum length for aliases (node name and authorized ad
 WINDOW_TITLE = f'Edge Node Manager v{__VER__}'
 
 # Button texts
-LAUNCH_CONTAINER_BUTTON_TEXT = 'Launch Edge Node'
+LAUNCH_CONTAINER_BUTTON_TEXT = 'Start Edge Node'
 STOP_CONTAINER_BUTTON_TEXT = 'Stop Edge Node'
 DAPP_BUTTON_TEXT = 'Launch dApp'
 EXPLORER_BUTTON_TEXT = 'Ratio1 Explorer'

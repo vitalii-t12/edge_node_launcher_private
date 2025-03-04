@@ -247,18 +247,64 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     top_button_area = QVBoxLayout()
 
     # Container selector area
-    container_selector_layout = QHBoxLayout()
+    container_selector_layout = QVBoxLayout()  # Changed to QVBoxLayout
     
     # Container dropdown
     self.container_combo = QComboBox()
     self.container_combo.setFont(QFont("Courier New", 10))
     self.container_combo.currentTextChanged.connect(self._on_container_selected)
-    container_selector_layout.addWidget(self.container_combo, stretch=1)
+    self.container_combo.setMinimumHeight(32)  # Make dropdown slightly taller
+    self.container_combo.setStyleSheet("""
+        QComboBox {
+            background-color: #1E90FF;
+            color: white;
+            border: 2px solid #87CEEB;
+            padding: 5px 10px;
+            border-radius: 15px;
+            min-width: 200px;
+        }
+        QComboBox:hover {
+            background-color: #104E8B;
+        }
+        QComboBox::drop-down {
+            border: none;
+            width: 30px;
+        }
+        QComboBox::down-arrow {
+            image: none;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid white;
+            margin-right: 10px;
+        }
+        QComboBox QAbstractItemView {
+            background-color: #1E90FF;
+            color: white;
+            selection-background-color: #104E8B;
+            selection-color: white;
+            border: 2px solid #87CEEB;
+            border-radius: 5px;
+        }
+    """)
+    container_selector_layout.addWidget(self.container_combo)
     
     # Add Node button
-    self.add_node_button = QPushButton("Add Node")
+    self.add_node_button = QPushButton("Add New Node")
     self.add_node_button.setFont(QFont("Courier New", 10))
     self.add_node_button.clicked.connect(self.show_add_node_dialog)
+    self.add_node_button.setMinimumHeight(50)  # Match dropdown height
+    self.add_node_button.setStyleSheet("""
+        QPushButton {
+            background-color: #1E90FF;
+            color: white;
+            border: 2px solid #87CEEB;
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        QPushButton:hover {
+            background-color: #104E8B;
+        }
+    """)
     container_selector_layout.addWidget(self.add_node_button)
     
     top_button_area.addLayout(container_selector_layout)
@@ -266,6 +312,18 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Launch Edge Node button
     self.toggleButton = QPushButton(LAUNCH_CONTAINER_BUTTON_TEXT)
     self.toggleButton.clicked.connect(self.toggle_container)
+    self.toggleButton.setStyleSheet("""
+        QPushButton {
+            background-color: green;
+            color: white;
+            border: 2px solid #87CEEB;
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        QPushButton:hover {
+            background-color: darkgreen;
+        }
+    """)
     top_button_area.addWidget(self.toggleButton)
 
     # Docker download button right under Launch Edge Node
