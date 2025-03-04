@@ -277,18 +277,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.add_node_button.setFont(QFont("Courier New", 10))
     self.add_node_button.clicked.connect(self.show_add_node_dialog)
     self.add_node_button.setMinimumHeight(50)  # Match dropdown height
-    self.add_node_button.setStyleSheet("""
-            QPushButton {
-                background-color: #1E90FF;
-                color: white;
-                border: 2px solid #87CEEB;
-                padding: 5px 10px;
-                border-radius: 15px;
-            }
-            QPushButton:hover {
-                background-color: #104E8B;
-            }
-        """)
+    self.add_node_button.setObjectName("addNodeButton")
     container_selector_layout.addWidget(self.add_node_button)
 
     # Container dropdown
@@ -296,53 +285,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.container_combo.setFont(QFont("Courier New", 10))
     self.container_combo.currentTextChanged.connect(self._on_container_selected)
     self.container_combo.setMinimumHeight(32)  # Make dropdown slightly taller
-    self.container_combo.setStyleSheet("""
-        QComboBox {
-            background-color: #2A3440;
-            color: white;
-            border: 1px solid #4A5561;
-            padding: 5px 10px;
-            border-radius: 5px;
-            min-width: 200px;
-        }
-        QComboBox:hover {
-            background-color: #3A4450;
-            border: 1px solid #5A6571;
-        }
-        QComboBox:focus {
-            border: 1px solid #6A7581;
-        }
-        QComboBox::drop-down {
-            border: none;
-            width: 30px;
-        }
-        QComboBox::down-arrow {
-            image: none;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid #B0B9C6;
-            margin-right: 10px;
-        }
-        QComboBox QAbstractItemView {
-            background-color: #2A3440;
-            color: white;
-            selection-background-color: #3A4450;
-            selection-color: white;
-            border: 1px solid #4A5561;
-            border-radius: 5px;
-            padding: 5px;
-        }
-        QComboBox QAbstractItemView::item {
-            min-height: 24px;
-            padding: 3px 5px;
-        }
-        QComboBox QAbstractItemView::item:hover {
-            background-color: #3A4450;
-        }
-        QComboBox QAbstractItemView::item:selected {
-            background-color: #4A5561;
-        }
-    """)
     container_selector_layout.addWidget(self.container_combo)
     
     top_button_area.addLayout(container_selector_layout)

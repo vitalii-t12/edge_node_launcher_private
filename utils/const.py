@@ -204,16 +204,19 @@ DARK_COLORS = {
     "text_edit_border": "#1E90FF",
     "plot_bg": "#243447",
     "plot_border": "#87CEEB",
-    "combo_bg": "#2b2b2b",
-    "combo_border": "#555555",
-    "combo_hover_bg": "#3b3b3b",
-    "combo_hover_border": "#4CAF50",
-    "combo_arrow_color": "white",
-    "combo_dropdown_bg": "#2b2b2b",
-    "combo_dropdown_select_bg": "#3b3b3b",
+    "combo_bg": "#2A3440",
+    "combo_border": "#4A5561",
+    "combo_hover_bg": "#3A4450",
+    "combo_hover_border": "#5A6571",
+    "combo_arrow_color": "#B0B9C6",
+    "combo_dropdown_bg": "#2A3440",
+    "combo_dropdown_select_bg": "#3A4450",
     "combo_dropdown_select_color": "white",
     "green_highlight": "#4CAF50",
-    "button_copy_address_bg": "transparent"
+    "button_copy_address_bg": "transparent",
+    "add_node_button_bg": "#1E90FF",
+    "add_node_button_border": "#87CEEB",
+    "add_node_button_hover": "#104E8B"
 }
 
 # Color definitions for light theme
@@ -232,16 +235,19 @@ LIGHT_COLORS = {
     "text_edit_border": "#D3D3D3",
     "plot_bg": "#FFFFFF",
     "plot_border": "#A9A9A9",
-    "combo_bg": "white",
-    "combo_border": "#cccccc",
-    "combo_hover_bg": "#f5f5f5",
+    "combo_bg": "#FFFFFF",
+    "combo_border": "#CCCCCC",
+    "combo_hover_bg": "#F5F5F5", 
     "combo_hover_border": "#4CAF50",
-    "combo_arrow_color": "black",
-    "combo_dropdown_bg": "white",
-    "combo_dropdown_select_bg": "#f5f5f5",
+    "combo_arrow_color": "#666666",
+    "combo_dropdown_bg": "#FFFFFF",
+    "combo_dropdown_select_bg": "#F5F5F5",
     "combo_dropdown_select_color": "black",
     "green_highlight": "#4CAF50",
-    "button_copy_address_bg": "transparent"
+    "button_copy_address_bg": "transparent",
+    "add_node_button_bg": "#D3D3D3",
+    "add_node_button_border": "#A9A9A9",
+    "add_node_button_hover": "#A9A9A9"
 }
 
 # Merge common styles with theme-specific colors
@@ -297,29 +303,48 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: {combo_bg};
     border: 1px solid {combo_border};
     border-radius: {combo_border_radius};
-    padding: {combo_padding};
+    padding: 5px 10px;
     min-width: {combo_min_width};
+    min-height: 32px;
+    font-family: "Courier New";
+    font-size: 10pt;
   }}
   QComboBox:hover {{
     background-color: {combo_hover_bg};
-    border: 1px solid {green_highlight};
+    border: 1px solid {combo_hover_border};
+  }}
+  QComboBox:focus {{
+    border: 1px solid {combo_hover_border};
   }}
   QComboBox::drop-down {{
     border: none;
-    width: {combo_dropdown_width};
+    width: 30px;
   }}
   QComboBox::down-arrow {{
     image: none;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
     border-top: 5px solid {combo_arrow_color};
-    margin-right: 8px;
+    margin-right: 10px;
   }}
   QComboBox QAbstractItemView {{
-    color: {text_color};
     background-color: {combo_dropdown_bg};
+    color: {text_color};
     selection-background-color: {combo_dropdown_select_bg};
     selection-color: {combo_dropdown_select_color};
+    border: 1px solid {combo_border};
+    border-radius: {combo_border_radius};
+    padding: 5px;
+  }}
+  QComboBox QAbstractItemView::item {{
+    min-height: 24px;
+    padding: 3px 5px;
+  }}
+  QComboBox QAbstractItemView::item:hover {{
+    background-color: {combo_hover_bg};
+  }}
+  QComboBox QAbstractItemView::item:selected {{
+    background-color: {combo_dropdown_select_bg};
   }}
   
   QCheckBox {{
@@ -344,6 +369,18 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: none;
     padding: 0px;
     margin: 0px;
+  }}
+
+  #addNodeButton {{
+    background-color: {add_node_button_bg};
+    color: {text_color};
+    border: 2px solid {add_node_button_border};
+    padding: 5px 10px;
+    border-radius: 15px;
+    min-height: 50px;
+  }}
+  #addNodeButton:hover {{
+    background-color: {add_node_button_hover};
   }}
 """
 
