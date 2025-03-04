@@ -1642,29 +1642,24 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def show_add_node_dialog(self):
     """Show confirmation dialog for adding a new node."""
-    from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
-    is_dark = self._current_stylesheet == DARK_STYLESHEET
-    text_color = "white" if is_dark else "black"
-
+    from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
+    
     # Generate the container name that would be used
     container_name = generate_container_name()
     volume_name = get_volume_name(container_name)
     
-    # Create dialog for node name input
+    # Create dialog
     dialog = QDialog(self)
     dialog.setWindowTitle("Add New Node")
+    dialog.setMinimumWidth(400)
+    
     layout = QVBoxLayout()
     
-    # Add info text
-    info_text = f"This will create:\nContainer: {container_name}\nVolume: {volume_name}"
-    layout.addWidget(QLabel(info_text))
-    
-    # Add node name input
-    layout.addWidget(QLabel("Node Alias (optional):"))
-    name_input = QLineEdit()
-    name_input.setPlaceholderText("Enter a friendly name for your node")
-    name_input.setStyleSheet(f"color: {text_color};")
-    layout.addWidget(name_input)
+    # Add info text with more descriptive message
+    info_text = f"This action will create a new Edge Node.\nA Docker container named '{container_name}' will be started.\n\nDo you want to proceed?"
+    info_label = QLabel(info_text)
+    info_label.setWordWrap(True)  # Enable word wrapping for better readability
+    layout.addWidget(info_label)
     
     # Add buttons
     button_layout = QHBoxLayout()
@@ -1678,15 +1673,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     dialog.setLayout(layout)
     
     # Connect buttons
-    create_button.clicked.connect(lambda: self._create_node_with_name(container_name, volume_name, name_input.text(), dialog))
+    create_button.clicked.connect(lambda: self._create_node_with_name(container_name, volume_name, None, dialog))
     cancel_button.clicked.connect(dialog.reject)
     
     dialog.exec_()
-    
+
   def _create_node_with_name(self, container_name, volume_name, display_name, dialog):
     """Create a new node with the given name and close the dialog."""
     dialog.accept()
-    self.add_new_node(container_name, volume_name, display_name.strip() or None)
+    self.add_new_node(container_name, volume_name, display_name)
 
   def add_new_node(self, container_name: str, volume_name: str, display_name: str = None):
     """Add a new node with the given container name and volume name"""
