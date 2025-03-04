@@ -218,7 +218,11 @@ DARK_COLORS = {
     "add_node_button_border": "#87CEEB",
     "add_node_button_hover": "#104E8B",
     "info_box_border": "white",
-    "infoBoxTextColor": "white"
+    "infoBoxTextColor": "white",
+    "graph_cpu_color": "#1E90FF",
+    "graph_memory_color": "#4CAF50",
+    "graph_gpu_color": "#FFD700",
+    "graph_gpu_memory_color": "#FF6B6B"
 }
 
 # Color definitions for light theme
@@ -251,7 +255,11 @@ LIGHT_COLORS = {
     "add_node_button_border": "#A9A9A9",
     "add_node_button_hover": "#A9A9A9",
     "info_box_border": "black",
-    "infoBoxTextColor": "black"
+    "infoBoxTextColor": "black",
+    "graph_cpu_color": "#0066CC",
+    "graph_memory_color": "#2E8B57",
+    "graph_gpu_color": "#DAA520",
+    "graph_gpu_memory_color": "#CD5C5C"
 }
 
 # Merge common styles with theme-specific colors

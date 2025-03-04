@@ -850,8 +850,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     if len(timestamps) > limit:
         timestamps = timestamps[-limit:]
      
-    # Set color based on theme
-    color = 'w' if self._current_stylesheet == DARK_STYLESHEET else 'k'
+    # Get colors based on theme
+    colors = DARK_COLORS if self._current_stylesheet == DARK_STYLESHEET else LIGHT_COLORS
     
     # Helper function to update a plot
     def update_plot(plot_widget, timestamps, data, name, color):
@@ -888,7 +888,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.cpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.cpu_plot.setAxisItems({'bottom': cpu_date_axis})
     self.cpu_plot.setTitle(CPU_LOAD_TITLE)
-    update_plot(self.cpu_plot, timestamps, history.cpu_load, 'CPU Load', color)
+    update_plot(self.cpu_plot, timestamps, history.cpu_load, 'CPU Load', colors["graph_cpu_color"])
     
     # Memory Plot
     mem_date_axis = DateAxisItem(orientation='bottom')
@@ -897,7 +897,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
     self.memory_plot.setAxisItems({'bottom': mem_date_axis})
     self.memory_plot.setTitle(MEMORY_USAGE_TITLE)
-    update_plot(self.memory_plot, timestamps, history.occupied_memory, 'Occupied Memory', color)
+    update_plot(self.memory_plot, timestamps, history.occupied_memory, 'Occupied Memory', colors["graph_memory_color"])
     
     # GPU Plot if available
     if history and history.gpu_load:
@@ -907,7 +907,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.gpu_plot.getAxis('bottom').setStyle(tickTextOffset=10)
       self.gpu_plot.setAxisItems({'bottom': gpu_date_axis})
       self.gpu_plot.setTitle(GPU_LOAD_TITLE)
-      update_plot(self.gpu_plot, timestamps, history.gpu_load, 'GPU Load', color)
+      update_plot(self.gpu_plot, timestamps, history.gpu_load, 'GPU Load', colors["graph_gpu_color"])
 
     # GPU Memory if available
     if history and history.gpu_occupied_memory:
@@ -917,7 +917,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.gpu_memory_plot.getAxis('bottom').setStyle(tickTextOffset=10)
       self.gpu_memory_plot.setAxisItems({'bottom': gpumem_date_axis})
       self.gpu_memory_plot.setTitle(GPU_MEMORY_LOAD_TITLE)
-      update_plot(self.gpu_memory_plot, timestamps, history.gpu_occupied_memory, 'Occupied GPU Memory', color)
+      update_plot(self.gpu_memory_plot, timestamps, history.gpu_occupied_memory, 'Occupied GPU Memory', colors["graph_gpu_memory_color"])
       
     self.add_log(f"Updated graphs for container {container_name} with {len(timestamps)} data points", debug=True)
 
