@@ -861,33 +861,67 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Get the current index and container name from the data
     current_index = self.container_combo.currentIndex()
     if current_index < 0:
-      self.addressDisplay.setText('Address: No container selected')
-      self.ethAddressDisplay.setText('ETH Address: Not available')
-      self.nameDisplay.setText('')
-      self.copyAddrButton.hide()
-      self.copyEthButton.hide()
+      # Only update if there's no address already displayed
+      if not hasattr(self, 'node_addr') or not self.node_addr:
+        self.addressDisplay.setText('Address: No container selected')
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.nameDisplay.setText('')
+        self.copyAddrButton.hide()
+        self.copyEthButton.hide()
       return
 
     # Get the actual container name from the item data
     container_name = self.container_combo.itemData(current_index)
     if not container_name:
-      self.addressDisplay.setText('Address: No container selected')
-      self.ethAddressDisplay.setText('ETH Address: Not available')
-      self.nameDisplay.setText('')
-      self.copyAddrButton.hide()
-      self.copyEthButton.hide()
+      # Only update if there's no address already displayed
+      if not hasattr(self, 'node_addr') or not self.node_addr:
+        self.addressDisplay.setText('Address: No container selected')
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.nameDisplay.setText('')
+        self.copyAddrButton.hide()
+        self.copyEthButton.hide()
       return
 
     # Make sure we're working with the correct container
     self.docker_handler.set_container_name(container_name)
 
-    if not self.is_container_running():
-      self.addressDisplay.setText('Address: Node not running')
-      self.ethAddressDisplay.setText('ETH Address: Not available')
-      self.nameDisplay.setText('')
-      self.copyAddrButton.hide()
-      self.copyEthButton.hide()
-      return
+    # Check if container is running
+    is_running = self.is_container_running()
+    
+    # If not running, check if we have cached address data in config
+    if not is_running:
+      config_container = self.config_manager.get_container(container_name)
+      if config_container and config_container.node_address:
+        # If we have cached data, keep displaying it but indicate node is not running
+        if not hasattr(self, 'node_addr') or not self.node_addr:
+          self.node_addr = config_container.node_address
+          self.node_eth_address = config_container.eth_address
+          self.node_name = config_container.node_alias
+          
+          # Format addresses with clear labels and truncated values
+          if self.node_addr:
+            str_display = f"Address: {self.node_addr[:16]}...{self.node_addr[-8:]}"
+            self.addressDisplay.setText(str_display)
+            self.copyAddrButton.setVisible(True)
+          
+          if self.node_eth_address:
+            str_eth_display = f"ETH Address: {self.node_eth_address[:16]}...{self.node_eth_address[-8:]}"
+            self.ethAddressDisplay.setText(str_eth_display)
+            self.copyEthButton.setVisible(True)
+          
+          if self.node_name:
+            self.nameDisplay.setText('Name: ' + self.node_name)
+        
+        return
+      else:
+        # No cached data and not running
+        if not hasattr(self, 'node_addr') or not self.node_addr:
+          self.addressDisplay.setText('Address: Node not running')
+          self.ethAddressDisplay.setText('ETH Address: Not available')
+          self.nameDisplay.setText('')
+          self.copyAddrButton.hide()
+          self.copyEthButton.hide()
+        return
 
     def on_success(node_info: NodeInfo) -> None:
       # Make sure we're still on the same container
@@ -940,18 +974,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_log(f"Container changed during address refresh, ignoring error", debug=True)
         return
 
-      self.add_log(f'Error getting node info for {container_name}: {error}', debug=True)
-      self.addressDisplay.setText('Address: Error getting node info')
-      self.ethAddressDisplay.setText('ETH Address: Not available')
-      self.nameDisplay.setText('')
-      self.copyAddrButton.hide()
-      self.copyEthButton.hide()
+      # Don't clear the display if we already have data - just log the error
+      if hasattr(self, 'node_addr') and self.node_addr:
+        self.add_log(f'Error getting node info for {container_name}: {error}', debug=True)
+        
+        # If this is a timeout error, log it more prominently
+        if "timed out" in error.lower():
+          self.add_log(
+            f"Node info request for {container_name} timed out. This may indicate network issues or high load on the remote host.",
+            color="red")
+      else:
+        self.add_log(f'Error getting node info for {container_name}: {error}', debug=True)
+        self.addressDisplay.setText('Address: Error getting node info')
+        self.ethAddressDisplay.setText('ETH Address: Not available')
+        self.nameDisplay.setText('')
+        self.copyAddrButton.hide()
+        self.copyEthButton.hide()
 
-      # If this is a timeout error, log it more prominently
-      if "timed out" in error.lower():
-        self.add_log(
-          f"Node info request for {container_name} timed out. This may indicate network issues or high load on the remote host.",
-          color="red")
+        # If this is a timeout error, log it more prominently
+        if "timed out" in error.lower():
+          self.add_log(
+            f"Node info request for {container_name} timed out. This may indicate network issues or high load on the remote host.",
+            color="red")
 
     try:
       self.add_log(f"Refreshing address for container: {container_name}", debug=True)
@@ -1070,6 +1114,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def _refresh_local_containers(self):
     """Refresh local container list and info."""
     try:
+        # Clear any remote connection settings to ensure we're using local Docker
+        # Instead of calling clear_remote_connection(), directly set remote_ssh_command to None
+        if hasattr(self, 'docker_handler'):
+            self.docker_handler.remote_ssh_command = None
+        
+        if hasattr(self, 'ssh_service'):
+            self.ssh_service.clear_configuration()
+        
         # Refresh container list
         self.refresh_container_list()
         
@@ -1269,22 +1321,63 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Set text color based on theme
     text_color = "white" if self._current_stylesheet == DARK_STYLESHEET else "black"
     
-    # Clear any displayed information
-    if hasattr(self, 'nameDisplay'):
-        self.nameDisplay.setText('Name: -')
-        self.nameDisplay.setStyleSheet(f"color: {text_color};")
+    # Get the current container name if available
+    container_name = None
+    if hasattr(self, 'container_combo') and self.container_combo.currentIndex() >= 0:
+        container_name = self.container_combo.itemData(self.container_combo.currentIndex())
     
-    if hasattr(self, 'addressDisplay'):
-        self.addressDisplay.setText('Address: Not available')
-        self.addressDisplay.setStyleSheet(f"color: {text_color};")
-        if hasattr(self, 'copyAddrButton'):
-            self.copyAddrButton.hide()
+    # Check if we have cached data for this container
+    cached_data = None
+    if container_name:
+        cached_data = self.config_manager.get_container(container_name)
     
-    if hasattr(self, 'ethAddressDisplay'):
-        self.ethAddressDisplay.setText('ETH Address: Not available')
-        self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
-        if hasattr(self, 'copyEthButton'):
-            self.copyEthButton.hide()
+    # If we have cached data, use it instead of clearing
+    if cached_data and cached_data.node_address:
+        # Update instance variables
+        self.node_addr = cached_data.node_address
+        self.node_eth_address = cached_data.eth_address
+        self.node_name = cached_data.node_alias
+        
+        # Update displays with cached data but indicate node is not running
+        if hasattr(self, 'nameDisplay') and self.node_name:
+            self.nameDisplay.setText('Name: ' + self.node_name)
+            self.nameDisplay.setStyleSheet(f"color: {text_color};")
+        
+        if hasattr(self, 'addressDisplay') and self.node_addr:
+            str_display = f"Address: {self.node_addr[:16]}...{self.node_addr[-8:]}"
+            self.addressDisplay.setText(str_display)
+            self.addressDisplay.setStyleSheet(f"color: {text_color};")
+            if hasattr(self, 'copyAddrButton'):
+                self.copyAddrButton.setVisible(True)
+        
+        if hasattr(self, 'ethAddressDisplay') and self.node_eth_address:
+            str_eth_display = f"ETH Address: {self.node_eth_address[:16]}...{self.node_eth_address[-8:]}"
+            self.ethAddressDisplay.setText(str_eth_display)
+            self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
+            if hasattr(self, 'copyEthButton'):
+                self.copyEthButton.setVisible(True)
+    else:
+        # No cached data, clear displays
+        if hasattr(self, 'nameDisplay'):
+            self.nameDisplay.setText('Name: -')
+            self.nameDisplay.setStyleSheet(f"color: {text_color};")
+        
+        if hasattr(self, 'addressDisplay'):
+            self.addressDisplay.setText('Address: Not available')
+            self.addressDisplay.setStyleSheet(f"color: {text_color};")
+            if hasattr(self, 'copyAddrButton'):
+                self.copyAddrButton.hide()
+        
+        if hasattr(self, 'ethAddressDisplay'):
+            self.ethAddressDisplay.setText('ETH Address: Not available')
+            self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
+            if hasattr(self, 'copyEthButton'):
+                self.copyEthButton.hide()
+        
+        # Clear instance variables
+        self.node_addr = None
+        self.node_eth_address = None
+        self.node_name = None
     
     if hasattr(self, 'local_address_label'):
         self.local_address_label.setText("Local Address: -")
@@ -1314,10 +1407,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Reset state variables
     if hasattr(self, '__display_uptime'):
         self.__display_uptime = None
-    
-    self.node_addr = None
-    self.node_eth_address = None
-    self.node_name = None
     
     if hasattr(self, '__current_node_uptime'):
         self.__current_node_uptime = -1
@@ -1359,11 +1448,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             plot.setLabel('bottom', '')
     
     # Update toggle button state and color
-    if hasattr(self, 'toggleButton'):
-        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-        self.toggleButton.setStyleSheet("background-color: green; color: white;")
-
-
+    # if hasattr(self, 'toggleButton'):
+    #     self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+    #     self.toggleButton.setStyleSheet("background-color: green; color: white;")
 
   def open_docker_download(self):
     """Open Docker download page in default browser."""
@@ -1747,105 +1834,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     return
 
-
-  def _clear_info_display(self):
-    """Clear all information displays."""
-    # Set text color based on theme
-    text_color = "white" if self._current_stylesheet == DARK_STYLESHEET else "black"
-    
-    # Clear any displayed information
-    if hasattr(self, 'nameDisplay'):
-        self.nameDisplay.setText('Name: -')
-        self.nameDisplay.setStyleSheet(f"color: {text_color};")
-    
-    if hasattr(self, 'addressDisplay'):
-        self.addressDisplay.setText('Address: Not available')
-        self.addressDisplay.setStyleSheet(f"color: {text_color};")
-        if hasattr(self, 'copyAddrButton'):
-            self.copyAddrButton.hide()
-    
-    if hasattr(self, 'ethAddressDisplay'):
-        self.ethAddressDisplay.setText('ETH Address: Not available')
-        self.ethAddressDisplay.setStyleSheet(f"color: {text_color};")
-        if hasattr(self, 'copyEthButton'):
-            self.copyEthButton.hide()
-    
-    if hasattr(self, 'local_address_label'):
-        self.local_address_label.setText("Local Address: -")
-    
-    if hasattr(self, 'eth_address_label'):
-        self.eth_address_label.setText("ETH Address: -")
-    
-    if hasattr(self, 'uptime_label'):
-        self.uptime_label.setText("Uptime: -")
-    
-    if hasattr(self, 'node_uptime'):
-        self.node_uptime.setText(UPTIME_LABEL)
-        self.node_uptime.setStyleSheet(f"color: {text_color};")
-    
-    if hasattr(self, 'node_epoch'):
-        self.node_epoch.setText(EPOCH_LABEL)
-        self.node_epoch.setStyleSheet(f"color: {text_color};")
-    
-    if hasattr(self, 'node_epoch_avail'):
-        self.node_epoch_avail.setText(EPOCH_AVAIL_LABEL)
-        self.node_epoch_avail.setStyleSheet(f"color: {text_color};")
-    
-    if hasattr(self, 'node_version'):
-        self.node_version.setText('')
-        self.node_version.setStyleSheet(f"color: {text_color};")
-    
-    # Reset state variables
-    if hasattr(self, '__display_uptime'):
-        self.__display_uptime = None
-    
-    self.node_addr = None
-    self.node_eth_address = None
-    self.node_name = None
-    
-    if hasattr(self, '__current_node_uptime'):
-        self.__current_node_uptime = -1
-    
-    if hasattr(self, '__current_node_epoch'):
-        self.__current_node_epoch = -1
-    
-    if hasattr(self, '__current_node_epoch_avail'):
-        self.__current_node_epoch_avail = -1
-    
-    if hasattr(self, '__current_node_ver'):
-        self.__current_node_ver = -1
-    
-    if hasattr(self, '__last_plot_data'):
-        self.__last_plot_data = None
-    
-    if hasattr(self, '__last_timesteps'):
-        self.__last_timesteps = []
-    
-    # Clear all graphs
-    if hasattr(self, 'cpu_plot'):
-        self.cpu_plot.clear()
-    
-    if hasattr(self, 'memory_plot'):
-        self.memory_plot.clear()
-    
-    if hasattr(self, 'gpu_plot'):
-        self.gpu_plot.clear()
-    
-    if hasattr(self, 'gpu_memory_plot'):
-        self.gpu_memory_plot.clear()
-    
-    # Reset graph titles and labels with current theme color
-    for plot_name in ['cpu_plot', 'memory_plot', 'gpu_plot', 'gpu_memory_plot']:
-        if hasattr(self, plot_name):
-            plot = getattr(self, plot_name)
-            plot.setTitle('')
-            plot.setLabel('left', '')
-            plot.setLabel('bottom', '')
-    
-    # Update toggle button state and color
-    if hasattr(self, 'toggleButton'):
-        self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-        self.toggleButton.setStyleSheet("background-color: green; color: white;")
 
   def clear_remote_connection(self):
     """Clear the remote SSH connection."""
