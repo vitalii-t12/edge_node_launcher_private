@@ -222,7 +222,13 @@ DARK_COLORS = {
     "graph_cpu_color": "#1E90FF",
     "graph_memory_color": "#4CAF50",
     "graph_gpu_color": "#FFD700",
-    "graph_gpu_memory_color": "#FF6B6B"
+    "graph_gpu_memory_color": "#FF6B6B",
+    "confirm_button_bg": "#4CAF50",
+    "confirm_button_border": "#45A049",
+    "confirm_button_hover": "#45A049",
+    "cancel_button_bg": "#F44336",
+    "cancel_button_border": "#D32F2F",
+    "cancel_button_hover": "#D32F2F"
 }
 
 # Color definitions for light theme
@@ -259,7 +265,13 @@ LIGHT_COLORS = {
     "graph_cpu_color": "#0066CC",
     "graph_memory_color": "#2E8B57",
     "graph_gpu_color": "#DAA520",
-    "graph_gpu_memory_color": "#CD5C5C"
+    "graph_gpu_memory_color": "#CD5C5C",
+    "confirm_button_bg": "#66BB6A",
+    "confirm_button_border": "#4CAF50",
+    "confirm_button_hover": "#4CAF50",
+    "cancel_button_bg": "#EF5350",
+    "cancel_button_border": "#E53935",
+    "cancel_button_hover": "#E53935"
 }
 
 # Merge common styles with theme-specific colors
@@ -369,6 +381,20 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   QPushButton:hover {{
     background-color: {button_hover};
+  }}
+  QPushButton[type="confirm"] {{
+    background-color: {confirm_button_bg};
+    border: 2px solid {confirm_button_border};
+  }}
+  QPushButton[type="confirm"]:hover {{
+    background-color: {confirm_button_hover};
+  }}
+  QPushButton[type="cancel"] {{
+    background-color: {cancel_button_bg};
+    border: 2px solid {cancel_button_border};
+  }}
+  QPushButton[type="cancel"]:hover {{
+    background-color: {cancel_button_hover};
   }}
   #copyAddrButton, #copyEthButton {{
     background-color: {button_copy_address_bg};

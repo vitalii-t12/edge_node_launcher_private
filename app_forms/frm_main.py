@@ -1304,13 +1304,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Add buttons
     button_layout = QHBoxLayout()
     save_btn = QPushButton("Save")
+    save_btn.setProperty("type", "confirm")  # Set property for styling
     cancel_btn = QPushButton("Cancel")
+    cancel_btn.setProperty("type", "cancel")  # Set property for styling
     
     button_layout.addWidget(save_btn)
     button_layout.addWidget(cancel_btn)
     layout.addLayout(button_layout)
     
     dialog.setLayout(layout)
+    dialog.setStyleSheet(self._current_stylesheet)  # Apply current theme
     
     # Connect buttons
     save_btn.clicked.connect(lambda: self.validate_and_save_node_name(name_input.text(), dialog, container_name))
@@ -1346,6 +1349,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
         warning_dialog = QDialog(self)
         warning_dialog.setWindowTitle("Warning")
+        warning_dialog.setMinimumWidth(400)
         layout = QVBoxLayout()
         
         warning_text = f"Node name exceeds maximum length of {MAX_ALIAS_LENGTH} characters.\nIt will be truncated to: {new_name[:MAX_ALIAS_LENGTH]}"
@@ -1353,13 +1357,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         button_layout = QHBoxLayout()
         proceed_btn = QPushButton("Proceed")
+        proceed_btn.setProperty("type", "confirm")  # Set property for styling
         cancel_btn = QPushButton("Cancel")
+        cancel_btn.setProperty("type", "cancel")  # Set property for styling
         
         button_layout.addWidget(proceed_btn)
         button_layout.addWidget(cancel_btn)
         layout.addLayout(button_layout)
         
         warning_dialog.setLayout(layout)
+        warning_dialog.setStyleSheet(self._current_stylesheet)  # Apply current theme
         
         # Connect buttons
         proceed_btn.clicked.connect(warning_dialog.accept)
@@ -1664,13 +1671,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Add buttons
     button_layout = QHBoxLayout()
     create_button = QPushButton("Create Node")
+    create_button.setProperty("type", "confirm")  # Set property for styling
     cancel_button = QPushButton("Cancel")
+    cancel_button.setProperty("type", "cancel")  # Set property for styling
     
     button_layout.addWidget(create_button)
     button_layout.addWidget(cancel_button)
     layout.addLayout(button_layout)
     
     dialog.setLayout(layout)
+    dialog.setStyleSheet(self._current_stylesheet)  # Apply current theme
     
     # Connect buttons
     create_button.clicked.connect(lambda: self._create_node_with_name(container_name, volume_name, None, dialog))

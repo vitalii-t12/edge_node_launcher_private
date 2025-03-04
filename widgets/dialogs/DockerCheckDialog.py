@@ -34,16 +34,22 @@ class DockerCheckDialog(QDialog):
         
         # Try Again button
         self.retry_button = QPushButton('Try Again')
+        self.retry_button.setProperty("type", "confirm")  # Set property for styling
         self.retry_button.clicked.connect(self.accept)
         button_layout.addWidget(self.retry_button)
         
         # Quit button
         self.quit_button = QPushButton('Quit')
+        self.quit_button.setProperty("type", "cancel")  # Set property for styling
         self.quit_button.clicked.connect(self.reject)
         button_layout.addWidget(self.quit_button)
         
         layout.addLayout(button_layout)
         self.setLayout(layout)
+        
+        # Apply theme from parent if available
+        if parent and hasattr(parent, '_current_stylesheet'):
+            self.setStyleSheet(parent._current_stylesheet)
         
         # Center the dialog on the screen
         screen_geometry = QApplication.desktop().screenGeometry()
