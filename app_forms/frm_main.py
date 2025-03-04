@@ -328,11 +328,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Info box
     info_box = QFrame()
     info_box.setFrameShape(QFrame.Box)
-    info_box.setFrameShadow(QFrame.Sunken)
-    info_box.setLineWidth(4)
+    info_box.setLineWidth(2)
     info_box.setMidLineWidth(1)
+    info_box.setObjectName("infoBox")
     info_box_layout = QVBoxLayout()
-    info_box_layout.setContentsMargins(15, 15, 15, 15)  # Add padding around the content (left, top, right, bottom)
 
     # Add loading indicator
     self.loading_indicator = LoadingIndicator(size=30)

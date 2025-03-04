@@ -216,7 +216,8 @@ DARK_COLORS = {
     "button_copy_address_bg": "transparent",
     "add_node_button_bg": "#1E90FF",
     "add_node_button_border": "#87CEEB",
-    "add_node_button_hover": "#104E8B"
+    "add_node_button_hover": "#104E8B",
+    "info_box_border": "white"
 }
 
 # Color definitions for light theme
@@ -247,7 +248,8 @@ LIGHT_COLORS = {
     "button_copy_address_bg": "transparent",
     "add_node_button_bg": "#D3D3D3",
     "add_node_button_border": "#A9A9A9",
-    "add_node_button_hover": "#A9A9A9"
+    "add_node_button_hover": "#A9A9A9",
+    "info_box_border": "black"
 }
 
 # Merge common styles with theme-specific colors
@@ -382,6 +384,25 @@ COMMON_STYLESHEET_TEMPLATE = """
   #addNodeButton:hover {{
     background-color: {add_node_button_hover};
   }}
+  #infoBox {{
+  background-color: {widget_bg};
+  border: 1px solid {info_box_border};
+  border-radius: 8px;
+  margin: 10px;
+  padding: 15px;
+}}
+#infoBox QLabel {{
+  color: {text_color};
+  font-family: "Courier New";
+  font-size: 10pt;
+  margin: 2px;
+}}
+#infoBox QPushButton {{
+  background-color: {button_copy_address_bg};
+  border: none;
+  padding: 0px;
+  margin: 0px;
+}}
 """
 
 # Apply the common template with dark theme values
