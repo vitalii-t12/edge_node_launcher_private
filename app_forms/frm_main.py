@@ -490,12 +490,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Right side layout (for graphs)
     right_panel = QWidget()
     right_panel_layout = QVBoxLayout(right_panel)
-    right_panel_layout.setContentsMargins(10, 0, 0, 10)  # Set consistent padding for right panel
+    right_panel_layout.setContentsMargins(10, 0, 10, 10)  # Set consistent padding for right panel with equal left and right margins
 
     # the graph area
     self.graphView = QWidget()
     graph_layout = QGridLayout()
     graph_layout.setSpacing(10)  # Add some spacing between graphs
+    graph_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins from graph layout
     
     self.cpu_plot = pg.PlotWidget()
     self.memory_plot = pg.PlotWidget()
@@ -614,7 +615,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 self.add_log(f"Using existing volume name from config: {volume_name}", debug=True)
             else:
                 volume_name = get_volume_name(container_name)
-                self.add_log(f"Generated new volume name: {volume_name}", debug=True)
+                self.add_log(f"Generated volume name: {volume_name}", debug=True)
             
             # Launch the container
             self.launch_container(volume_name)
