@@ -496,10 +496,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             self.add_log(f'Stopping container {container_name}...')
             # Pass the container name explicitly to ensure we're stopping the right one
             self.docker_handler.stop_container(container_name)
-            self._clear_info_display()
             
-            # Update button state using the update method
+            # Clear and update all UI elements
+            self._clear_info_display()
             self.update_toggle_button_text()
+            self.refresh_local_address()  # Updates address displays with cached data
+            self.maybe_refresh_uptime()   # Updates uptime displays
+            self.plot_data()              # Clears plots
+            
+            # Process events to ensure immediate UI update
+            QApplication.processEvents()
         else:
             self.add_log(f'Starting container {container_name}...')
             
@@ -1122,8 +1128,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if hasattr(self, 'ssh_service'):
             self.ssh_service.clear_configuration()
         
-        # Refresh container list
-        self.refresh_container_list()
+        # We don't need to refresh the container list on every refresh
+        # The container list only changes when containers are added or removed
+        # self.refresh_container_list()
         
         # Update container info if running
         if self.is_container_running():
@@ -1799,16 +1806,24 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Get all containers from config
         config_containers = self.config_manager.get_all_containers()
         
+        # Track if any container status has changed
+        status_changed = False
+        
         # Check each container's existence in Docker
         for config_container in config_containers:
             exists_in_docker = self.container_exists_in_docker(config_container.name)
+            
+            # Check if this is a status change (we could store previous status in the future)
+            # For now, just log the status
             self.add_log(f"Container {config_container.name} exists in Docker: {exists_in_docker}", debug=True)
             
             # We could add a status field to ContainerConfig if needed in the future
-            # For now, we just log the status
+            # If we did, we would set status_changed = True if the status changed
         
-        # Refresh container list
-        self.refresh_container_list()
+        # Only refresh container list if status changed
+        # Since we don't track status changes yet, we'll comment this out
+        # if status_changed:
+        #     self.refresh_container_list()
     except Exception as e:
         self.add_log(f"Error updating container configurations: {str(e)}", debug=True, color="red")
 
@@ -1862,8 +1877,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if hasattr(self, 'ssh_service'):
             self.ssh_service.clear_configuration()
         
-        # Refresh container list
-        self.refresh_container_list()
+        # We don't need to refresh the container list on every refresh
+        # The container list only changes when containers are added or removed
+        # self.refresh_container_list()
         
         # Update container info if running
         if self.is_container_running():
