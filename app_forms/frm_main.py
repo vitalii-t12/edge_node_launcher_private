@@ -280,9 +280,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     container_selector_layout.setContentsMargins(0, 11, 0, 0)
     # Add Node button
     self.add_node_button = QPushButton("Add New Node")
-    self.add_node_button.setFont(QFont("Courier New", 10))
     self.add_node_button.clicked.connect(self.show_add_node_dialog)
-    self.add_node_button.setMinimumHeight(50)  # Match dropdown height
     self.add_node_button.setObjectName("addNodeButton")
     container_selector_layout.addWidget(self.add_node_button)
 
@@ -297,6 +295,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Launch Edge Node button
     self.toggleButton = QPushButton(LAUNCH_CONTAINER_BUTTON_TEXT)
+    self.toggleButton.setObjectName("startNodeButton")
     self.toggleButton.clicked.connect(self.toggle_container)
     self.toggleButton.setStyleSheet("""
         QPushButton {

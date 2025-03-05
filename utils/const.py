@@ -402,13 +402,13 @@ COMMON_STYLESHEET_TEMPLATE = """
     padding: 0px;
     margin: 0px;
   }}
+  #startNodeButton {{
+    min-height: 40px;
+  }}
   #addNodeButton {{
     background-color: {add_node_button_bg};
     color: {text_color};
     border: 2px solid {add_node_button_border};
-    padding: 5px 10px;
-    border-radius: 15px;
-    min-height: 50px;
   }}
   #addNodeButton:hover {{
     background-color: {add_node_button_hover};
