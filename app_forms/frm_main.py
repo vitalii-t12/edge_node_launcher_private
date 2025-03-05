@@ -1662,7 +1662,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     layout = QVBoxLayout()
     
     # Add info text with more descriptive message
-    info_text = f"This action will create a new Edge Node.\nA Docker container named '{container_name}' will be started.\n\nDo you want to proceed?"
+    info_text = f"This action will create a new Edge Node. \n\nDo you want to proceed?"
     info_label = QLabel(info_text)
     info_label.setWordWrap(True)  # Enable word wrapping for better readability
     layout.addWidget(info_label)
@@ -1825,7 +1825,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Add containers to combo box
     for container in containers:
-        display_text = container.node_alias + " - " + container.name if container.node_alias else container.name
+        # Use node alias if available, otherwise use container name
+        display_text = container.node_alias if container.node_alias else container.name
         self.container_combo.addItem(display_text, container.name)
     
     # Restore previous selection if it exists
