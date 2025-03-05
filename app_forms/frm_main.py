@@ -277,7 +277,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Container selector area
     container_selector_layout = QVBoxLayout()  # Changed to QVBoxLayout
-    container_selector_layout.setContentsMargins(0, 11, 0, 0)
+    container_selector_layout.setContentsMargins(0, 0, 0, 0)
     # Add Node button
     self.add_node_button = QPushButton("Add New Node")
     self.add_node_button.clicked.connect(self.show_add_node_dialog)
@@ -503,7 +503,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Right panel with mode switch overlay
     right_container = QWidget()
     right_container_layout = QVBoxLayout(right_container)
-    right_container_layout.setContentsMargins(0, 0, 0, 0)
+    right_container_layout.setContentsMargins(0, 0, 0, 29)
     right_container_layout.setSpacing(0)
 
     # Add a small spacer between mode switch and graphs
