@@ -200,6 +200,26 @@ DARK_COLORS = {
     "progress_border": "#1E90FF",
     "progress_chunk": "#1E90FF",
     "widget_bg": "#0D1F2D",
+    
+    # Log view specific colors
+    "log_view_bg": "#0D1F2D",
+    "log_view_text": "white",
+    "log_view_border": "#1E90FF",
+    
+    # Info box specific colors
+    "info_box_bg": "#0D1F2D",
+    "info_box_text": "white",
+    "info_box_border": "#1E90FF",
+    
+    # Graph specific colors
+    "graph_bg": "#243447",
+    "graph_border": "#87CEEB",
+    "graph_text": "white",
+    "graph_cpu_color": "#1E90FF",
+    "graph_memory_color": "#4CAF50",
+    "graph_gpu_color": "#FFD700",
+    "graph_gpu_memory_color": "#FF6B6B",
+    
     "text_edit_bg": "#0D1F2D",
     "text_edit_border": "#1E90FF",
     "plot_bg": "#243447",
@@ -217,12 +237,6 @@ DARK_COLORS = {
     "add_node_button_bg": "#1E90FF",
     "add_node_button_border": "#87CEEB",
     "add_node_button_hover": "#104E8B",
-    "info_box_border": "white",
-    "infoBoxTextColor": "white",
-    "graph_cpu_color": "#1E90FF",
-    "graph_memory_color": "#4CAF50",
-    "graph_gpu_color": "#FFD700",
-    "graph_gpu_memory_color": "#FF6B6B",
     "confirm_button_bg": "#4CAF50",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
@@ -243,6 +257,26 @@ LIGHT_COLORS = {
     "progress_border": "#D3D3D3",
     "progress_chunk": "#D3D3D3",
     "widget_bg": "#F0F0F0",
+    
+    # Log view specific colors
+    "log_view_bg": "#FFFFFF",
+    "log_view_text": "black",
+    "log_view_border": "#D3D3D3",
+    
+    # Info box specific colors
+    "info_box_bg": "#FFFFFF",
+    "info_box_text": "black",
+    "info_box_border": "#D3D3D3",
+    
+    # Graph specific colors
+    "graph_bg": "#FFFFFF",
+    "graph_border": "#D3D3D3",
+    "graph_text": "black",
+    "graph_cpu_color": "#0066CC",
+    "graph_memory_color": "#2E8B57",
+    "graph_gpu_color": "#DAA520",
+    "graph_gpu_memory_color": "#CD5C5C",
+    
     "text_edit_bg": "#FFFFFF",
     "text_edit_border": "#D3D3D3",
     "plot_bg": "#FFFFFF",
@@ -260,12 +294,6 @@ LIGHT_COLORS = {
     "add_node_button_bg": "#D3D3D3",
     "add_node_button_border": "#A9A9A9",
     "add_node_button_hover": "#A9A9A9",
-    "info_box_border": "black",
-    "infoBoxTextColor": "black",
-    "graph_cpu_color": "#0066CC",
-    "graph_memory_color": "#2E8B57",
-    "graph_gpu_color": "#DAA520",
-    "graph_gpu_memory_color": "#CD5C5C",
     "confirm_button_bg": "#66BB6A",
     "confirm_button_border": "#4CAF50",
     "confirm_button_hover": "#4CAF50",
@@ -305,16 +333,16 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: {widget_bg};
   }}
   QTextEdit {{
-    background-color: {text_edit_bg};
-    color: {text_color};
+    background-color: {log_view_bg};
+    color: {log_view_text};
     font-size: {font_size};
-    border: 1px solid {text_edit_border};
+    border: 1px solid {log_view_border};
     border-radius: {border_radius};
     padding: 8px;
   }}
   PlotWidget, QWidget[class="plot-container"] {{
-    background-color: {plot_bg};
-    border: 1px solid {plot_border};
+    background-color: {graph_bg};
+    border: 1px solid {graph_border};
     border-radius: {border_radius};
     padding: 8px;
   }}
@@ -322,7 +350,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: transparent;
   }}
   PlotWidget LabelItem {{
-    color: {text_color};
+    color: {graph_text};
   }}
   QComboBox {{
     color: {text_color};
@@ -429,15 +457,15 @@ COMMON_STYLESHEET_TEMPLATE = """
     font-weight: bold;
   }}
   #infoBox {{
-    background-color: {widget_bg};
+    background-color: {info_box_bg};
     border: 1px solid {info_box_border};
     border-radius: {border_radius};
     margin: 6px;
     padding: 8px;
-    color: {text_color};
+    color: {info_box_text};
   }}
   #infoBox QLabel {{
-    color: {text_color};
+    color: {info_box_text};
     font-family: "Courier New";
     font-size: 10pt;
     margin: 2px;
@@ -450,7 +478,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     color: {text_color};
   }}
   #infoBoxText QLabel {{
-    color: {infoBoxTextColor};
+    color: {info_box_text};
   }}
 """
 
