@@ -60,10 +60,13 @@ class ConfigManager:
         os.makedirs(self.config_dir, exist_ok=True)
         
         self.containers_file = os.path.join(self.config_dir, "containers.json")
+        self.settings_file = os.path.join(self.config_dir, "settings.json")
         self.containers: List[ContainerConfig] = []
+        self.settings = {}
         
         # Load existing configurations
         self.load_containers()
+        self.load_settings()
     
     def load_containers(self) -> List[ContainerConfig]:
         """Load container configurations from file."""
@@ -278,4 +281,49 @@ class ConfigManager:
             return False
         except Exception as e:
             logging.error(f"Error importing container configurations: {str(e)}")
-            return False 
+            return False
+    
+    def load_settings(self) -> dict:
+        """Load settings from file."""
+        try:
+            if os.path.exists(self.settings_file):
+                with open(self.settings_file, 'r') as f:
+                    self.settings = json.load(f)
+            return self.settings
+        except Exception as e:
+            logging.error(f"Error loading settings: {str(e)}")
+            return {}
+    
+    def save_settings(self) -> bool:
+        """Save settings to file."""
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump(self.settings, f, indent=2)
+            return True
+        except Exception as e:
+            logging.error(f"Error saving settings: {str(e)}")
+            return False
+    
+    def set_force_debug(self, enabled: bool) -> bool:
+        """Set force debug mode.
+        
+        Args:
+            enabled: Whether to enable force debug mode
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self.settings['force_debug'] = enabled
+            return self.save_settings()
+        except Exception as e:
+            logging.error(f"Error setting force debug mode: {str(e)}")
+            return False
+    
+    def get_force_debug(self) -> bool:
+        """Get force debug mode setting.
+        
+        Returns:
+            bool: True if force debug is enabled, False otherwise
+        """
+        return self.settings.get('force_debug', False) 

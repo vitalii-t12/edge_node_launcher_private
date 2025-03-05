@@ -184,46 +184,54 @@ class DockerCommandThread(QThread):
 
 class DockerCommandHandler:
     """ Handles Docker commands """
-    def __init__(self, container_name: str):
+    def __init__(self, container_name: str = None):
+        """Initialize the handler.
+        
+        Args:
+            container_name: Name of container to manage
+        """
         self.container_name = container_name
+        self.registry = ContainerRegistry()
+        self._debug_mode = False
         self.threads = []
         self.remote_ssh_command = None
-        self.registry = ContainerRegistry()
+
+    def set_debug_mode(self, enabled: bool) -> None:
+        """Set debug mode for docker commands.
+        
+        Args:
+            enabled: Whether to enable debug mode
+        """
+        self._debug_mode = enabled
 
     def set_container_name(self, container_name: str):
         """Set the container name."""
         self.container_name = container_name
 
     def execute_command(self, command: list) -> tuple:
-        """Execute a Docker command directly.
+        """Execute a docker command.
         
         Args:
-            command: List of command parts
+            command: Command to execute as list of strings
             
         Returns:
             tuple: (stdout, stderr, return_code)
         """
         try:
-            # Add remote prefix if needed
-            if self.remote_ssh_command:
-                command = self.remote_ssh_command + command
+            if self._debug_mode:
+                print(f"Executing command: {' '.join(command)}")
+                
+            result = subprocess.run(command, capture_output=True, text=True)
             
-            # Log the command before executing it
-            logging.info(f"Executing command: {' '.join(command)}")
-
-            if os.name == 'nt':
-                result = subprocess.run(
-                    command,
-                    capture_output=True,
-                    text=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW
-                )
-            else:
-                result = subprocess.run(command, capture_output=True, text=True)
-
+            if self._debug_mode and result.returncode != 0:
+                print(f"Command failed with code {result.returncode}")
+                print(f"stderr: {result.stderr}")
+                
             return result.stdout, result.stderr, result.returncode
         except Exception as e:
-            return '', str(e), 1
+            if self._debug_mode:
+                print(f"Command execution failed: {str(e)}")
+            return "", str(e), 1
 
     def _ensure_image_exists(self) -> bool:
         """Check if the Docker image exists locally and pull it if not.

@@ -101,7 +101,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.__current_node_ver = -1
     self.__display_uptime = None
 
-    self._current_stylesheet = DARK_STYLESHEET
+    self._current_stylesheet = DARK_STYLESHEET  # Default to dark theme
     self.__last_plot_data = None
     self.__last_auto_update_check = 0
     
@@ -114,7 +114,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Initialize config manager for container configurations
     self.config_manager = ConfigManager()
     
+    # Initialize force debug from saved settings
+    self.__force_debug = self.config_manager.get_force_debug()
+    
     self.initUI()
+    
+    # Set initial theme class
+    self.force_debug_checkbox.setProperty('class', 'dark')
 
     self.__cwd = os.getcwd()
     
@@ -427,9 +433,66 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # add a checkbox item to force debug
     self.force_debug_checkbox = QCheckBox('Force Debug Mode')
-    self.force_debug_checkbox.setChecked(False)
+    self.force_debug_checkbox.setChecked(self.__force_debug)  # Set initial state from config
     self.force_debug_checkbox.setFont(QFont("Courier New", 9, QFont.Bold))
-    self.force_debug_checkbox.setStyleSheet("color: white;")
+    
+    # Create a more visible checkbox style that works in both themes
+    checkbox_style = """
+        QCheckBox {
+            spacing: 8px;
+            padding: 4px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        QCheckBox:hover {
+            background-color: rgba(128, 128, 128, 0.2);
+        }
+        
+        QCheckBox::indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            border: 2px solid #666;
+        }
+        
+        QCheckBox::indicator:unchecked {
+            background-color: transparent;
+        }
+        
+        QCheckBox::indicator:checked {
+            background-color: #4CAF50;
+            border-color: #4CAF50;
+            image: url(:/icons/check.png);
+        }
+        
+        QCheckBox::indicator:checked:hover {
+            background-color: #45a049;
+            border-color: #45a049;
+        }
+        
+        /* Dark theme specific */
+        .dark QCheckBox {
+            color: #ffffff;
+        }
+        
+        .dark QCheckBox::indicator:unchecked {
+            border-color: #888;
+            background-color: #333;
+        }
+        
+        /* Light theme specific */
+        .light QCheckBox {
+            color: #000000;
+        }
+        
+        .light QCheckBox::indicator:unchecked {
+            border-color: #666;
+            background-color: #ffffff;
+        }
+    """
+    
+    self.force_debug_checkbox.setStyleSheet(checkbox_style)
     self.force_debug_checkbox.stateChanged.connect(self.toggle_force_debug)
     bottom_button_area.addWidget(self.force_debug_checkbox)
 
@@ -503,15 +566,19 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   
   def toggle_theme(self):
     if self._current_stylesheet == DARK_STYLESHEET:
-      self._current_stylesheet = LIGHT_STYLESHEET
-      self.themeToggleButton.setText(DARK_DASHBOARD_BUTTON_TEXT)
+        self._current_stylesheet = LIGHT_STYLESHEET
+        self.themeToggleButton.setText(DARK_DASHBOARD_BUTTON_TEXT)
+        self.force_debug_checkbox.setProperty('class', 'light')
     else:
-      self._current_stylesheet = DARK_STYLESHEET
-      self.themeToggleButton.setText(LIGHT_DASHBOARD_BUTTON_TEXT)
+        self._current_stylesheet = DARK_STYLESHEET
+        self.themeToggleButton.setText(LIGHT_DASHBOARD_BUTTON_TEXT)
+        self.force_debug_checkbox.setProperty('class', 'dark')
+    
     self.apply_stylesheet()
     self.plot_graphs()
-    self.change_text_color()
-    return  
+    # Force style update
+    self.force_debug_checkbox.style().unpolish(self.force_debug_checkbox)
+    self.force_debug_checkbox.style().polish(self.force_debug_checkbox)
 
   def change_text_color(self):
     if self._current_stylesheet == DARK_STYLESHEET:
@@ -1249,13 +1316,36 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
   
   
-  def toggle_force_debug(self):
-    self.__force_debug = self.force_debug_checkbox.isChecked()
-    if self.__force_debug:
-      self.add_log('Force Debug enabled.')
+  def toggle_force_debug(self, state):
+    """Toggle force debug mode based on checkbox state.
+    
+    Args:
+        state: The state of the checkbox (Qt.Checked or Qt.Unchecked)
+    """
+    from PyQt5.QtCore import Qt
+    
+    is_checked = state == Qt.Checked
+    self.__force_debug = is_checked
+    
+    # Save the debug state
+    self.config_manager.set_force_debug(is_checked)
+    
+    # Log the change
+    if is_checked:
+        self.add_log("Force debug mode enabled", color="yellow")
     else:
-      self.add_log('Force Debug disabled.')
-    return
+        self.add_log("Force debug mode disabled", color="yellow")
+    
+    # Update docker handler debug mode if it exists
+    if hasattr(self, 'docker_handler') and self.docker_handler is not None:
+        try:
+            self.docker_handler.set_debug_mode(is_checked)
+        except Exception as e:
+            self.add_log(f"Failed to set docker handler debug mode: {str(e)}", color="red")
+    
+    # If a container is running, we might need to restart it for the change to take effect
+    if self.is_container_running():
+        self.add_log("Note: You may need to restart the container for debug mode changes to take effect", color="yellow")
 
   def show_rename_dialog(self):
     # Get the current index and container name from the data
@@ -2025,31 +2115,3 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       'Ratio1 Explorer is not yet implemented'
     )
     return
-
-  def toggle_force_debug(self, state):
-    """Toggle force debug mode based on checkbox state.
-    
-    Args:
-        state: The state of the checkbox (Qt.Checked or Qt.Unchecked)
-    """
-    from PyQt5.QtCore import Qt
-    
-    is_checked = state == Qt.Checked
-    
-    # Store the debug state
-    if hasattr(self, 'config_manager'):
-        self.config_manager.set_force_debug(is_checked)
-        
-    # Log the change
-    if is_checked:
-        self.add_log("Force debug mode enabled", color="yellow")
-    else:
-        self.add_log("Force debug mode disabled", color="yellow")
-        
-    # If we have a docker handler, update its debug mode
-    if hasattr(self, 'docker_handler'):
-        self.docker_handler.set_debug_mode(is_checked)
-        
-    # If a container is running, we might need to restart it for the change to take effect
-    if self.is_container_running():
-        self.add_log("Note: You may need to restart the container for debug mode changes to take effect", color="yellow")
