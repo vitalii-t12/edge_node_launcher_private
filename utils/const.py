@@ -175,13 +175,13 @@ EE_HF_TOKEN=token_for_accessing_huggingface_api
 # Common style properties that don't depend on theme
 COMMON_STYLES = {
     "font_size": "14px",
-    "border_radius": "5px",
+    "border_radius": "15px",
     "progress_height": "30px",
     "button_padding": "10px 20px",
     "button_font_size": "16px",
     "button_margin": "4px 2px",
     "button_border_radius": "15px",
-    "combo_border_radius": "4px",
+    "combo_border_radius": "15px",
     "combo_padding": "4px",
     "combo_min_width": "100px",
     "combo_dropdown_width": "20px",
@@ -310,11 +310,16 @@ COMMON_STYLESHEET_TEMPLATE = """
     font-size: {font_size};
     border: 1px solid {text_edit_border};
     border-radius: {border_radius};
+    padding: 8px;
   }}
-  PlotWidget {{
+  PlotWidget, QWidget[class="plot-container"] {{
     background-color: {plot_bg};
     border: 1px solid {plot_border};
-    color: {text_color};  
+    border-radius: {border_radius};
+    padding: 8px;
+  }}
+  PlotWidget > * {{
+    background-color: transparent;
   }}
   PlotWidget LabelItem {{
     color: {text_color};
@@ -327,6 +332,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     padding: 5px 10px;
     min-width: {combo_min_width};
     min-height: 32px;
+    max-height: 32px;
     font-family: "Courier New";
     font-size: 10pt;
   }}
@@ -354,7 +360,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     selection-background-color: {combo_dropdown_select_bg};
     selection-color: {combo_dropdown_select_color};
     border: 1px solid {combo_border};
-    border-radius: {combo_border_radius};
+    border-radius: {border_radius};
     padding: 5px;
   }}
   QComboBox QAbstractItemView::item {{
@@ -409,14 +415,23 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: {add_node_button_bg};
     color: {text_color};
     border: 2px solid {add_node_button_border};
+    padding: 5px 10px;
+    border-radius: {border_radius};
+    min-height: 32px;
+    max-height: 32px;
   }}
   #addNodeButton:hover {{
     background-color: {add_node_button_hover};
   }}
+  #toggleContainerButton {{
+    min-height: 40px;
+    max-height: 40px;
+    font-weight: bold;
+  }}
   #infoBox {{
     background-color: {widget_bg};
     border: 1px solid {info_box_border};
-    border-radius: 8px;
+    border-radius: {border_radius};
     margin: 6px;
     padding: 8px;
     color: {text_color};
@@ -437,20 +452,20 @@ COMMON_STYLESHEET_TEMPLATE = """
   #infoBoxText QLabel {{
     color: {infoBoxTextColor};
   }}
-  """
+"""
 
 # Apply the common template with dark theme values
 DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME)
 
 # Apply the common template with light theme values, with additional light-specific styles
 LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
-  PlotWidget .axis {{
+  PlotWidget .axis {
     color: black;
-  }}
+  }
 
-  PlotWidget .plotLabel {{
+  PlotWidget .plotLabel {
     color: black;
-  }}
+  }
 """
 
 # Notification messages
