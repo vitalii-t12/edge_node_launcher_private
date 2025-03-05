@@ -35,24 +35,12 @@ def generate_container_name(prefix="r1node"):
             capture_output=True, text=True
         )
         
-        if result.returncode != 0:
-            # If command fails, default to r1node (no number)
-            return prefix
-            
         # Parse existing container names and find the highest index
         existing_containers = result.stdout.strip().split('\n')
         existing_containers = [c for c in existing_containers if c]  # Remove empty strings
         
-        # Check if the base name (without number) exists
-        base_name_exists = any(c.strip() == prefix for c in existing_containers)
-        
-        highest_index = 0
+        highest_index = -1  # Start from -1 so first container will be r1node0
         for container in existing_containers:
-            # Skip the exact prefix match (r1node)
-            if container.strip() == prefix:
-                continue
-                
-            # Extract the numeric part after the prefix
             if container.startswith(prefix):
                 try:
                     # Extract the number after the prefix
@@ -61,20 +49,14 @@ def generate_container_name(prefix="r1node"):
                         index = int(index_str)
                         highest_index = max(highest_index, index)
                 except (ValueError, IndexError):
-                    # If we can't parse the index, just continue
-                    pass
+                    continue
         
-        # If base name doesn't exist, use it first
-        if not base_name_exists:
-            return prefix
-            
-        # Otherwise, return the next available index
+        # Return next available index
         return f"{prefix}{highest_index + 1}"
         
     except Exception as e:
-        # In case of any error, default to r1node (no number)
-        print(f"Error generating container name: {str(e)}")
-        return prefix
+        # In case of any error, start from 0
+        return f"{prefix}0"
 
 def get_volume_name(container_name):
     """Get volume name from container name"""
