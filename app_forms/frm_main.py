@@ -3,6 +3,7 @@ import platform
 import os
 import json
 import dataclasses
+import subprocess
 
 from datetime import datetime, timedelta
 from time import time
@@ -30,7 +31,7 @@ from PyQt5.QtWidgets import (
   QLineEdit, QGroupBox
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 import pyqtgraph as pg
 
 from models.NodeInfo import NodeInfo
@@ -104,10 +105,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self._current_stylesheet = DARK_STYLESHEET  # Default to dark theme
     self.__last_plot_data = None
     self.__last_auto_update_check = 0
+    self.__last_docker_image_check = 0
     
     self.__version__ = __version__
     self.__last_timesteps = []
     self._icon = get_icon_from_base64(ICON_BASE64)
+    self.setWindowIcon(self._icon)
     
     self.runs_in_production = self.is_running_in_production()
     
@@ -1293,6 +1296,38 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       verbose = self.__last_auto_update_check == 0
       self.__last_auto_update_check = time()
       self.check_for_updates(verbose=verbose or FULL_DEBUG)
+
+    # Check for Docker image updates every 5 minutes (300 seconds)
+    if (time() - self.__last_docker_image_check) > DOCKER_IMAGE_AUTO_UPDATE_CHECK_INTERVAL:
+      self.__last_docker_image_check = time()
+      self._check_docker_image_updates()
+
+  def _check_docker_image_updates(self):
+    """Check if there's an updated Docker image and pull it if available."""
+    try:
+      # First ensure we have Docker
+      if not self.check_docker():
+        return
+        
+      # Get proper image name and tag
+      from utils.const import DOCKER_IMAGE, DOCKER_TAG
+      
+      self.add_log(f"Checking for Docker image updates...", debug=True)
+      
+      # Use the docker_handler service to check for and pull updates
+      was_updated, message = self.docker_handler.check_and_pull_image_updates(
+        image_name=DOCKER_IMAGE,
+        tag=DOCKER_TAG
+      )
+      
+      # Log the result
+      if was_updated:
+        self.add_log(message, color="green")
+      else:
+        self.add_log(message, debug=True)
+        
+    except Exception as e:
+      self.add_log(f"Error checking for Docker image updates: {str(e)}", debug=True)
 
   def _refresh_local_containers(self):
     """Refresh local container list and info."""

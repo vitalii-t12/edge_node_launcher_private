@@ -24,6 +24,7 @@ DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 REFRESH_TIME = 20_000
 MAX_HISTORY_QUEUE = 5 * 60 // 10  # 5 minutes @ 10 seconds each hb
 AUTO_UPDATE_CHECK_INTERVAL = 60
+DOCKER_IMAGE_AUTO_UPDATE_CHECK_INTERVAL = 300  # 5 minutes
 MAX_ALIAS_LENGTH = 15  # Maximum length for aliases (node name and authorized addresses)
 
 # ============================================================================
