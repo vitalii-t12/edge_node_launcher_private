@@ -23,6 +23,7 @@ class _UpdaterMixin:
     assets = latest_release['assets']
     download_urls = {
       'Windows': next(asset['browser_download_url'] for asset in assets if 'WIN32' in asset['name']),
+      'Linux_Ubuntu_24.04': next(asset['browser_download_url'] for asset in assets if 'Ubuntu-24.04' in asset['name']),
       'Linux_Ubuntu_22.04': next(asset['browser_download_url'] for asset in assets if 'Ubuntu-22.04' in asset['name']),
       'Linux_Ubuntu_20.04': next(asset['browser_download_url'] for asset in assets if 'Ubuntu-20.04' in asset['name']),
     }
@@ -146,7 +147,9 @@ class _UpdaterMixin:
           if platform_system == 'Windows':
             download_url = download_urls['Windows']
           elif platform_system == 'Linux':
-            if '22.04' in platform.version():
+            if '24.04' in platform.version():
+              download_url = download_urls['Linux_Ubuntu_24.04']
+            elif '22.04' in platform.version():
               download_url = download_urls['Linux_Ubuntu_22.04']
             elif '20.04' in platform.version():
               download_url = download_urls['Linux_Ubuntu_20.04']
