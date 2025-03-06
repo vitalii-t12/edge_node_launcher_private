@@ -247,7 +247,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def set_windows_taskbar_icon(self):
     if os.name == 'nt':
       import ctypes
-      myappid = 'naeural.edge_node_launcher'  # arbitrary string
+      myappid = 'ratio1.edge_node_launcher'  # arbitrary string
       ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     # TODO: Add support for other OS (Linux, MacOS)
     return

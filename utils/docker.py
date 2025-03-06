@@ -303,7 +303,7 @@ class _DockerUtilsMixin:
   
   
   def get_node_id(self):
-    return 'naeural_' + str(uuid4())[:8]
+    return 'ratio1_' + str(uuid4())[:8]
   
 
   def __check_env_keys(self):

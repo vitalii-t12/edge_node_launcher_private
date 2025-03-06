@@ -5,15 +5,15 @@ FULL_DEBUG = True
 # ============================================================================
 # DIRECTORY AND FILE CONSTANTS
 # ============================================================================
-HOME_SUBFOLDER = ".naeural_launcher"
+HOME_SUBFOLDER = ".ratio1"
 CONFIG_DIR = ".ratio1/edge_node_launcher"
 E2_PEM_FILE = 'e2.pem'
 
 # ============================================================================
 # DOCKER CONSTANTS
 # ============================================================================
-DOCKER_VOLUME = 'naeural_vol'
-DOCKER_IMAGE = 'naeural/edge_node'
+DOCKER_VOLUME = 'ratio1_vol'
+DOCKER_IMAGE = 'ratio1/edge_node'
 DOCKER_TAG = 'testnet'
 DOCKER_CONTAINER_NAME = 'r1node'
 DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
