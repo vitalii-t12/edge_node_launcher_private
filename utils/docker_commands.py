@@ -343,9 +343,10 @@ class DockerCommandHandler:
         # Base command with container name
         command = [
             'docker', 'run',
+            '--rm',
             '-d',  # Run in detached mode
             '--name', self.container_name,  # Set container name
-            '--restart', 'unless-stopped',  # Restart policy
+            # '--restart', 'unless-stopped',  # Restart policy
         ]
         
         # Add volume mount if specified
