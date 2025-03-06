@@ -224,6 +224,9 @@ class _DockerUtilsMixin:
     if len(str_gpus) > 0:
       base_run += [str_gpus]
     
+    if platform.machine() in ['aarch64', 'arm64']:
+        base_run += ['--platform', 'linux/amd64']
+    
     base_run += [
         '--rm',
         '--env-file', '.env',

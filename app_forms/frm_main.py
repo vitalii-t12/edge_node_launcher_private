@@ -441,6 +441,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Create a more visible checkbox style that works in both themes
     checkbox_style = """
         QCheckBox {
+            margin-top: 4px;
             spacing: 8px;
             padding: 4px;
             border-radius: 4px;
