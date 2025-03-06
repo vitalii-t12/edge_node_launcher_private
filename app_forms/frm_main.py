@@ -43,6 +43,7 @@ from utils.docker_commands import DockerCommandHandler
 from utils.updater import _UpdaterMixin
 from utils.docker_utils import get_volume_name, generate_container_name
 from utils.config_manager import ConfigManager, ContainerConfig
+from utils.dropdown_fix import style_combobox_for_theme
 
 from utils.icon import ICON_BASE64
 
@@ -368,6 +369,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.container_combo.setFont(QFont("Courier New", 10))
     self.container_combo.currentTextChanged.connect(self._on_container_selected)
     self.container_combo.setMinimumHeight(32)  # Make dropdown slightly taller
+    
+    # Apply the dropdown styling fix
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    style_combobox_for_theme(self.container_combo, is_dark)
+    
     container_selector_layout.addWidget(self.container_combo)
     
     top_button_area.addLayout(container_selector_layout)
@@ -706,6 +712,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.memory_plot.setBackground(None)
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
+    
+    # Apply the appropriate theme to the container_combo
+    style_combobox_for_theme(self.container_combo, is_dark)
 
   def toggle_container(self):
     # Get the current index and container name from the data
@@ -1878,43 +1887,76 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toast.show_notification(NotificationType.ERROR, f"Error selecting container: {str(e)}")
 
   def show_add_node_dialog(self):
-    """Show confirmation dialog for adding a new node."""
-    from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
-    
-    # Generate the container name that would be used
-    container_name = generate_container_name()
-    volume_name = get_volume_name(container_name)
-    
-    # Create dialog
+    """Show dialog to add a new node."""
     dialog = QDialog(self)
     dialog.setWindowTitle("Add New Node")
+    dialog.setWindowIcon(self._icon)
     dialog.setMinimumWidth(400)
+    dialog.setMinimumHeight(250)
+    dialog.setWindowModality(Qt.ApplicationModal)
+    dialog.setStyleSheet(self._current_stylesheet)
     
     layout = QVBoxLayout()
     
-    # Add info text with more descriptive message
-    info_text = f"This action will create a new Edge Node. \n\nDo you want to proceed?"
-    info_label = QLabel(info_text)
-    info_label.setWordWrap(True)  # Enable word wrapping for better readability
-    layout.addWidget(info_label)
+    form_layout = QGridLayout()
     
-    # Add buttons
+    # Container name
+    label_container = QLabel("Container Name:")
+    form_layout.addWidget(label_container, 0, 0)
+    
+    container_input = QLineEdit()
+    container_input.setPlaceholderText("e.g., my-node")
+    container_input.setText(generate_container_name())
+    form_layout.addWidget(container_input, 0, 1)
+    
+    # Volume name
+    label_volume = QLabel("Volume Name:")
+    form_layout.addWidget(label_volume, 1, 0)
+    
+    volume_input = QLineEdit()
+    volume_input.setPlaceholderText("e.g., my-node-vol")
+    volume_input.setText(get_volume_name())
+    form_layout.addWidget(volume_input, 1, 1)
+    
+    # Display name
+    label_display_name = QLabel("Display Name (optional):")
+    form_layout.addWidget(label_display_name, 2, 0)
+    
+    display_name_input = QLineEdit()
+    display_name_input.setPlaceholderText("e.g., My Edge Node")
+    form_layout.addWidget(display_name_input, 2, 1)
+    
+    layout.addLayout(form_layout)
+    
+    # Add some space
+    layout.addSpacing(10)
+    
+    # Buttons
     button_layout = QHBoxLayout()
-    create_button = QPushButton("Create Node")
-    create_button.setProperty("type", "confirm")  # Set property for styling
+    button_layout.addStretch()
+    
     cancel_button = QPushButton("Cancel")
-    cancel_button.setProperty("type", "cancel")  # Set property for styling
-    
-    button_layout.addWidget(create_button)
-    button_layout.addWidget(cancel_button)
-    layout.addLayout(button_layout)
-    
-    dialog.setLayout(layout)
-    dialog.setStyleSheet(self._current_stylesheet)  # Apply current theme
-    
-    # Connect buttons
-    create_button.clicked.connect(lambda: self._create_node_with_name(container_name, volume_name, None, dialog))
     cancel_button.clicked.connect(dialog.reject)
+    cancel_button.setProperty('type', 'cancel')
+    button_layout.addWidget(cancel_button)
+    
+    create_button = QPushButton("Create")
+    create_button.clicked.connect(lambda: self._create_node_with_name(
+        container_input.text().strip(),
+        volume_input.text().strip(),
+        display_name_input.text().strip(),
+        dialog
+    ))
+    create_button.setProperty('type', 'confirm')
+    button_layout.addWidget(create_button)
+    
+    layout.addLayout(button_layout)
+    dialog.setLayout(layout)
+    
+    # Apply the theme to any QComboBox in the dialog
+    for combo in dialog.findChildren(QComboBox):
+        is_dark = self._current_stylesheet == DARK_STYLESHEET
+        style_combobox_for_theme(combo, is_dark)
     
     dialog.exec_()
 
@@ -2060,6 +2102,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         display_text = container.node_alias if container.node_alias else container.name
         self.container_combo.addItem(display_text, container.name)
     
+    # Center align all items in the dropdown
+    for i in range(self.container_combo.count()):
+        self.container_combo.setItemData(i, Qt.AlignCenter, Qt.TextAlignmentRole)
+    
     # Restore previous selection if it exists
     if selected_container:
         index = -1
@@ -2072,6 +2118,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     elif self.container_combo.count() > 0:
         # If no previous selection or it wasn't found, select the first item
         self.container_combo.setCurrentIndex(0)
+    
+    # Make sure styling is applied
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    style_combobox_for_theme(self.container_combo, is_dark)
     
     self.add_log(f'Displayed {self.container_combo.count()} containers in dropdown', debug=True)
 
