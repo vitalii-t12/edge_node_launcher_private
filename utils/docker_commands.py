@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from PyQt5.QtCore import QThread, pyqtSignal
 import logging
+import platform
 
 from models.NodeInfo import NodeInfo
 from models.NodeHistory import NodeHistory
@@ -149,18 +150,15 @@ class DockerCommandThread(QThread):
                         text=True,
                         timeout=timeout
                     )
-
                 if result.returncode != 0:
                     self.command_error.emit(f"Command failed: {result.stderr}\nCommand: {' '.join(full_command)}\nInput data: {self.input_data}")
                     return
-
-                # TODO: Improve output handling.
-                # Maybe implement it in a way that the command itself can specify the output format.
-                # For reset_address and commands starting with change_alias, treat output as plain text
+                
+                # If command is reset_address or change_alias, process output as plain text
                 if self.command == 'reset_address' or self.command.startswith('change_alias'):
                     self.command_finished.emit({'message': result.stdout.strip()})
                     return
-
+                
                 try:
                     data = json.loads(result.stdout)
                     self.command_finished.emit(data)
@@ -342,7 +340,11 @@ class DockerCommandHandler:
         """
         # Base command with container name
         command = [
-            'docker', 'run',
+            'docker', 'run'
+        ]
+        if platform.machine() in ['aarch64', 'arm64']:
+            command += ['--platform', 'linux/amd64']
+        command += [
             '--rm',
             '-d',  # Run in detached mode
             '--name', self.container_name,  # Set container name
