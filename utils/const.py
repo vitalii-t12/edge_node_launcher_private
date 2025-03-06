@@ -340,6 +340,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {log_view_border};
     border-radius: {border_radius};
     padding: 8px;
+    margin-bottom: 4px;
   }}
   PlotWidget, QWidget[class="plot-container"] {{
     background-color: {graph_bg};
