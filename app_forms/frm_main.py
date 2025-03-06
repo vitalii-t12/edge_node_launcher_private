@@ -112,6 +112,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self._icon = get_icon_from_base64(ICON_BASE64)
     self.setWindowIcon(self._icon)
     
+    # Initialize the button colors based on current theme
+    self.init_button_colors()
+    
     self.runs_in_production = self.is_running_in_production()
     
     # Initialize config manager for container configurations
@@ -167,6 +170,79 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.toast = ToastWidget(self)
 
     return
+
+  def init_button_colors(self):
+    """Initialize or update button colors based on current theme"""
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    colors = DARK_COLORS if is_dark else LIGHT_COLORS
+    
+    self.button_colors = {
+        'start': {
+            'bg': colors['green_highlight'],
+            'hover': colors['confirm_button_hover'],
+            'text': colors['text_color'],
+            'border': colors['button_border']
+        },
+        'stop': {
+            'bg': colors['cancel_button_bg'],
+            'hover': colors['cancel_button_hover'],
+            'text': colors['text_color'],
+            'border': colors['button_border']
+        },
+        'disabled': {
+            'bg': 'gray',
+            'text': colors['text_color']
+        },
+        'toggle_start': {
+            'bg': colors['toggle_button_start_bg'],
+            'hover': colors['toggle_button_start_hover'],
+            'text': colors['text_color'],
+            'border': colors['button_border']
+        },
+        'toggle_stop': {
+            'bg': colors['toggle_button_stop_bg'],
+            'hover': colors['toggle_button_stop_hover'],
+            'text': colors['text_color'],
+            'border': colors['button_border']
+        },
+        'toggle_disabled': {
+            'bg': colors['toggle_button_disabled_bg'],
+            'text': colors['text_color'],
+            'border': colors['button_border'],
+            'hover': colors['toggle_button_disabled_hover']
+        }
+    }
+
+  def apply_button_style(self, button, style_type):
+    """Apply button style based on button colors and state
+    
+    Args:
+        button: The button to style
+        style_type: The type of style to apply ('start', 'stop', 'disabled')
+    """
+    if style_type == 'disabled':
+        button.setStyleSheet(f"background-color: {self.button_colors['disabled']['bg']}; color: {self.button_colors['disabled']['text']};")
+        return
+    
+    # Check if the style type has a hover property
+    has_hover = 'hover' in self.button_colors[style_type]
+    
+    hover_css = f"""
+        QPushButton:hover {{
+            background-color: {self.button_colors[style_type]['hover']};
+        }}
+    """ if has_hover else ""
+    
+    button.setStyleSheet(f"""
+        QPushButton {{
+            background-color: {self.button_colors[style_type]['bg']};
+            color: {self.button_colors[style_type]['text']};
+            border: 2px solid {self.button_colors[style_type]['border']};
+            padding: 5px 10px;
+            border-radius: 15px;
+        }}
+        {hover_css}
+    """)
 
   def check_docker_with_ui(self):
     """Check Docker status and handle UI interactions.
@@ -300,18 +376,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.toggleButton = QPushButton(LAUNCH_CONTAINER_BUTTON_TEXT)
     self.toggleButton.setObjectName("startNodeButton")
     self.toggleButton.clicked.connect(self.toggle_container)
-    self.toggleButton.setStyleSheet("""
-        QPushButton {
-            background-color: green;
-            color: white;
-            border: 2px solid #87CEEB;
-            padding: 5px 10px;
-            border-radius: 15px;
-        }
-        QPushButton:hover {
-            background-color: darkgreen;
-        }
-    """)
+    self.apply_button_style(self.toggleButton, 'toggle_disabled')
     top_button_area.addWidget(self.toggleButton)
 
     # Docker download button right under Launch Edge Node
@@ -616,8 +681,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.themeToggleButton.setText(LIGHT_DASHBOARD_BUTTON_TEXT)
         self.force_debug_checkbox.setProperty('class', 'dark')
     
+    # Update button colors for the new theme
+    self.init_button_colors()
+    
     self.apply_stylesheet()
     self.plot_graphs()
+    # Update the toggle button styling for theme change
+    self.update_toggle_button_text()
     # Force style update
     self.force_debug_checkbox.style().unpolish(self.force_debug_checkbox)
     self.force_debug_checkbox.style().polish(self.force_debug_checkbox)
@@ -707,13 +777,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Store current button state
     current_text = self.toggleButton.text()
     current_enabled = self.toggleButton.isEnabled()
-    current_style = self.toggleButton.styleSheet()
     
     if current_index < 0:
         # Only update if state changed
         if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
             self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+            self.apply_button_style(self.toggleButton, 'toggle_disabled')
             self.toggleButton.setEnabled(False)
         return
         
@@ -723,7 +792,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Only update if state changed
         if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
             self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.toggleButton.setStyleSheet("background-color: gray; color: white;")
+            self.apply_button_style(self.toggleButton, 'toggle_disabled')
             self.toggleButton.setEnabled(False)
         return
     
@@ -737,7 +806,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             # Only update if state changed
             if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or not current_enabled:
                 self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-                self.toggleButton.setStyleSheet("background-color: green; color: white;")
+                self.apply_button_style(self.toggleButton, 'toggle_start')
                 self.toggleButton.setEnabled(True)
             return
     
@@ -749,16 +818,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Determine the new state
     new_text = STOP_CONTAINER_BUTTON_TEXT if is_running else LAUNCH_CONTAINER_BUTTON_TEXT
-    new_style = "background-color: red; color: white;" if is_running else "background-color: green; color: white;"
+    new_style = 'toggle_stop' if is_running else 'toggle_start'
     
     # Only update if state changed
-    if current_text != new_text or not current_enabled or current_style != new_style:
-        self.toggleButton.setEnabled(True)
+    if current_text != new_text:
         self.toggleButton.setText(new_text)
-        self.toggleButton.setStyleSheet(new_style)
-        self.add_log(f"Container {container_name} is {'running' if is_running else 'not running'}, updating button state", debug=True)
-    return
-  
+        self.apply_button_style(self.toggleButton, new_style)
+        self.toggleButton.setEnabled(True)
+
   def edit_file(self, file_path, func, title='Edit File'):
     env_content = ''
     try:
@@ -1712,10 +1779,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             plot.setLabel('left', '')
             plot.setLabel('bottom', '')
     
-    # Update toggle button state and color
+    # Update toggle button state and color (commented out but updated to use new styling)
     # if hasattr(self, 'toggleButton'):
     #     self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-    #     self.toggleButton.setStyleSheet("background-color: green; color: white;")
+    #     self.apply_button_style(self.toggleButton, 'start')
 
   def open_docker_download(self):
     """Open Docker download page in default browser."""

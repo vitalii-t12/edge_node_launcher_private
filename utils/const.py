@@ -189,6 +189,11 @@ COMMON_STYLES = {
     "text_align_center": "center"
 }
 
+COMMON_COLORS = {
+    "start_button_bg": "#1E90FF",
+    "stop_button_bg": "#F44336",
+}
+
 # Color definitions for dark theme
 DARK_COLORS = {
     "text_color": "white",
@@ -243,7 +248,15 @@ DARK_COLORS = {
     "confirm_button_hover": "#45A049",
     "cancel_button_bg": "#F44336",
     "cancel_button_border": "#D32F2F",
-    "cancel_button_hover": "#D32F2F"
+    "cancel_button_hover": "#D32F2F",
+    
+    # Toggle button states
+    "toggle_button_start_bg": "#4CAF50",
+    "toggle_button_start_hover": "#45A049",
+    "toggle_button_stop_bg": "#F44336",
+    "toggle_button_stop_hover": "#D32F2F",
+    "toggle_button_disabled_bg": "gray",
+    "toggle_button_disabled_hover": "darkgray"
 }
 
 # Color definitions for light theme
@@ -295,12 +308,20 @@ LIGHT_COLORS = {
     "add_node_button_bg": "#D3D3D3",
     "add_node_button_border": "#A9A9A9",
     "add_node_button_hover": "#A9A9A9",
-    "confirm_button_bg": "#66BB6A",
-    "confirm_button_border": "#4CAF50",
-    "confirm_button_hover": "#4CAF50",
-    "cancel_button_bg": "#EF5350",
-    "cancel_button_border": "#E53935",
-    "cancel_button_hover": "#E53935"
+    "confirm_button_bg": "#4CAF50",
+    "confirm_button_border": "#45A049",
+    "confirm_button_hover": "#45A049",
+    "cancel_button_bg": "#F44336",
+    "cancel_button_border": "#D32F2F",
+    "cancel_button_hover": "#D32F2F",
+    
+    # Toggle button states
+    "toggle_button_start_bg": "#4CAF50",
+    "toggle_button_start_hover": "#45A049",
+    "toggle_button_stop_bg": "#F44336",
+    "toggle_button_stop_hover": "#D32F2F",
+    "toggle_button_disabled_bg": "gray",
+    "toggle_button_disabled_hover": "darkgray"
 }
 
 # Merge common styles with theme-specific colors
