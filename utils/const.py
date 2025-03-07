@@ -501,6 +501,11 @@ COMMON_STYLESHEET_TEMPLATE = """
   #infoBoxText QLabel {{
     color: {info_box_text};
   }}
+  #myComboPopup {{
+    background-color: #2e2e2e; 
+    border: none; 
+}}
+
 """
 
 # Apply the common template with dark theme values

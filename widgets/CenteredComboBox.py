@@ -1,39 +1,56 @@
 from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject, QEvent, QTimer
 from PyQt5.QtGui import QFontMetrics
+
+class ClickToOpenFilter(QObject):
+    def __init__(self, combo):
+        super().__init__(combo)
+        self.combo = combo
+
+    def eventFilter(self, obj, event):
+        if obj == self.combo.lineEdit() and event.type() == QEvent.MouseButtonPress:
+            self.combo.showPopup()
+            return True
+        return super().eventFilter(obj, event)
 
 class CenteredComboBox(QComboBox):
     """A QComboBox that centers both the dropdown items and the selected item."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
         # Set up a delegate to center the items in the view
         delegate = QStyledItemDelegate(self)
         self.setItemDelegate(delegate)
 
         # Make editable to get the line edit for centering
-        # self.setEditable(True)
-        #
-        # # Disable editing by setting read-only
-        # self.lineEdit().setReadOnly(True)
-        #
-        # # Center the text in the line edit
-        # self.lineEdit().setAlignment(Qt.AlignCenter)
-        #
-        # # Make the line edit look like a non-editable combo box
-        # self.lineEdit().setFrame(False)
-        # self.lineEdit().setStyleSheet("background:transparent;")
+        self.setEditable(True)
+
+        # Disable editing by setting read-only
+        self.lineEdit().setReadOnly(True)
+
+        # Center the text in the line edit
+        self.lineEdit().setAlignment(Qt.AlignCenter)
+
+        # Make the line edit look like a non-editable combo box
+        self.lineEdit().setFrame(False)
+        self.lineEdit().setStyleSheet("background:transparent;")
+        self.lineEdit().installEventFilter(ClickToOpenFilter(self))
+        # Disable all text interactions:
+        self.lineEdit().setFocusPolicy(Qt.NoFocus)
+
+
+        # (Optional) Change the cursor so it doesn’t look like an I-beam:
+        self.lineEdit().setCursor(Qt.ArrowCursor)
 
         # Set combobox styles
         self.setStyleSheet("""
             QComboBox {
-                combobox-popup: 0;
+                combobox-popup: 1;
                 background: transparent;
-                border-radius: 6px;
+                border-radius: 15px;
             }
         """)
-
+        self.view().parentWidget().setStyleSheet("background: transparent;")
         # Ensure combo box popup items are centered as well
         for i in range(self.count()):
             self.setItemData(i, Qt.AlignCenter, Qt.TextAlignmentRole)
@@ -48,12 +65,6 @@ class CenteredComboBox(QComboBox):
         super().insertItem(index, text, userData)
         self.setItemData(index, Qt.AlignCenter, Qt.TextAlignmentRole)
 
-    # def mousePressEvent(self, event):
-    #     """Open the popup on any click in the combo box."""
-    #     if self.isEnabled():
-    #         self.showPopup()
-    #     super().mousePressEvent(event)
-
     def showPopup(self):
         """Override showPopup to ensure all items are center-aligned and have rounded corners"""
         for i in range(self.count()):
@@ -65,8 +76,8 @@ class CenteredComboBox(QComboBox):
                 border: 1px solid #555;
                 border-radius: 6px;
                 background-color: #1E293B;
-                outline: 0;
-                padding: 4px;
+                outline: 10px;
+                padding: 14px;
             }
             
             QListView::item {
