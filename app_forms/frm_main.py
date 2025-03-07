@@ -28,7 +28,16 @@ from PyQt5.QtWidgets import (
   QComboBox,
   QMessageBox,
   QFileDialog,
-  QLineEdit, QGroupBox
+  QLineEdit, QGroupBox,
+  QGraphicsDropShadowEffect,
+  QTabWidget,
+  QDialogButtonBox,
+  QPlainTextEdit,
+  QMenuBar,
+  QMenu,
+  QAction,
+  QSplitter,
+  QProgressBar
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QIcon
@@ -59,6 +68,7 @@ from models.ConfigApp import ConfigApp
 from widgets.HostSelector import HostSelector
 from widgets.ModeSwitch import ModeSwitch
 from widgets.dialogs.DockerCheckDialog import DockerCheckDialog
+from widgets.CenteredComboBox import CenteredComboBox
 
 
 def get_platform_and_os_info():
@@ -365,7 +375,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     container_selector_layout.addWidget(self.add_node_button)
 
     # Container dropdown
-    self.container_combo = QComboBox()
+    self.container_combo = CenteredComboBox()
     self.container_combo.setFont(QFont("Courier New", 10))
     self.container_combo.currentTextChanged.connect(self._on_container_selected)
     self.container_combo.setMinimumHeight(32)  # Make dropdown slightly taller
@@ -2102,9 +2112,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         display_text = container.node_alias if container.node_alias else container.name
         self.container_combo.addItem(display_text, container.name)
     
-    # Center align all items in the dropdown
-    for i in range(self.container_combo.count()):
-        self.container_combo.setItemData(i, Qt.AlignCenter, Qt.TextAlignmentRole)
+    # Center align all items in the dropdown is now handled by our CenteredComboBox class
     
     # Restore previous selection if it exists
     if selected_container:
