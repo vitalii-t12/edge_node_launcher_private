@@ -525,7 +525,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             margin-top: 4px;
             spacing: 8px;
             padding: 4px;
-            border-radius: 4px;
+            border-radius: 15px;
             font-weight: bold;
         }
         
@@ -536,7 +536,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         QCheckBox::indicator {
             width: 18px;
             height: 18px;
-            border-radius: 3px;
+            border-radius: 15px;
             border: 2px solid #666;
         }
         
