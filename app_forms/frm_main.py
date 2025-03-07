@@ -52,7 +52,6 @@ from utils.docker_commands import DockerCommandHandler
 from utils.updater import _UpdaterMixin
 from utils.docker_utils import get_volume_name, generate_container_name
 from utils.config_manager import ConfigManager, ContainerConfig
-from utils.dropdown_fix import style_combobox_for_theme
 
 from utils.icon import ICON_BASE64
 
@@ -379,11 +378,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.container_combo.setFont(QFont("Courier New", 10))
     self.container_combo.currentTextChanged.connect(self._on_container_selected)
     self.container_combo.setMinimumHeight(32)  # Make dropdown slightly taller
-    
-    # Apply the dropdown styling fix
-    is_dark = self._current_stylesheet == DARK_STYLESHEET
-    style_combobox_for_theme(self.container_combo, is_dark)
-    
+
     container_selector_layout.addWidget(self.container_combo)
     
     top_button_area.addLayout(container_selector_layout)
@@ -723,9 +718,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
     
-    # Apply the appropriate theme to the container_combo
-    style_combobox_for_theme(self.container_combo, is_dark)
-
   def toggle_container(self):
     # Get the current index and container name from the data
     current_index = self.container_combo.currentIndex()
@@ -1963,11 +1955,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     layout.addLayout(button_layout)
     dialog.setLayout(layout)
     
-    # Apply the theme to any QComboBox in the dialog
-    for combo in dialog.findChildren(QComboBox):
-        is_dark = self._current_stylesheet == DARK_STYLESHEET
-        style_combobox_for_theme(combo, is_dark)
-    
     dialog.exec_()
 
   def _create_node_with_name(self, container_name, volume_name, display_name, dialog):
@@ -2126,11 +2113,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     elif self.container_combo.count() > 0:
         # If no previous selection or it wasn't found, select the first item
         self.container_combo.setCurrentIndex(0)
-    
-    # Make sure styling is applied
-    is_dark = self._current_stylesheet == DARK_STYLESHEET
-    style_combobox_for_theme(self.container_combo, is_dark)
-    
+
     self.add_log(f'Displayed {self.container_combo.count()} containers in dropdown', debug=True)
 
   def is_container_running(self):

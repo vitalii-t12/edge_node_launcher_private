@@ -400,10 +400,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   QComboBox::down-arrow {{
     image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 5px solid {combo_arrow_color};
-    margin-right: 10px;
+    border: none;
   }}
   QComboBox QAbstractItemView {{
     background-color: {combo_dropdown_bg};
@@ -417,6 +414,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   QComboBox QAbstractItemView::item {{
     min-height: 24px;
     padding: 3px 5px;
+    text-align:center;
   }}
   QComboBox QAbstractItemView::item:hover {{
     background-color: {combo_hover_bg};
