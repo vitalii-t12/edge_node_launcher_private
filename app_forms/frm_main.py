@@ -1935,34 +1935,45 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.add_new_node(container_name, volume_name, display_name)
 
   def add_new_node(self, container_name: str, volume_name: str, display_name: str = None):
-    """Add a new node with the given container name and volume name"""
+    """Add a new node with the given container name and volume name,
+       select it in the UI, and start it immediately."""
     try:
-        # Create container config
-        from datetime import datetime
-        container_config = ContainerConfig(
-            name=container_name,
-            volume=volume_name,
-            created_at=datetime.now().isoformat(),
-            last_used=datetime.now().isoformat(),
-            node_alias=display_name
-        )
-        
-        # Add to config manager
-        self.config_manager.add_container(container_config)
-        
-        # Refresh container list
-        self.refresh_container_list()
-        
-        # Select the new container
-        index = self.container_combo.findText(container_name)
-        if index >= 0:
-            self.container_combo.setCurrentIndex(index)
-        
-        # Show success message
-        self.add_log(f"Successfully created new node: {container_name}", color="green")
-        
+      from datetime import datetime
+
+      # 1) Create & store this container's config
+      container_config = ContainerConfig(
+        name=container_name,
+        volume=volume_name,
+        created_at=datetime.now().isoformat(),
+        last_used=datetime.now().isoformat(),
+        node_alias=display_name
+      )
+      self.config_manager.add_container(container_config)
+
+      # 2) Refresh the list in the combo box, so it includes the new container
+      self.refresh_container_list()
+
+      # 3) Programmatically select the newly created container in the ComboBox
+      #    We typically match itemData(...) to the container_name
+      index = -1
+      for i in range(self.container_combo.count()):
+        if self.container_combo.itemData(i) == container_name:
+          index = i
+          break
+
+      if index >= 0:
+        self.container_combo.setCurrentIndex(index)
+
+      # 4) Tell the Docker handler to manage this newly selected container
+      self.docker_handler.set_container_name(container_name)
+
+      # 5) Actually start (launch) the container so it shows "active" in the UI
+      self.launch_container(volume_name)
+
+      self.add_log(f"Successfully created and started new node: {container_name}", color="green")
+
     except Exception as e:
-        self.add_log(f"Failed to create new node: {str(e)}", color="red")
+      self.add_log(f"Failed to create new node: {str(e)}", color="red")
 
   def launch_container(self, volume_name: str = None):
     """Launch the currently selected container with a mounted volume.
