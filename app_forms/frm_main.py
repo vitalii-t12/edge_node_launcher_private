@@ -387,7 +387,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.toggleButton = QPushButton(LAUNCH_CONTAINER_BUTTON_TEXT)
     self.toggleButton.setObjectName("startNodeButton")
     self.toggleButton.clicked.connect(self.toggle_container)
-    self.apply_button_style(self.toggleButton, 'toggle_disabled')
+    self.apply_button_style(self.toggleButton, 'toggle_start')
     top_button_area.addWidget(self.toggleButton)
 
     # Docker download button right under Launch Edge Node
@@ -1889,72 +1889,44 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.toast.show_notification(NotificationType.ERROR, f"Error selecting container: {str(e)}")
 
   def show_add_node_dialog(self):
-    """Show dialog to add a new node."""
+    """Show confirmation dialog for adding a new node."""
+    from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
+
+    # Generate the container name that would be used
+    container_name = generate_container_name()
+    volume_name = get_volume_name(container_name)
+
+    # Create dialog
     dialog = QDialog(self)
     dialog.setWindowTitle("Add New Node")
-    dialog.setWindowIcon(self._icon)
     dialog.setMinimumWidth(400)
-    dialog.setMinimumHeight(250)
-    dialog.setWindowModality(Qt.ApplicationModal)
-    dialog.setStyleSheet(self._current_stylesheet)
-    
+
     layout = QVBoxLayout()
-    
-    form_layout = QGridLayout()
-    
-    # Container name
-    label_container = QLabel("Container Name:")
-    form_layout.addWidget(label_container, 0, 0)
-    
-    container_input = QLineEdit()
-    container_input.setPlaceholderText("e.g., my-node")
-    container_input.setText(generate_container_name())
-    form_layout.addWidget(container_input, 0, 1)
-    
-    # Volume name
-    label_volume = QLabel("Volume Name:")
-    form_layout.addWidget(label_volume, 1, 0)
-    
-    volume_input = QLineEdit()
-    volume_input.setPlaceholderText("e.g., my-node-vol")
-    volume_input.setText(get_volume_name())
-    form_layout.addWidget(volume_input, 1, 1)
-    
-    # Display name
-    label_display_name = QLabel("Display Name (optional):")
-    form_layout.addWidget(label_display_name, 2, 0)
-    
-    display_name_input = QLineEdit()
-    display_name_input.setPlaceholderText("e.g., My Edge Node")
-    form_layout.addWidget(display_name_input, 2, 1)
-    
-    layout.addLayout(form_layout)
-    
-    # Add some space
-    layout.addSpacing(10)
-    
-    # Buttons
+
+    # Add info text with more descriptive message
+    info_text = f"This action will create a new Edge Node. \n\nDo you want to proceed?"
+    info_label = QLabel(info_text)
+    info_label.setWordWrap(True)  # Enable word wrapping for better readability
+    layout.addWidget(info_label)
+
+    # Add buttons
     button_layout = QHBoxLayout()
-    button_layout.addStretch()
-    
+    create_button = QPushButton("Create Node")
+    create_button.setProperty("type", "confirm")  # Set property for styling
     cancel_button = QPushButton("Cancel")
-    cancel_button.clicked.connect(dialog.reject)
-    cancel_button.setProperty('type', 'cancel')
-    button_layout.addWidget(cancel_button)
-    
-    create_button = QPushButton("Create")
-    create_button.clicked.connect(lambda: self._create_node_with_name(
-        container_input.text().strip(),
-        volume_input.text().strip(),
-        display_name_input.text().strip(),
-        dialog
-    ))
-    create_button.setProperty('type', 'confirm')
+    cancel_button.setProperty("type", "cancel")  # Set property for styling
+
     button_layout.addWidget(create_button)
-    
+    button_layout.addWidget(cancel_button)
     layout.addLayout(button_layout)
+
     dialog.setLayout(layout)
-    
+    dialog.setStyleSheet(self._current_stylesheet)  # Apply current theme
+
+    # Connect buttons
+    create_button.clicked.connect(lambda: self._create_node_with_name(container_name, volume_name, None, dialog))
+    cancel_button.clicked.connect(dialog.reject)
+
     dialog.exec_()
 
   def _create_node_with_name(self, container_name, volume_name, display_name, dialog):

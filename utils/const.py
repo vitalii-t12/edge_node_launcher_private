@@ -190,7 +190,7 @@ COMMON_STYLES = {
 }
 
 COMMON_COLORS = {
-    "start_button_bg": "#1E90FF",
+    "start_button_bg": "#00FF00",
     "stop_button_bg": "#F44336",
 }
 
