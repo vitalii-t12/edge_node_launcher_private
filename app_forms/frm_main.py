@@ -699,6 +699,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.plot_graphs()
     # Update the toggle button styling for theme change
     self.update_toggle_button_text()
+    
+    # Apply theme to the combobox dropdown
+    if hasattr(self.container_combo, 'apply_default_theme'):
+        self.container_combo.apply_default_theme()
+    
     # Force style update
     self.force_debug_checkbox.style().unpolish(self.force_debug_checkbox)
     self.force_debug_checkbox.style().polish(self.force_debug_checkbox)

@@ -295,13 +295,13 @@ LIGHT_COLORS = {
     "text_edit_border": "#D3D3D3",
     "plot_bg": "#FFFFFF",
     "plot_border": "#A9A9A9",
-    "combo_bg": "#FFFFFF",
-    "combo_border": "#CCCCCC",
-    "combo_hover_bg": "#F5F5F5", 
+    "combo_bg": "#F9F9F9",
+    "combo_border": "#D0D0D0",
+    "combo_hover_bg": "#F0F7FF", 
     "combo_hover_border": "#4CAF50",
-    "combo_arrow_color": "#666666",
+    "combo_arrow_color": "#4CAF50",
     "combo_dropdown_bg": "#FFFFFF",
-    "combo_dropdown_select_bg": "#F5F5F5",
+    "combo_dropdown_select_bg": "#E6F2E6",
     "combo_dropdown_select_color": "black",
     "green_highlight": "#4CAF50",
     "button_copy_address_bg": "transparent",
@@ -519,6 +519,31 @@ LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
 
   PlotWidget .plotLabel {
     color: black;
+  }
+  
+  /* Enhanced dropdown styling for light theme only */
+  QComboBox {
+    font-weight: 500;
+  }
+  
+  QComboBox::down-arrow {
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #4CAF50;
+    width: 14px;
+    height: 14px;
+    margin-right: 5px;
+  }
+  
+  QComboBox QAbstractItemView::item {
+    min-height: 26px;
+    padding: 4px 8px;
+    margin: 2px 0px;
+    border-radius: 6px;
+  }
+  
+  QComboBox QAbstractItemView::item:selected {
+    font-weight: bold;
   }
 """
 
