@@ -189,8 +189,8 @@ COMMON_STYLES = {
     "text_align_center": "center",
     "font_weight_normal": "normal",
     "font_weight_bold": "bold",
-    "button_font_weight": "bold",
-    "info_box_font_weight": "bold"
+    "button_font_weight": "normal",
+    "info_box_font_weight": "normal"
 }
 
 COMMON_COLORS = {
