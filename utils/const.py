@@ -457,8 +457,15 @@ COMMON_STYLESHEET_TEMPLATE = """
   #copyAddrButton, #copyEthButton {{
     background-color: {button_copy_address_bg};
     border: none;
-    padding: 0px;
-    margin: 0px;
+    padding: 2px;
+    margin: 2px;
+    icon-size: 20px;
+    min-width: 28px;
+    min-height: 28px;
+  }}
+  #copyAddrButton:hover, #copyEthButton:hover {{
+    background-color: rgba(128, 128, 128, 0.2);
+    border-radius: 4px;
   }}
   #startNodeButton {{
     min-height: 40px;

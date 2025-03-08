@@ -39,9 +39,10 @@ from PyQt5.QtWidgets import (
   QSplitter,
   QProgressBar
 )
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter
 import pyqtgraph as pg
+from PyQt5.QtSvg import QSvgRenderer
 
 from models.NodeInfo import NodeInfo
 from models.NodeHistory import NodeHistory
@@ -432,10 +433,32 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Add copy address button
     self.copyAddrButton = QPushButton()
-    self.copyAddrButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+    
+    # Use absolute path to find the icon
+    icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'assets', 'copy_icon.svg')
+    # Debug logging
+    self.add_log(f"Copy icon path: {icon_path}", debug=True)
+    self.add_log(f"Icon file exists: {os.path.exists(icon_path)}", debug=True)
+    
+    # Create icon from SVG using renderer
+    if os.path.exists(icon_path):
+        renderer = QSvgRenderer(icon_path)
+        pixmap = QPixmap(24, 24)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        renderer.render(painter)
+        painter.end()
+        copy_icon = QIcon(pixmap)
+        
+        self.copyAddrButton.setIcon(copy_icon)
+        self.copyAddrButton.setIconSize(QSize(20, 20))  # Set explicit icon size
+    else:
+        # Fallback to system icon if svg not found
+        self.copyAddrButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+        
     self.copyAddrButton.setToolTip(COPY_ADDRESS_TOOLTIP)
     self.copyAddrButton.clicked.connect(self.copy_address)
-    self.copyAddrButton.setFixedSize(24, 24)
+    self.copyAddrButton.setFixedSize(28, 28)  # Slightly larger button size
     self.copyAddrButton.setObjectName("copyAddrButton")
     self.copyAddrButton.hide()  # Initially hidden
     addr_layout.addWidget(self.copyAddrButton)
@@ -451,10 +474,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Add copy ethereum address button
     self.copyEthButton = QPushButton()
-    self.copyEthButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+    # Use the same icon created above
+    if 'copy_icon' in locals():
+        self.copyEthButton.setIcon(copy_icon)
+        self.copyEthButton.setIconSize(QSize(20, 20))
+    else:
+        # Fallback to system icon
+        self.copyEthButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+        
     self.copyEthButton.setToolTip(COPY_ETH_ADDRESS_TOOLTIP)
     self.copyEthButton.clicked.connect(self.copy_eth_address)
-    self.copyEthButton.setFixedSize(24, 24)
+    self.copyEthButton.setFixedSize(28, 28)  # Slightly larger button size
     self.copyEthButton.setObjectName("copyEthButton")
     self.copyEthButton.hide()  # Initially hidden
     eth_addr_layout.addWidget(self.copyEthButton)
