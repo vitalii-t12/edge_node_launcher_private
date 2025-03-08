@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, QApplication, QWidget, QStylePainter, QStyle, QStyleOptionComboBox
 from PyQt5.QtCore import Qt, QObject, QEvent, QTimer, QRect
-from PyQt5.QtGui import QFontMetrics, QPainter, QPalette
+from PyQt5.QtGui import QFontMetrics, QPainter, QPalette, QIcon
 from utils.const import DARK_STYLESHEET
 
 class NoDecorationsDelegate(QStyledItemDelegate):
@@ -8,9 +8,9 @@ class NoDecorationsDelegate(QStyledItemDelegate):
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
         # Remove all decorations and icons
-        option.features &= ~QStyledItemDelegate.HasDecoration
-        option.icon = None
+        option.icon = QIcon()  # Use empty QIcon instead of None
         option.decorationSize = Qt.Size(0, 0)
+        option.features = 0  # Reset all features to remove decorations
 
 class ClickToOpenFilter(QObject):
     def __init__(self, combo):
@@ -47,6 +47,7 @@ class CenteredComboBox(QComboBox):
         # Completely remove the dropdown button to ensure text centering
         self.setStyleSheet("""
             QComboBox {
+            	  font-weight: normal !important;
                 combobox-popup: 1;
                 background: transparent;
                 border-radius: 15px;

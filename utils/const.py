@@ -186,7 +186,11 @@ COMMON_STYLES = {
     "combo_padding": "4px",
     "combo_min_width": "100px",
     "combo_dropdown_width": "20px",
-    "text_align_center": "center"
+    "text_align_center": "center",
+    "font_weight_normal": "normal",
+    "font_weight_bold": "bold",
+    "button_font_weight": "bold",
+    "info_box_font_weight": "bold"
 }
 
 COMMON_COLORS = {
@@ -433,7 +437,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     color: {text_color}; 
     border: 2px solid {button_border}; 
     padding: {button_padding}; 
-    font-size: {button_font_size}; 
+    font-size: {button_font_size};
+    font-weight: {button_font_weight}; 
     margin: {button_margin};
     border-radius: {button_border_radius};
   }}
@@ -498,6 +503,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     color: {info_box_text};
     font-family: "Courier New";
     font-size: 10pt;
+    font-weight: {info_box_font_weight};
     margin: 2px;
     background-color: transparent;
   }}
@@ -511,6 +517,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   #infoBoxText QLabel {{
     color: {info_box_text};
     background-color: transparent;
+    font-weight: {info_box_font_weight};
   }}
   #myComboPopup {{
     background-color: #2e2e2e; 
