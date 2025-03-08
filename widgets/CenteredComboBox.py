@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, QApplication, QWidget, QStylePainter, QStyle, QStyleOptionComboBox
-from PyQt5.QtCore import Qt, QObject, QEvent, QTimer, QRect
+from PyQt5.QtCore import Qt, QObject, QEvent, QTimer, QRect, QSize
 from PyQt5.QtGui import QFontMetrics, QPainter, QPalette, QIcon
 from utils.const import DARK_STYLESHEET
 
@@ -9,7 +9,7 @@ class NoDecorationsDelegate(QStyledItemDelegate):
         super().initStyleOption(option, index)
         # Remove all decorations and icons
         option.icon = QIcon()  # Use empty QIcon instead of None
-        option.decorationSize = Qt.Size(0, 0)
+        option.decorationSize = QSize(0, 0)  # Use QSize instead of Qt.Size
         option.features = 0  # Reset all features to remove decorations
 
 class ClickToOpenFilter(QObject):
