@@ -136,7 +136,6 @@ class CenteredComboBox(QComboBox):
             line_edit_style = """
                 QLineEdit {
                     background: transparent;
-                    font-weight: 500;
                     color: white;
                     border: none;
                     padding-left: 0px;
@@ -149,7 +148,6 @@ class CenteredComboBox(QComboBox):
             line_edit_style = """
                 QLineEdit {
                     background: transparent;
-                    font-weight: 500;
                     color: #333333;
                     border: none;
                     padding-left: 0px;

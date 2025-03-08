@@ -521,7 +521,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             spacing: 8px;
             padding: 4px;
             border-radius: 15px;
-            font-weight: bold;
         }
         
         QCheckBox:hover {

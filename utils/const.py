@@ -478,7 +478,6 @@ COMMON_STYLESHEET_TEMPLATE = """
   #toggleContainerButton {{
     min-height: 40px;
     max-height: 40px;
-    font-weight: bold;
   }}
   #infoBox {{
     background-color: {info_box_bg};
@@ -523,12 +522,7 @@ LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
   PlotWidget .plotLabel {
     color: black;
   }
-  
-  /* Enhanced dropdown styling for light theme only */
-  QComboBox {
-    font-weight: 500;
-  }
-  
+
   QComboBox:hover {
     border: 1px solid #D0D0D0;
   }
@@ -553,9 +547,6 @@ LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
     border-radius: 6px;
   }
   
-  QComboBox QAbstractItemView::item:selected {
-    font-weight: bold;
-  }
 """
 
 # Notification messages
