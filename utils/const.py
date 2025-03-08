@@ -492,6 +492,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     font-family: "Courier New";
     font-size: 10pt;
     margin: 2px;
+    background-color: transparent;
   }}
   #infoBox QPushButton {{
     background-color: {button_copy_address_bg};
@@ -502,6 +503,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   #infoBoxText QLabel {{
     color: {info_box_text};
+    background-color: transparent;
   }}
   #myComboPopup {{
     background-color: #2e2e2e; 
