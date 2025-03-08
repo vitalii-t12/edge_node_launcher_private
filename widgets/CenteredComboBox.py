@@ -34,24 +34,50 @@ class CenteredComboBox(QComboBox):
 
         # Make the line edit look like a non-editable combo box
         self.lineEdit().setFrame(False)
-        self.lineEdit().setStyleSheet("background:transparent;")
-        self.lineEdit().installEventFilter(ClickToOpenFilter(self))
-        # Disable all text interactions:
-        self.lineEdit().setFocusPolicy(Qt.NoFocus)
-
-
-        # (Optional) Change the cursor so it doesn't look like an I-beam:
-        self.lineEdit().setCursor(Qt.ArrowCursor)
-
-        # Set combobox styles
+        
+        # Completely remove the dropdown button to ensure text centering
         self.setStyleSheet("""
             QComboBox {
                 combobox-popup: 1;
                 background: transparent;
                 border-radius: 15px;
+                padding-left: 0px;
+                padding-right: 0px;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: right;
+                width: 0px;
+                border: none;
+                background: transparent;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                width: 0px;
+                height: 0px;
+                background: transparent;
             }
         """)
+        
+        # Apply a balanced margin to the line edit for perfect centering
+        self.lineEdit().setStyleSheet("""
+            background: transparent;
+            border: none;
+            padding-left: 0px;
+            padding-right: 0px;
+            margin: 0px;
+        """)
+        
+        self.lineEdit().installEventFilter(ClickToOpenFilter(self))
+        # Disable all text interactions:
+        self.lineEdit().setFocusPolicy(Qt.NoFocus)
+
+        # (Optional) Change the cursor so it doesn't look like an I-beam:
+        self.lineEdit().setCursor(Qt.ArrowCursor)
+
+        # Make sure the popup is also properly styled
         self.view().parentWidget().setStyleSheet("background: transparent;")
+        
         # Ensure combo box popup items are centered as well
         for i in range(self.count()):
             self.setItemData(i, Qt.AlignCenter, Qt.TextAlignmentRole)
@@ -70,6 +96,10 @@ class CenteredComboBox(QComboBox):
                     background: transparent;
                     font-weight: 500;
                     color: white;
+                    border: none;
+                    padding-left: 0px;
+                    padding-right: 0px;
+                    margin: 0px;
                 }
             """
         else:
@@ -79,6 +109,10 @@ class CenteredComboBox(QComboBox):
                     background: transparent;
                     font-weight: 500;
                     color: #333333;
+                    border: none;
+                    padding-left: 0px;
+                    padding-right: 0px;
+                    margin: 0px;
                 }
             """
             
@@ -135,6 +169,7 @@ class CenteredComboBox(QComboBox):
                     border-radius: 6px;
                     padding: 4px;
                     margin: 2px;
+                    text-align: center;
                 }
                 
                 QListView::item:selected {
@@ -162,6 +197,7 @@ class CenteredComboBox(QComboBox):
                     padding: 6px;
                     margin: 3px;
                     color: #333333;
+                    text-align: center;
                 }
                 
                 QListView::item:hover {

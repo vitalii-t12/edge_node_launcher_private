@@ -298,8 +298,8 @@ LIGHT_COLORS = {
     "combo_bg": "#F9F9F9",
     "combo_border": "#D0D0D0",
     "combo_hover_bg": "#F0F7FF", 
-    "combo_hover_border": "#4CAF50",
-    "combo_arrow_color": "#4CAF50",
+    "combo_hover_border": "#D0D0D0",
+    "combo_arrow_color": "#666666",
     "combo_dropdown_bg": "#FFFFFF",
     "combo_dropdown_select_bg": "#E6F2E6",
     "combo_dropdown_select_color": "black",
@@ -380,12 +380,13 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: {combo_bg};
     border: 1px solid {combo_border};
     border-radius: {combo_border_radius};
-    padding: 5px 10px;
+    padding: 0px;
     min-width: {combo_min_width};
     min-height: 32px;
     max-height: 32px;
     font-family: "Courier New";
     font-size: 10pt;
+    text-align: center;
   }}
   QComboBox:hover {{
     background-color: {combo_hover_bg};
@@ -396,11 +397,13 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   QComboBox::drop-down {{
     border: none;
-    width: 30px;
+    width: 0px;
   }}
   QComboBox::down-arrow {{
     image: none;
     border: none;
+    width: 0px;
+    height: 0px;
   }}
   QComboBox QAbstractItemView {{
     background-color: {combo_dropdown_bg};
@@ -414,7 +417,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   QComboBox QAbstractItemView::item {{
     min-height: 24px;
     padding: 3px 5px;
-    text-align:center;
+    text-align: center;
   }}
   QComboBox QAbstractItemView::item:hover {{
     background-color: {combo_hover_bg};
