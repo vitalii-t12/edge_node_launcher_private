@@ -299,7 +299,7 @@ LIGHT_COLORS = {
     "combo_border": "#D0D0D0",
     "combo_hover_bg": "#F0F7FF", 
     "combo_hover_border": "#D0D0D0",
-    "combo_arrow_color": "#666666",
+    "combo_arrow_color": "transparent",
     "combo_dropdown_bg": "#FFFFFF",
     "combo_dropdown_select_bg": "#E6F2E6",
     "combo_dropdown_select_color": "black",
@@ -529,13 +529,21 @@ LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
     font-weight: 500;
   }
   
+  QComboBox:hover {
+    border: 1px solid #D0D0D0;
+  }
+  
+  QComboBox::drop-down {
+    border: none;
+    background: transparent;
+    width: 0px;
+  }
+  
   QComboBox::down-arrow {
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 6px solid #4CAF50;
-    width: 14px;
-    height: 14px;
-    margin-right: 5px;
+    width: 0px;
+    height: 0px;
+    background: transparent;
+    border: none;
   }
   
   QComboBox QAbstractItemView::item {

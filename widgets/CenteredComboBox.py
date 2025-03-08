@@ -1,7 +1,16 @@
-from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, QApplication, QWidget
-from PyQt5.QtCore import Qt, QObject, QEvent, QTimer
-from PyQt5.QtGui import QFontMetrics
+from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, QApplication, QWidget, QStylePainter, QStyle, QStyleOptionComboBox
+from PyQt5.QtCore import Qt, QObject, QEvent, QTimer, QRect
+from PyQt5.QtGui import QFontMetrics, QPainter, QPalette
 from utils.const import DARK_STYLESHEET
+
+class NoDecorationsDelegate(QStyledItemDelegate):
+    """A delegate that removes all decorations and indicators from combo box items"""
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        # Remove all decorations and icons
+        option.features &= ~QStyledItemDelegate.HasDecoration
+        option.icon = None
+        option.decorationSize = Qt.Size(0, 0)
 
 class ClickToOpenFilter(QObject):
     def __init__(self, combo):
@@ -19,8 +28,8 @@ class CenteredComboBox(QComboBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Set up a delegate to center the items in the view
-        delegate = QStyledItemDelegate(self)
+        # Set up a delegate to center the items in the view and remove decorations
+        delegate = NoDecorationsDelegate(self)
         self.setItemDelegate(delegate)
 
         # Make editable to get the line edit for centering
@@ -50,6 +59,7 @@ class CenteredComboBox(QComboBox):
                 width: 0px;
                 border: none;
                 background: transparent;
+                image: none;
             }
             QComboBox::down-arrow {
                 image: none;
@@ -84,6 +94,38 @@ class CenteredComboBox(QComboBox):
             
         # Apply the default theme
         self.apply_default_theme()
+        
+        # Set this to prevent the dropdown arrow from appearing
+        self.setMaxVisibleItems(10)
+        self.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        
+    def paintEvent(self, event):
+        """Override the paint event to have complete control over rendering"""
+        # Use QStylePainter for more reliable styled drawing
+        painter = QStylePainter(self)
+        
+        # Create style option
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+        
+        # Disable the arrow by removing its subcontrol
+        opt.subControls &= ~QStyle.SC_ComboBoxArrow
+        
+        # Draw the combobox without the arrow
+        painter.drawComplexControl(QStyle.CC_ComboBox, opt)
+        
+        # Draw the text centered in the box
+        if self.currentText():
+            text_rect = self.rect()
+            text_rect.adjust(10, 0, -10, 0)  # Add some padding
+            
+            # Set the text color based on the theme
+            if self.is_dark_theme():
+                painter.setPen(Qt.white)
+            else:
+                painter.setPen(Qt.black)
+                
+            painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
 
     def apply_default_theme(self):
         """Apply appropriate styling for the current theme when the widget is first created"""
@@ -122,11 +164,15 @@ class CenteredComboBox(QComboBox):
         """Override addItem to ensure new items are center-aligned"""
         super().addItem(text, userData)
         self.setItemData(self.count() - 1, Qt.AlignCenter, Qt.TextAlignmentRole)
+        # Remove any decoration or icon
+        self.setItemData(self.count() - 1, None, Qt.DecorationRole)
 
     def insertItem(self, index, text, userData=None):
         """Override insertItem to ensure new items are center-aligned"""
         super().insertItem(index, text, userData)
         self.setItemData(index, Qt.AlignCenter, Qt.TextAlignmentRole)
+        # Remove any decoration or icon
+        self.setItemData(index, None, Qt.DecorationRole)
 
     def is_dark_theme(self):
         """Detect if dark theme is currently active based on main window's stylesheet"""
@@ -150,6 +196,8 @@ class CenteredComboBox(QComboBox):
         """Override showPopup to ensure all items are center-aligned and have rounded corners with theme awareness"""
         for i in range(self.count()):
             self.setItemData(i, Qt.AlignCenter, Qt.TextAlignmentRole)
+            # Remove any decoration or icon
+            self.setItemData(i, None, Qt.DecorationRole)
 
         # Determine if we're in dark or light theme
         is_dark = self.is_dark_theme()
@@ -208,7 +256,7 @@ class CenteredComboBox(QComboBox):
                     background-color: #4CAF50;
                     color: white;
                 }
-                
+                                
                 QComboBox QAbstractItemView::item {
                     text-align: center;
                 }
