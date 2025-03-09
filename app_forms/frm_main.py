@@ -806,7 +806,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if self.is_container_running():
             self.add_log(f'Stopping container {container_name}...')
             
-            # Show loading dialog for stopping operation
+            # Show loading dialog for stopping operation - now with blue background
             self.toggle_dialog = LoadingDialog(
                 self, 
                 title="Stopping Node", 
@@ -815,31 +815,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             )
             self.toggle_dialog.show()
             
-            # Clear info displays
-            self._clear_info_display()
-            self.loading_indicator.start()
-            
-            # Pass the container name explicitly to ensure we're stopping the right one
-            self.docker_handler.stop_container(container_name)
-            
-            # Clear and update all UI elements
-            self.update_toggle_button_text()
-            self.refresh_local_address()  # Updates address displays with cached data
-            self.maybe_refresh_uptime()   # Updates uptime displays
-            self.plot_data()              # Clears plots
-            
-            # Stop loading indicator
-            self.loading_indicator.stop()
-            
-            # Close the loading dialog
-            toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
-            if toggle_dialog_visible:
-                self.toggle_dialog.safe_close()
-                # Schedule removal of the reference after a delay
-                QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
-            
-            # Process events to ensure immediate UI update
+            # Process events to ensure dialog is visible
             QApplication.processEvents()
+            
+            # Add a small delay to ensure dialog is fully rendered
+            QTimer.singleShot(100, lambda: self._perform_container_stop(container_name))
         else:
             self.add_log(f'Starting container {container_name}...')
             
@@ -873,61 +853,47 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self.add_log(f"Error toggling container: {str(e)}", color="red")
         self.toast.show_notification(NotificationType.ERROR, f"Error toggling container: {str(e)}")
 
-  def update_toggle_button_text(self):
-    # Get the current index and container name from the data
-    current_index = self.container_combo.currentIndex()
-    
-    # Store current button state
-    current_text = self.toggleButton.text()
-    current_enabled = self.toggleButton.isEnabled()
-    
-    if current_index < 0:
-        # Only update if state changed
-        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
-            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.apply_button_style(self.toggleButton, 'toggle_disabled')
-            self.toggleButton.setEnabled(False)
-        return
+  def _perform_container_stop(self, container_name):
+    """Perform the actual container stop operation after the dialog is shown."""
+    try:
+        # Clear info displays
+        self._clear_info_display()
+        self.loading_indicator.start()
         
-    # Get the actual container name from the item data
-    container_name = self.container_combo.itemData(current_index)
-    if not container_name:
-        # Only update if state changed
-        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
-            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.apply_button_style(self.toggleButton, 'toggle_disabled')
-            self.toggleButton.setEnabled(False)
-        return
-    
-    # Check if container exists in Docker
-    container_exists = self.container_exists_in_docker(container_name)
-    
-    # If container doesn't exist in Docker but exists in config, show launch button
-    if not container_exists:
-        config_container = self.config_manager.get_container(container_name)
-        if config_container:
-            # Only update if state changed
-            if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or not current_enabled:
-                self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-                self.apply_button_style(self.toggleButton, 'toggle_start')
-                self.toggleButton.setEnabled(True)
-            return
-    
-    # Make sure the docker handler has the correct container name
-    self.docker_handler.set_container_name(container_name)
-    
-    # Check if the container is running using docker_handler directly
-    is_running = self.docker_handler.is_container_running()
-    
-    # Determine the new state
-    new_text = STOP_CONTAINER_BUTTON_TEXT if is_running else LAUNCH_CONTAINER_BUTTON_TEXT
-    new_style = 'toggle_stop' if is_running else 'toggle_start'
-    
-    # Only update if state changed
-    if current_text != new_text:
-        self.toggleButton.setText(new_text)
-        self.apply_button_style(self.toggleButton, new_style)
-        self.toggleButton.setEnabled(True)
+        # Pass the container name explicitly to ensure we're stopping the right one
+        self.docker_handler.stop_container(container_name)
+        
+        # Clear and update all UI elements
+        self.update_toggle_button_text()
+        self.refresh_local_address()  # Updates address displays with cached data
+        self.maybe_refresh_uptime()   # Updates uptime displays
+        self.plot_data()              # Clears plots
+        
+        # Stop loading indicator
+        self.loading_indicator.stop()
+        
+        # Close the loading dialog
+        toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
+        if toggle_dialog_visible:
+            self.toggle_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
+        
+        # Process events to ensure immediate UI update
+        QApplication.processEvents()
+    except Exception as e:
+        # Stop loading indicator in case of error
+        self.loading_indicator.stop()
+        
+        # Close the loading dialog if it exists
+        toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
+        if toggle_dialog_visible:
+            self.toggle_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
+            
+        self.add_log(f"Error stopping container: {str(e)}", color="red")
+        self.toast.show_notification(NotificationType.ERROR, f"Error stopping container: {str(e)}")
 
   def edit_file(self, file_path, func, title='Edit File'):
     env_content = ''
@@ -2032,7 +1998,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     try:
       from datetime import datetime
 
-      # Show the loading dialog
+      # Show the loading dialog - now with blue background
       node_display_name = display_name if display_name else container_name
       self.startup_dialog = LoadingDialog(
           self, 
@@ -2041,6 +2007,26 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           size=50
       )
       self.startup_dialog.show()
+      
+      # Process events to ensure dialog is visible
+      QApplication.processEvents()
+      
+      # Add a small delay to ensure dialog is fully rendered
+      QTimer.singleShot(100, lambda: self._perform_add_new_node(container_name, volume_name, display_name))
+
+    except Exception as e:
+      self.add_log(f"Failed to create new node: {str(e)}", color="red")
+      # Close the loading dialog if it's still open
+      startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
+      if startup_dialog_visible:
+        self.startup_dialog.safe_close()
+        # Schedule removal of the reference after a delay
+        QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
+
+  def _perform_add_new_node(self, container_name, volume_name, display_name):
+    """Perform the actual node creation after the dialog is shown."""
+    try:
+      from datetime import datetime
 
       # 1) Create & store this container's config
       container_config = ContainerConfig(
@@ -2129,7 +2115,34 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 size=50
             )
             self.launcher_dialog.show()
+            
+            # Process events to ensure dialog is visible
+            QApplication.processEvents()
+            
+            # Add a small delay to ensure dialog is fully rendered
+            QTimer.singleShot(100, lambda: self._perform_container_launch(container_name, volume_name))
+        else:
+            # If we already have a startup dialog visible, just perform the launch
+            self._perform_container_launch(container_name, volume_name)
+            
+    except Exception as e:
+        # Stop loading indicator in case of error
+        self.loading_indicator.stop()
         
+        # Close the loading dialog if we created one in this method
+        launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
+        if launcher_dialog_visible:
+            self.launcher_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+            
+        error_msg = f"Failed to launch container: {str(e)}"
+        self.add_log(error_msg, color="red")
+        self.toast.show_notification(NotificationType.ERROR, error_msg)
+
+  def _perform_container_launch(self, container_name, volume_name):
+    """Perform the actual container launch operation after the dialog is shown."""
+    try:
         # Clear info displays
         self._clear_info_display()
         self.loading_indicator.start()
@@ -2415,3 +2428,59 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       'Ratio1 Explorer is not yet implemented'
     )
     return
+
+  def update_toggle_button_text(self):
+    # Get the current index and container name from the data
+    current_index = self.container_combo.currentIndex()
+    
+    # Store current button state
+    current_text = self.toggleButton.text()
+    current_enabled = self.toggleButton.isEnabled()
+    
+    if current_index < 0:
+        # Only update if state changed
+        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.apply_button_style(self.toggleButton, 'toggle_disabled')
+            self.toggleButton.setEnabled(False)
+        return
+        
+    # Get the actual container name from the item data
+    container_name = self.container_combo.itemData(current_index)
+    if not container_name:
+        # Only update if state changed
+        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.apply_button_style(self.toggleButton, 'toggle_disabled')
+            self.toggleButton.setEnabled(False)
+        return
+    
+    # Check if container exists in Docker
+    container_exists = self.container_exists_in_docker(container_name)
+    
+    # If container doesn't exist in Docker but exists in config, show launch button
+    if not container_exists:
+        config_container = self.config_manager.get_container(container_name)
+        if config_container:
+            # Only update if state changed
+            if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or not current_enabled:
+                self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+                self.apply_button_style(self.toggleButton, 'toggle_start')
+                self.toggleButton.setEnabled(True)
+            return
+    
+    # Make sure the docker handler has the correct container name
+    self.docker_handler.set_container_name(container_name)
+    
+    # Check if the container is running using docker_handler directly
+    is_running = self.docker_handler.is_container_running()
+    
+    # Determine the new state
+    new_text = STOP_CONTAINER_BUTTON_TEXT if is_running else LAUNCH_CONTAINER_BUTTON_TEXT
+    new_style = 'toggle_stop' if is_running else 'toggle_start'
+    
+    # Only update if state changed
+    if current_text != new_text:
+        self.toggleButton.setText(new_text)
+        self.apply_button_style(self.toggleButton, new_style)
+        self.toggleButton.setEnabled(True)
