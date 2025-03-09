@@ -37,9 +37,22 @@ from PyQt5.QtWidgets import (
   QMenu,
   QAction,
   QSplitter,
-  QProgressBar
+  QProgressBar,
+  QDesktopWidget,
+  QMainWindow,
+  QScrollArea,
+  QToolButton,
+  QTextBrowser,
+  QListWidget,
+  QGridLayout,
+  QStackedWidget,
+  QFormLayout,
+  QListWidgetItem
 )
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import (
+    Qt, QTimer, QSize, QThread, QObject, pyqtSignal, QUrl, QSettings,
+    QProcess, QPropertyAnimation, QModelIndex, QSortFilterProxyModel
+)
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter
 import pyqtgraph as pg
 from PyQt5.QtSvg import QSvgRenderer
@@ -69,6 +82,7 @@ from widgets.HostSelector import HostSelector
 from widgets.ModeSwitch import ModeSwitch
 from widgets.dialogs.DockerCheckDialog import DockerCheckDialog
 from widgets.CenteredComboBox import CenteredComboBox
+from widgets.LoadingDialog import LoadingDialog
 
 
 def get_platform_and_os_info():
@@ -778,9 +792,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def toggle_container(self):
     # Get the current index and container name from the data
     current_index = self.container_combo.currentIndex()
-    if current_index < 0:
-        self.toast.show_notification(NotificationType.ERROR, "No container selected")
-        return
         
     # Get the actual container name from the item data
     container_name = self.container_combo.itemData(current_index)
@@ -795,7 +806,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if self.is_container_running():
             self.add_log(f'Stopping container {container_name}...')
             
-            # Show loading indicator and clear info displays
+            # Show loading dialog for stopping operation
+            self.toggle_dialog = LoadingDialog(
+                self, 
+                title="Stopping Node", 
+                message=f"Please wait while node '{container_name}' is being stopped...",
+                size=50
+            )
+            self.toggle_dialog.show()
+            
+            # Clear info displays
             self._clear_info_display()
             self.loading_indicator.start()
             
@@ -810,6 +830,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             
             # Stop loading indicator
             self.loading_indicator.stop()
+            
+            # Close the loading dialog
+            toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
+            if toggle_dialog_visible:
+                self.toggle_dialog.safe_close()
+                # Schedule removal of the reference after a delay
+                QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
             
             # Process events to ensure immediate UI update
             QApplication.processEvents()
@@ -826,7 +853,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 volume_name = get_volume_name(container_name)
                 self.add_log(f"Generated volume name: {volume_name}", debug=True)
             
-            # Launch the container
+            # Launch the container (which now has its own loading dialog)
             self.launch_container(volume_name)
             
             # Update button state after launching
@@ -835,6 +862,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     except Exception as e:
         # Stop loading indicator in case of error
         self.loading_indicator.stop()
+        
+        # Close the loading dialog if it exists
+        toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
+        if toggle_dialog_visible:
+            self.toggle_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
+            
         self.add_log(f"Error toggling container: {str(e)}", color="red")
         self.toast.show_notification(NotificationType.ERROR, f"Error toggling container: {str(e)}")
 
@@ -1997,6 +2032,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     try:
       from datetime import datetime
 
+      # Show the loading dialog
+      node_display_name = display_name if display_name else container_name
+      self.startup_dialog = LoadingDialog(
+          self, 
+          title="Starting Node", 
+          message=f"Please wait while node '{node_display_name}' is being launched...",
+          size=50
+      )
+      self.startup_dialog.show()
+
       # 1) Create & store this container's config
       container_config = ContainerConfig(
         name=container_name,
@@ -2031,6 +2076,13 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     except Exception as e:
       self.add_log(f"Failed to create new node: {str(e)}", color="red")
+    finally:
+      # Close the loading dialog if it's still open
+      startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
+      if startup_dialog_visible:
+        self.startup_dialog.safe_close()
+        # Schedule removal of the reference after a delay
+        QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
 
   def launch_container(self, volume_name: str = None):
     """Launch the currently selected container with a mounted volume.
@@ -2067,7 +2119,18 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.add_log(f'Launching container {container_name} with volume {volume_name}...')
     
     try:
-        # Show loading indicator and clear info displays
+        # Show loading dialog if not already showing one from add_new_node
+        startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
+        if not startup_dialog_visible:
+            self.launcher_dialog = LoadingDialog(
+                self, 
+                title="Launching Node", 
+                message=f"Please wait while node '{container_name}' is being launched...",
+                size=50
+            )
+            self.launcher_dialog.show()
+        
+        # Clear info displays
         self._clear_info_display()
         self.loading_indicator.start()
         
@@ -2098,12 +2161,27 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Stop loading indicator
         self.loading_indicator.stop()
         
+        # Close the loading dialog if we created one in this method
+        launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
+        if launcher_dialog_visible:
+            self.launcher_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+        
         # Show success notification
         self.toast.show_notification(NotificationType.SUCCESS, f"Container {container_name} launched successfully")
         
     except Exception as e:
         # Stop loading indicator on error
         self.loading_indicator.stop()
+        
+        # Close the loading dialog if we created one in this method
+        launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
+        if launcher_dialog_visible:
+            self.launcher_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+            
         error_msg = f"Failed to launch container: {str(e)}"
         self.add_log(error_msg, color="red")
         self.toast.show_notification(NotificationType.ERROR, error_msg)

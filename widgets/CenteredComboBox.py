@@ -18,10 +18,14 @@ class ClickToOpenFilter(QObject):
         self.combo = combo
 
     def eventFilter(self, obj, event):
-        if obj == self.combo.lineEdit() and event.type() == QEvent.MouseButtonPress:
-            self.combo.showPopup()
-            return True
-        return super().eventFilter(obj, event)
+        try:
+            if obj == self.combo.lineEdit() and event.type() == QEvent.MouseButtonPress:
+                self.combo.showPopup()
+                return True
+            return super().eventFilter(obj, event)
+        except RuntimeError:
+            # Handle case where the C/C++ object has been deleted
+            return False
 
 class CenteredComboBox(QComboBox):
     """A QComboBox that centers both the dropdown items and the selected item."""
