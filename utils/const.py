@@ -490,21 +490,21 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {combo_border};
     border-radius: {border_radius};
     padding: 5px;
-    min-width: 200px;
+    min-width: 100%;
+    width: auto;
   }}
   QComboBox QAbstractItemView::item {{
     min-height: 24px;
     padding: 3px 5px;
+    margin: 0;
     text-align: center;
+    width: 100%;
   }}
   QComboBox QAbstractItemView::item:hover {{
     background-color: {combo_hover_bg};
   }}
   QComboBox QAbstractItemView::item:selected {{
     background-color: {combo_dropdown_select_bg};
-  }}
-  QCheckBox {{
-    color: {text_color};
   }}
   QPushButton {{
     background-color: {button_bg}; 
@@ -514,10 +514,20 @@ COMMON_STYLESHEET_TEMPLATE = """
     font-size: {button_font_size};
     font-weight: {button_font_weight}; 
     margin: {button_margin};
+    margin-left: 2px;
+    margin-right: 2px;
     border-radius: {button_border_radius};
   }}
   QPushButton:hover {{
     background-color: {button_hover};
+  }}
+  /* Reset margins for combo box buttons */
+  QComboBox {{
+    margin-left: 0px;
+    margin-right: 0px;
+  }}
+  QCheckBox {{
+    color: {text_color};
   }}
   QPushButton[type="confirm"] {{
     background-color: {confirm_button_bg};
@@ -637,6 +647,21 @@ LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
     border-radius: 6px;
   }
   
+  /* Special styling for macOS */
+  #macOSDropdownEnhancer QComboBox QAbstractItemView,
+  .macOS QComboBox QAbstractItemView {
+    min-width: 300px !important;
+    width: auto !important;
+    padding: 8px !important;
+  }
+  
+  #macOSDropdownEnhancer QComboBox QAbstractItemView::item,
+  .macOS QComboBox QAbstractItemView::item {
+    min-width: 280px !important;
+    width: 100% !important;
+    margin: 2px !important;
+    padding: 5px 10px !important;
+  }
 """
 
 # Notification messages

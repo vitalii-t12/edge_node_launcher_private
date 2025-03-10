@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, QApplication, QWidget, QStylePainter, QStyle, QStyleOptionComboBox
+from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, QApplication, QWidget, QStylePainter, QStyle, QStyleOptionComboBox, QFrame
 from PyQt5.QtCore import Qt, QObject, QEvent, QTimer, QRect, QSize
 from PyQt5.QtGui import QFontMetrics, QPainter, QPalette, QIcon
 from utils.const import DARK_STYLESHEET
@@ -27,6 +27,43 @@ class ClickToOpenFilter(QObject):
             # Handle case where the C/C++ object has been deleted
             return False
 
+class PopupWidthAdjuster(QObject):
+    """Event filter to adjust popup width on macOS"""
+    def __init__(self, combo_box):
+        super().__init__(combo_box)
+        self.combo_box = combo_box
+        
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Show and isinstance(obj, QFrame):
+            # Check if we're on macOS
+            import platform
+            if platform.system() == 'Darwin':
+                # Calculate width for the longest item
+                max_width = self.combo_box.width() * 1.5  # Start with 150% of combobox width
+                
+                # Add extra width to ensure all text is visible on macOS
+                for i in range(self.combo_box.count()):
+                    item_text = self.combo_box.itemText(i)
+                    text_width = QFontMetrics(self.combo_box.font()).horizontalAdvance(item_text)
+                    
+                    # Use a larger multiplier for macOS to ensure ample width
+                    required_width = text_width * 1.5 + 80  # Add extra padding
+                    max_width = max(max_width, required_width)
+                
+                # Set a generous minimum width for the popup
+                current_geometry = obj.geometry()
+                obj.setGeometry(
+                    current_geometry.x(),
+                    current_geometry.y(),
+                    max(int(max_width), 300),  # Use at least 300px or calculated width
+                    current_geometry.height()
+                )
+                
+                # Update the view
+                obj.update()
+        
+        return super().eventFilter(obj, event)
+
 class CenteredComboBox(QComboBox):
     """A QComboBox that centers both the dropdown items and the selected item."""
 
@@ -47,6 +84,15 @@ class CenteredComboBox(QComboBox):
 
         # Make the line edit look like a non-editable combo box
         self.lineEdit().setFrame(False)
+        
+        # Check for macOS
+        import platform
+        is_macos = platform.system() == 'Darwin'
+        
+        # Apply MacOS specific class/ID for styling 
+        if is_macos:
+            self.setObjectName("macOSDropdownEnhancer")
+            self.setProperty("class", "macOS")
         
         # Completely remove the dropdown button to ensure text centering
         self.setStyleSheet("""
@@ -96,6 +142,11 @@ class CenteredComboBox(QComboBox):
         # Ensure combo box popup items are centered as well
         for i in range(self.count()):
             self.setItemData(i, Qt.AlignCenter, Qt.TextAlignmentRole)
+        
+        # Add event filter for macOS dropdown width adjustment
+        if is_macos:
+            self.popup_adjuster = PopupWidthAdjuster(self)
+            self.view().window().installEventFilter(self.popup_adjuster)
             
         # Apply the default theme
         self.apply_default_theme()
@@ -202,6 +253,33 @@ class CenteredComboBox(QComboBox):
             # Remove any decoration or icon
             self.setItemData(i, None, Qt.DecorationRole)
 
+        # Calculate width to fit the widest item
+        width = self.width()
+        font_metrics = QFontMetrics(self.font())
+        
+        # Find the width needed for the longest item
+        for i in range(self.count()):
+            item_text = self.itemText(i)
+            item_width = font_metrics.horizontalAdvance(item_text) + 60  # Add padding
+            width = max(width, item_width)
+        
+        # macOS needs extra width adjustment
+        import platform
+        is_macos = platform.system() == 'Darwin'
+        if is_macos:
+            width += 100  # Add significant extra width for macOS
+            
+            # Make sure we have the popup adjuster for macOS
+            if not hasattr(self, 'popup_adjuster'):
+                self.popup_adjuster = PopupWidthAdjuster(self)
+                
+            # We need to install the event filter on the view's window (popup)
+            # But the window isn't created until showPopup is called,
+            # so we'll install it after the parent's showPopup below
+        
+        # Set the minimum width of the view
+        self.view().setMinimumWidth(width)
+
         # Determine if we're in dark or light theme
         is_dark = self.is_dark_theme()
         
@@ -214,6 +292,7 @@ class CenteredComboBox(QComboBox):
                     background-color: #1E293B;
                     outline: 10px;
                     padding: 14px;
+                    min-width: 300px;
                 }
                 
                 QListView::item {
@@ -221,6 +300,7 @@ class CenteredComboBox(QComboBox):
                     padding: 4px;
                     margin: 2px;
                     text-align: center;
+                    min-width: 280px;
                 }
                 
                 QListView::item:selected {
@@ -241,6 +321,7 @@ class CenteredComboBox(QComboBox):
                     outline: none;
                     padding: 14px;
                     box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.15);
+                    min-width: 300px;
                 }
                 
                 QListView::item {
@@ -249,6 +330,7 @@ class CenteredComboBox(QComboBox):
                     margin: 3px;
                     color: #333333;
                     text-align: center;
+                    min-width: 280px;
                 }
                 
                 QListView::item:hover {
@@ -271,4 +353,19 @@ class CenteredComboBox(QComboBox):
         # Make the background translucent
         self.view().window().setAttribute(Qt.WA_TranslucentBackground)
 
+        # Call the parent implementation to show the popup
         super().showPopup()
+        
+        # Apply MacOS specific adjustments after popup is shown
+        if is_macos:
+            # Install event filter for width adjustment
+            popup = self.findChild(QFrame)
+            if popup:
+                popup.installEventFilter(self.popup_adjuster)
+                
+                # Set an explicit, generous width for macOS
+                geometry = popup.geometry()
+                min_width = max(300, width + 100)  # Use at least 300px or calculated width + extra padding
+                new_geometry = QRect(geometry.x(), geometry.y(), min_width, geometry.height())
+                popup.setGeometry(new_geometry)
+                popup.update()

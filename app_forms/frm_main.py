@@ -739,7 +739,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.logView.setObjectName("logView")  # Set object name for logView
     
     # Apply larger font size for info box labels on macOS
-    if 'darwin' == 'darwin':
+    if platform.system().lower() == 'darwin':
+    # if 'darwin' == 'darwin':
       # Additional macOS-specific styles
       macos_style = """
         #infoBox QLabel {
