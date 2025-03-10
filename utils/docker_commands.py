@@ -345,10 +345,9 @@ class DockerCommandHandler:
         if platform.machine() in ['aarch64', 'arm64']:
             command += ['--platform', 'linux/amd64']
         command += [
-            '--rm',
             '-d',  # Run in detached mode
             '--name', self.container_name,  # Set container name
-            # '--restart', 'unless-stopped',  # Restart policy
+            '--restart', 'unless-stopped',  # Restart policy
         ]
         
         # Add volume mount if specified
