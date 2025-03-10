@@ -490,6 +490,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {combo_border};
     border-radius: {border_radius};
     padding: 5px;
+    min-width: 200px;
   }}
   QComboBox QAbstractItemView::item {{
     min-height: 24px;
