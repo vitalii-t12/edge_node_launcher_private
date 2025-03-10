@@ -271,4 +271,75 @@ class CenteredComboBox(QComboBox):
         # Make the background translucent
         self.view().window().setAttribute(Qt.WA_TranslucentBackground)
 
+        # Call the parent implementation to show the popup
         super().showPopup()
+        
+        # Now center the popup by finding and repositioning it
+        # We need to use a slight delay to ensure the popup has been fully created and sized
+        QTimer.singleShot(10, self._center_popup)
+        
+    def _center_popup(self):
+        """Center the popup under the combobox after it has been shown"""
+        # First, try to get the popup directly as a child of the combobox
+        popup = None
+        
+        # Try the standard method first - look for the popup view's parent widget
+        popup_view = self.view()
+        if popup_view and popup_view.parent():
+            popup = popup_view.parent()
+            if popup.isVisible() and (popup.windowFlags() & Qt.Popup):
+                # This is likely our popup
+                self._apply_centering(popup)
+                return
+                
+        # Try the second method - look for all popups and find the closest one
+        popups = [w for w in QApplication.allWidgets() if w.isVisible() and 
+                 (w.windowFlags() & Qt.Popup) and
+                 w != self]
+                 
+        # Find the popup that's closest to our combobox (likely to be our dropdown)
+        if popups:
+            # Convert combobox rect to global coordinates
+            combobox_rect = QRect(self.mapToGlobal(self.rect().topLeft()), 
+                                  self.mapToGlobal(self.rect().bottomRight()))
+            
+            # Find the closest popup
+            closest_popup = None
+            min_distance = float('inf')
+            
+            for popup in popups:
+                popup_pos = popup.pos()
+                # Calculate distance from popup to combobox bottom
+                dist = abs(popup_pos.y() - combobox_rect.bottom())
+                if dist < min_distance:
+                    min_distance = dist
+                    closest_popup = popup
+            
+            # If we found a popup that's close to our combobox, center it
+            if closest_popup and min_distance < 50:  # Only reposition if it's close
+                self._apply_centering(closest_popup)
+    
+    def _apply_centering(self, popup):
+        """Apply centering to the identified popup"""
+        # Convert combobox rect to global coordinates
+        combobox_rect = QRect(self.mapToGlobal(self.rect().topLeft()), 
+                              self.mapToGlobal(self.rect().bottomRight()))
+                              
+        popup_width = popup.width()
+        combobox_width = self.width()
+        
+        # Calculate the center position of the combobox in global coordinates
+        combobox_center_x = combobox_rect.left() + combobox_rect.width() // 2
+        
+        # Calculate new popup position
+        new_x = combobox_center_x - popup_width // 2
+        
+        # Make sure the popup doesn't go off-screen
+        screen = QApplication.desktop().screenGeometry(self)
+        if new_x < screen.left():
+            new_x = screen.left()
+        elif (new_x + popup_width) > screen.right():
+            new_x = screen.right() - popup_width
+        
+        # Reposition the popup
+        popup.move(new_x, popup.y())

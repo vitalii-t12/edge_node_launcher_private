@@ -180,7 +180,7 @@ COMMON_STYLES = {
     "progress_height": "30px",
     "button_padding": "10px 20px",
     "button_font_size": "16px",
-    "button_margin": "4px 2px",
+    "button_margin": "4px 5px",
     "button_border_radius": "15px",
     "combo_border_radius": "15px",
     "combo_padding": "4px",
@@ -438,7 +438,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {log_view_border};
     border-radius: {border_radius};
     padding: 8px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }}
   PlotWidget, QWidget[class="plot-container"] {{
     background-color: {graph_bg};
@@ -458,6 +458,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {combo_border};
     border-radius: {combo_border_radius};
     padding: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
     min-width: {combo_min_width};
     min-height: 32px;
     max-height: 32px;
@@ -490,7 +492,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {combo_border};
     border-radius: {border_radius};
     padding: 5px;
-    min-width: 200px;
+    min-width: 190px;
   }}
   QComboBox QAbstractItemView::item {{
     min-height: 24px;
@@ -503,9 +505,6 @@ COMMON_STYLESHEET_TEMPLATE = """
   QComboBox QAbstractItemView::item:selected {{
     background-color: {combo_dropdown_select_bg};
   }}
-  QCheckBox {{
-    color: {text_color};
-  }}
   QPushButton {{
     background-color: {button_bg}; 
     color: {text_color}; 
@@ -514,6 +513,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     font-size: {button_font_size};
     font-weight: {button_font_weight}; 
     margin: {button_margin};
+    margin-left: 5px;
+    margin-right: 5px;
     border-radius: {button_border_radius};
   }}
   QPushButton:hover {{
@@ -538,6 +539,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: none;
     padding: 2px;
     margin: 2px;
+    margin-left: 2px;
+    margin-right: 2px;
     icon-size: 20px;
     min-width: 28px;
     min-height: 28px;
@@ -570,6 +573,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {info_box_border};
     border-radius: {border_radius};
     margin: 6px;
+    margin-left: 5px;
+    margin-right: 5px;
     padding: 8px;
     color: {info_box_text};
   }}
@@ -586,6 +591,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: none;
     padding: 0px;
     margin: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
     color: {text_color};
   }}
   #infoBoxText QLabel {{
@@ -600,11 +607,16 @@ COMMON_STYLESHEET_TEMPLATE = """
 
 """
 
+# Additional custom styles
+ADDITIONAL_STYLES = """
+  /* No additional styles needed anymore since we've set margins directly on layouts */
+"""
+
 # Apply the common template with dark theme values
-DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME)
+DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME) + ADDITIONAL_STYLES
 
 # Apply the common template with light theme values, with additional light-specific styles
-LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
+LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + ADDITIONAL_STYLES + """
   PlotWidget .axis {
     color: black;
   }
@@ -648,4 +660,15 @@ NOTIFICATION_TITLE_STRINGS_ENUM = {
 }
 NOTIFICATION_ADDRESS_COPIED = "Address {address} copied to clipboard"
 NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again after launching the Edge Node."
+
+# Add specific button selectors with 5px left and right margins
+#addNodeButton, #toggleContainerButton, #launchDAppButton, #explorerButton, #renameButton, #themeToggleButton {{
+#    margin-left: 5px;
+#    margin-right: 5px;
+#}}
+#
+#infoBox {{
+#    margin-left: 5px;
+#    margin-right: 5px;
+#}}
 

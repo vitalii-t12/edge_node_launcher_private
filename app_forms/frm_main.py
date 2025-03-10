@@ -378,13 +378,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     menu_widget.setFixedWidth(300)  # Set the fixed width here
     menu_layout = QVBoxLayout(menu_widget)
     menu_layout.setAlignment(Qt.AlignTop)
-    menu_layout.setContentsMargins(0, 0, 0, 0)
+    menu_layout.setContentsMargins(0, 2, 0, 2)  # Small top and bottom margins, no side margins
     
     top_button_area = QVBoxLayout()
+    top_button_area.setObjectName("topButtonArea")
+    top_button_area.setContentsMargins(5, 0, 5, 4)  # Add left and right margins (5px)
 
     # Container selector area
     container_selector_layout = QVBoxLayout()  # Changed to QVBoxLayout
-    container_selector_layout.setContentsMargins(0, 0, 0, 0)
+    # container_selector_layout.setContentsMargins(5, 4, 5, 4)  # Add left and right margins (5px)
     # Add Node button
     self.add_node_button = QPushButton("Add New Node")
     self.add_node_button.clicked.connect(self.show_add_node_dialog)
@@ -430,7 +432,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Info box
     info_box = QGroupBox()
     info_box.setObjectName("infoBox")
+    info_box.setContentsMargins(5, 0, 5, 0)  # Add left and right margins directly to the widget
     info_box_layout = QVBoxLayout()
+    info_box_layout.setContentsMargins(5, 8, 5, 8)  # Left, Top, Right, Bottom margins inside the box
 
     # Add loading indicator
     self.loading_indicator = LoadingIndicator(size=30)
@@ -512,6 +516,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Bottom button area
     bottom_button_area = QVBoxLayout()
+    bottom_button_area.setObjectName("bottomButtonArea")
+    bottom_button_area.setContentsMargins(5, 4, 5, 0)  # Add left and right margins (5px)
     
     ## buttons
     # Add Rename Node button
@@ -749,7 +755,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           font-size: 12pt !important;
         }
         QComboBox QAbstractItemView {
-          min-width: 250px !important; /* Wider dropdown on macOS */
+          min-width: 255px !important; /* Wider dropdown on macOS */
         }
       """
       # Apply base stylesheet plus macOS modifications
