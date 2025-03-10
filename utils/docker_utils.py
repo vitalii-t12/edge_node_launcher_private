@@ -34,8 +34,12 @@ def get_volume_name(container_name):
 def generate_container_name(prefix="r1node"):
     """Generate a sequential container name.
     
-    First container is named just "r1node" (no number),
+    First container is named just "r1node" (if available),
     subsequent containers are "r1node1", "r1node2", etc.
+    
+    This function checks both Docker containers and the config file
+    for the highest index, then increments from there. It also validates
+    that the generated name doesn't exist in Docker but not in the config.
     
     Args:
         prefix: Prefix for the container name
@@ -44,33 +48,100 @@ def generate_container_name(prefix="r1node"):
         str: Sequential container name
     """
     import subprocess
+    import os
+    import json
+    from pathlib import Path
+
+    # Config file path
+    config_dir = os.path.join(str(Path.home()), ".ratio1", "edge_node_launcher")
+    containers_file = os.path.join(config_dir, "containers.json")
     
-    # Get list of existing containers with the prefix
+    # Find highest index in Docker containers
+    docker_highest_index = -1  # Start from -1 so first container can be r1node (without number)
     try:
         result = subprocess.run(
             ['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', f'name={prefix}'],
             capture_output=True, text=True
         )
         
-        # Parse existing container names and find the highest index
         existing_containers = result.stdout.strip().split('\n')
         existing_containers = [c for c in existing_containers if c]  # Remove empty strings
         
-        highest_index = -1  # Start from -1 so first container will be r1node0
         for container in existing_containers:
             if container.startswith(prefix):
                 try:
                     # Extract the number after the prefix
                     index_str = container[len(prefix):]
-                    if index_str.isdigit():
+                    if not index_str:  # This is "r1node" with no number
+                        docker_highest_index = max(docker_highest_index, 0)
+                    elif index_str.isdigit():
                         index = int(index_str)
-                        highest_index = max(highest_index, index)
+                        docker_highest_index = max(docker_highest_index, index)
                 except (ValueError, IndexError):
                     continue
+    except Exception:
+        docker_highest_index = -1
+    
+    # Find highest index in config file
+    config_highest_index = -1
+    try:
+        if os.path.exists(containers_file):
+            with open(containers_file, 'r') as f:
+                data = json.load(f)
+                for container_data in data:
+                    container_name = container_data.get('name', '')
+                    if container_name.startswith(prefix):
+                        try:
+                            # Extract the number after the prefix
+                            index_str = container_name[len(prefix):]
+                            if not index_str:  # This is "r1node" with no number
+                                config_highest_index = max(config_highest_index, 0)
+                            elif index_str.isdigit():
+                                index = int(index_str)
+                                config_highest_index = max(config_highest_index, index)
+                        except (ValueError, IndexError):
+                            continue
+    except Exception:
+        config_highest_index = -1
+    
+    # Use the highest index from both sources
+    highest_index = max(docker_highest_index, config_highest_index)
+    
+    # Generate the next name
+    while True:
+        next_index = highest_index + 1
         
-        # Return next available index
-        return f"{prefix}{highest_index + 1}"
+        # Format the name
+        if next_index == 0:  # First container is just "r1node"
+            next_name = prefix
+        else:
+            next_name = f"{prefix}{next_index}"
         
-    except Exception as e:
-        # In case of any error, start from 0
-        return f"{prefix}0" 
+        # Check if this name exists in Docker but not in config
+        exists_in_docker = False
+        try:
+            result = subprocess.run(
+                ['docker', 'ps', '-a', '--format', '{{.Names}}', '--filter', f'name={next_name}'],
+                capture_output=True, text=True
+            )
+            docker_containers = [c.strip() for c in result.stdout.split('\n') if c.strip()]
+            exists_in_docker = next_name in docker_containers
+        except Exception:
+            exists_in_docker = False
+        
+        exists_in_config = False
+        try:
+            if os.path.exists(containers_file):
+                with open(containers_file, 'r') as f:
+                    data = json.load(f)
+                    exists_in_config = any(container_data.get('name') == next_name for container_data in data)
+        except Exception:
+            exists_in_config = False
+        
+        # If the name exists in Docker but not in config, we need to try the next index
+        if exists_in_docker and not exists_in_config:
+            highest_index = next_index
+            continue
+        
+        # Otherwise return the name
+        return next_name 
