@@ -739,7 +739,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.logView.setObjectName("logView")  # Set object name for logView
     
     # Apply larger font size for info box labels on macOS
-    if platform.system().lower() == 'darwin':
+    if 'darwin' == 'darwin':
       # Additional macOS-specific styles
       macos_style = """
         #infoBox QLabel {
@@ -749,7 +749,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           font-size: 12pt !important;
         }
         QComboBox QAbstractItemView {
-          min-width: 250px !important; /* Wider dropdown on macOS */
+          min-width: 254px !important; /* Wider dropdown on macOS */
         }
       """
       # Apply base stylesheet plus macOS modifications
