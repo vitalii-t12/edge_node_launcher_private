@@ -210,6 +210,7 @@ DARK_COLORS = {
     "progress_border": "#1E90FF",
     "progress_chunk": "#1E90FF",
     "widget_bg": "#0D1F2D",
+    "debug_checkbox_color": "#FFA500",  # Orange for dark theme debug checkbox
     
     # Log view specific colors
     "log_view_bg": "#0D1F2D",
@@ -275,6 +276,7 @@ LIGHT_COLORS = {
     "progress_border": "#D3D3D3",
     "progress_chunk": "#D3D3D3",
     "widget_bg": "#F0F0F0",
+    "debug_checkbox_color": "#0066CC",  # Blue for light theme debug checkbox
     
     # Log view specific colors
     "log_view_bg": "#FFFFFF",
@@ -336,6 +338,72 @@ LIGHT_THEME = {**COMMON_STYLES, **LIGHT_COLORS}
 CHECKBOX_STYLE_TEMPLATE = """
     QCheckBox {{
         color: {text_color};
+    }}
+"""
+
+# Debug checkbox style template
+DEBUG_CHECKBOX_STYLE_TEMPLATE = """
+    QCheckBox {{
+        color: {debug_checkbox_color};
+        font-weight: bold;
+    }}
+"""
+
+# Detailed checkbox styling with theme-specific customization
+DETAILED_CHECKBOX_STYLE = """
+    QCheckBox {{
+        margin-top: 4px;
+        spacing: 8px;
+        padding: 4px;
+        border-radius: 15px;
+        color: {debug_checkbox_color};
+        font-weight: bold;
+    }}
+    
+    QCheckBox:hover {{
+        background-color: rgba(128, 128, 128, 0.2);
+    }}
+    
+    QCheckBox::indicator {{
+        width: 18px;
+        height: 18px;
+        border-radius: 15px;
+        border: 2px solid #666;
+    }}
+    
+    QCheckBox::indicator:unchecked {{
+        background-color: transparent;
+    }}
+    
+    QCheckBox::indicator:checked {{
+        background-color: #4CAF50;
+        border-color: #4CAF50;
+        image: url(:/icons/check.png);
+    }}
+    
+    QCheckBox::indicator:checked:hover {{
+        background-color: #45a049;
+        border-color: #45a049;
+    }}
+    
+    /* Dark theme specific */
+    .dark QCheckBox {{
+        color: {debug_checkbox_color};
+    }}
+    
+    .dark QCheckBox::indicator:unchecked {{
+        border-color: #888;
+        background-color: #333;
+    }}
+    
+    /* Light theme specific */
+    .light QCheckBox {{
+        color: {debug_checkbox_color};
+    }}
+    
+    .light QCheckBox::indicator:unchecked {{
+        border-color: #666;
+        background-color: #ffffff;
     }}
 """
 

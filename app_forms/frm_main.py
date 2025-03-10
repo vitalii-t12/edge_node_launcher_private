@@ -530,63 +530,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.force_debug_checkbox.setChecked(self.__force_debug)  # Set initial state from config
     self.force_debug_checkbox.setFont(QFont("Courier New", 9, QFont.Bold))
     
-    # Create a more visible checkbox style that works in both themes
-    checkbox_style = """
-        QCheckBox {
-            margin-top: 4px;
-            spacing: 8px;
-            padding: 4px;
-            border-radius: 15px;
-        }
-        
-        QCheckBox:hover {
-            background-color: rgba(128, 128, 128, 0.2);
-        }
-        
-        QCheckBox::indicator {
-            width: 18px;
-            height: 18px;
-            border-radius: 15px;
-            border: 2px solid #666;
-        }
-        
-        QCheckBox::indicator:unchecked {
-            background-color: transparent;
-        }
-        
-        QCheckBox::indicator:checked {
-            background-color: #4CAF50;
-            border-color: #4CAF50;
-            image: url(:/icons/check.png);
-        }
-        
-        QCheckBox::indicator:checked:hover {
-            background-color: #45a049;
-            border-color: #45a049;
-        }
-        
-        /* Dark theme specific */
-        .dark QCheckBox {
-            color: #ffffff;
-        }
-        
-        .dark QCheckBox::indicator:unchecked {
-            border-color: #888;
-            background-color: #333;
-        }
-        
-        /* Light theme specific */
-        .light QCheckBox {
-            color: #000000;
-        }
-        
-        .light QCheckBox::indicator:unchecked {
-            border-color: #666;
-            background-color: #ffffff;
-        }
-    """
+    # Apply custom styling to the debug checkbox
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    if is_dark:
+        self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(
+            debug_checkbox_color=DARK_COLORS["debug_checkbox_color"]
+        ))
+    else:
+        self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(
+            debug_checkbox_color=LIGHT_COLORS["debug_checkbox_color"]
+        ))
     
-    self.force_debug_checkbox.setStyleSheet(checkbox_style)
     self.force_debug_checkbox.stateChanged.connect(self.toggle_force_debug)
     bottom_button_area.addWidget(self.force_debug_checkbox)
 
@@ -776,9 +730,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def change_text_color(self):
     if self._current_stylesheet == DARK_STYLESHEET:
-      self.force_debug_checkbox.setStyleSheet(CHECKBOX_STYLE_TEMPLATE.format(text_color=DARK_COLORS["text_color"]))
+      self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(debug_checkbox_color=DARK_COLORS["debug_checkbox_color"]))
     else:
-      self.force_debug_checkbox.setStyleSheet(CHECKBOX_STYLE_TEMPLATE.format(text_color=LIGHT_COLORS["text_color"]))
+      self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(debug_checkbox_color=LIGHT_COLORS["debug_checkbox_color"]))
 
   def apply_stylesheet(self):
     is_dark = self._current_stylesheet == DARK_STYLESHEET
