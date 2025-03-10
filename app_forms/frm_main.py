@@ -782,12 +782,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def apply_stylesheet(self):
     is_dark = self._current_stylesheet == DARK_STYLESHEET
-    self.setStyleSheet(self._current_stylesheet)
-    self.logView.setStyleSheet(self._current_stylesheet)
-    self.cpu_plot.setBackground(None)  # Reset the background to let the stylesheet take effect
-    self.memory_plot.setBackground(None)
-    self.gpu_plot.setBackground(None)
-    self.gpu_memory_plot.setBackground(None)
+    self.logView.setObjectName("logView")  # Set object name for logView
     
     # Apply larger font size for info box labels on macOS
     if platform.system().lower() == 'darwin':
@@ -800,7 +795,25 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           font-size: 12pt !important;
         }
       """
+      # Apply base stylesheet plus macOS modifications
       self.setStyleSheet(self._current_stylesheet + macos_style)
+      
+      # Apply margin directly to logView with its own stylesheet
+      self.logView.setStyleSheet("""
+        QTextEdit#logView {
+          margin-bottom: 14px;
+        }
+      """)
+    else:
+      # Apply regular stylesheet for other platforms
+      self.setStyleSheet(self._current_stylesheet)
+      self.logView.setStyleSheet("")
+    
+    # Reset plot backgrounds
+    self.cpu_plot.setBackground(None)
+    self.memory_plot.setBackground(None)
+    self.gpu_plot.setBackground(None)
+    self.gpu_memory_plot.setBackground(None)
 
   def toggle_container(self):
     # Get the current index and container name from the data
