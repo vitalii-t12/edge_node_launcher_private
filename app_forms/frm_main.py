@@ -789,6 +789,19 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
     
+    # Apply larger font size for info box labels on macOS
+    if platform.system().lower() == 'darwin':
+      # Additional macOS-specific styles
+      macos_style = """
+        #infoBox QLabel {
+          font-size: 12pt !important;
+        }
+        #infoBoxText QLabel {
+          font-size: 12pt !important;
+        }
+      """
+      self.setStyleSheet(self._current_stylesheet + macos_style)
+
   def toggle_container(self):
     # Get the current index and container name from the data
     current_index = self.container_combo.currentIndex()
