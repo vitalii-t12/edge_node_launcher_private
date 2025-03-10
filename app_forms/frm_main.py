@@ -2323,7 +2323,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Update button state to show container is running
     self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
-    self.toggleButton.setStyleSheet("background-color: red; color: white;")
+    self.apply_button_style(self.toggleButton, 'toggle_stop')
     self.toggleButton.setEnabled(True)
     
     # Log the setup
