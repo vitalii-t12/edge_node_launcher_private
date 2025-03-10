@@ -261,7 +261,8 @@ DARK_COLORS = {
     "toggle_button_stop_bg": "#F44336",
     "toggle_button_stop_hover": "#D32F2F",
     "toggle_button_disabled_bg": "gray",
-    "toggle_button_disabled_hover": "darkgray"
+    "toggle_button_disabled_hover": "darkgray",
+    "toggle_button_border": "#87CEEB"
 }
 
 # Color definitions for light theme
@@ -327,7 +328,8 @@ LIGHT_COLORS = {
     "toggle_button_stop_bg": "#F44336",
     "toggle_button_stop_hover": "#D32F2F",
     "toggle_button_disabled_bg": "gray",
-    "toggle_button_disabled_hover": "darkgray"
+    "toggle_button_disabled_hover": "darkgray",
+    "toggle_button_border": "#A9A9A9"
 }
 
 # Merge common styles with theme-specific colors

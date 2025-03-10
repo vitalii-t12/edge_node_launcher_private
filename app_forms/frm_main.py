@@ -225,18 +225,18 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             'bg': colors['toggle_button_start_bg'],
             'hover': colors['toggle_button_start_hover'],
             'text': colors['text_color'],
-            'border': colors['button_border']
+            'border': colors['toggle_button_border']
         },
         'toggle_stop': {
             'bg': colors['toggle_button_stop_bg'],
             'hover': colors['toggle_button_stop_hover'],
             'text': colors['text_color'],
-            'border': colors['button_border']
+            'border': colors['toggle_button_border']
         },
         'toggle_disabled': {
             'bg': colors['toggle_button_disabled_bg'],
             'text': colors['text_color'],
-            'border': colors['button_border'],
+            'border': colors['toggle_button_border'],
             'hover': colors['toggle_button_disabled_hover']
         }
     }
