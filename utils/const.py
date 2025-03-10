@@ -361,13 +361,12 @@ DETAILED_CHECKBOX_STYLE = """
         margin-top: 4px;
         spacing: 8px;
         padding: 4px;
-        border-radius: 15px;
         color: {debug_checkbox_color};
         font-weight: bold;
     }}
     
     QCheckBox:hover {{
-        background-color: rgba(128, 128, 128, 0.2);
+        background-color: transparent;
     }}
     
     QCheckBox::indicator {{
