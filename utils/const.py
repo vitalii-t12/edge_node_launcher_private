@@ -258,8 +258,10 @@ DARK_COLORS = {
     # Toggle button states
     "toggle_button_start_bg": "#4CAF50",
     "toggle_button_start_hover": "#45A049",
+    "toggle_button_start_border": "#45A049",
     "toggle_button_stop_bg": "#F44336",
     "toggle_button_stop_hover": "#D32F2F",
+    "toggle_button_stop_border": "#D32F2F",
     "toggle_button_disabled_bg": "gray",
     "toggle_button_disabled_hover": "darkgray",
     "toggle_button_border": "#87CEEB"
@@ -325,8 +327,10 @@ LIGHT_COLORS = {
     # Toggle button states
     "toggle_button_start_bg": "#4CAF50",
     "toggle_button_start_hover": "#45A049",
+    "toggle_button_start_border": "#45A049",
     "toggle_button_stop_bg": "#F44336",
     "toggle_button_stop_hover": "#D32F2F",
+    "toggle_button_stop_border": "#D32F2F",
     "toggle_button_disabled_bg": "gray",
     "toggle_button_disabled_hover": "darkgray",
     "toggle_button_border": "#A9A9A9"
