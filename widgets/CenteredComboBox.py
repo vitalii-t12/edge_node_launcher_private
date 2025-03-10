@@ -10,7 +10,7 @@ class NoDecorationsDelegate(QStyledItemDelegate):
         # Remove all decorations and icons
         option.icon = QIcon()  # Use empty QIcon instead of None
         option.decorationSize = QSize(0, 0)  # Use QSize instead of Qt.Size
-        option.features = 0  # Reset all features to remove decorations
+        # option.features = None  # Reset all features to remove decorations
 
 class ClickToOpenFilter(QObject):
     def __init__(self, combo):
@@ -130,7 +130,7 @@ class CenteredComboBox(QComboBox):
             else:
                 painter.setPen(Qt.black)
                 
-            painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
+            # painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
 
     def apply_default_theme(self):
         """Apply appropriate styling for the current theme when the widget is first created"""
