@@ -755,7 +755,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
           font-size: 12pt !important;
         }
         QComboBox QAbstractItemView {
-          min-width: 255px !important; /* Wider dropdown on macOS */
+          min-width: 253px !important; /* Wider dropdown on macOS */
         }
       """
       # Apply base stylesheet plus macOS modifications
