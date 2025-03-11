@@ -206,37 +206,39 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.button_colors = {
         'start': {
-            'bg': colors['green_highlight'],
-            'hover': colors['confirm_button_hover'],
-            'text': colors['text_color'],
-            'border': colors['button_border']
+            'bg': colors['toggle_button_start_bg'],
+            'hover': colors['toggle_button_start_hover'],
+            'text': colors['toggle_button_start_text'],
+            'border': colors['toggle_button_start_border']
         },
         'stop': {
-            'bg': colors['cancel_button_bg'],
-            'hover': colors['cancel_button_hover'],
-            'text': colors['text_color'],
-            'border': colors['button_border']
+            'bg': colors['toggle_button_stop_bg'],
+            'hover': colors['toggle_button_stop_hover'],
+            'text': colors['toggle_button_stop_text'],
+            'border': colors['toggle_button_stop_border']
         },
         'disabled': {
-            'bg': 'gray',
-            'text': colors['text_color']
+            'bg': 'toggle_button_disabled_bg',
+            'hover': 'toggle_button_disabled_hover',
+            'text': colors['toggle_button_disabled_text'],
+            'border': colors['toggle_button_disabled_border']
         },
         'toggle_start': {
             'bg': colors['toggle_button_start_bg'],
             'hover': colors['toggle_button_start_hover'],
-            'text': colors['text_color'],
+            'text': colors['toggle_button_start_text'],
             'border': colors['toggle_button_start_border']
         },
         'toggle_stop': {
             'bg': colors['toggle_button_stop_bg'],
             'hover': colors['toggle_button_stop_hover'],
-            'text': colors['text_color'],
+            'text': colors['toggle_button_stop_text'],
             'border': colors['toggle_button_stop_border']
         },
         'toggle_disabled': {
             'bg': colors['toggle_button_disabled_bg'],
-            'text': colors['text_color'],
-            'border': colors['toggle_button_border'],
+            'text': colors['toggle_button_disabled_text'],
+            'border': colors['toggle_button_disabled_border'],
             'hover': colors['toggle_button_disabled_hover']
         }
     }
@@ -1349,9 +1351,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       
     # Only update if values have changed
     if uptime != self.__display_uptime:
-      if self.__display_uptime is not None and node_epoch_avail is not None and node_epoch_avail > 0:
-        color = 'green'
-        
+
       self.node_uptime.setText(f'Up Time: {uptime}')
 
       self.node_epoch.setText(f'Epoch: {node_epoch}')

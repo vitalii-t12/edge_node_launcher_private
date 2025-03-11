@@ -248,6 +248,13 @@ DARK_COLORS = {
     "add_node_button_bg": "#1E90FF",
     "add_node_button_border": "#87CEEB",
     "add_node_button_hover": "#104E8B",
+    
+    # ComboBox popup specific colors
+    "combobox_popup_border_color": "#555",
+    "combobox_popup_bg_color": "#1E293B",
+    "combobox_popup_item_selected_bg": "#2a82da",
+    "combobox_popup_item_selected_text": "white",
+    "combobox_text_color": "#FFFFFF",
     "confirm_button_bg": "#4CAF50",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
@@ -259,11 +266,15 @@ DARK_COLORS = {
     "toggle_button_start_bg": "#4CAF50",
     "toggle_button_start_hover": "#45A049",
     "toggle_button_start_border": "#45A049",
+    "toggle_button_start_text": "white",
     "toggle_button_stop_bg": "#F44336",
     "toggle_button_stop_hover": "#D32F2F",
+    "toggle_button_stop_text": "#D32F2F",
     "toggle_button_stop_border": "#D32F2F",
     "toggle_button_disabled_bg": "gray",
     "toggle_button_disabled_hover": "darkgray",
+    "toggle_button_disabled_border": "darkgray",
+    "toggle_button_disabled_text": "black",
     "toggle_button_border": "#87CEEB"
 }
 
@@ -328,12 +339,24 @@ LIGHT_COLORS = {
     "toggle_button_start_bg": "#374CF8",
     "toggle_button_start_hover": "#4458FF",
     "toggle_button_start_border": "#374CF8",
+    "toggle_button_start_text": "white",
     "toggle_button_stop_bg": "#F44336",
     "toggle_button_stop_hover": "#D32F2F",
     "toggle_button_stop_border": "#D32F2F",
+    "toggle_button_stop_text": "black",
     "toggle_button_disabled_bg": "gray",
     "toggle_button_disabled_hover": "darkgray",
-    "toggle_button_border": "#A9A9A9"
+    "toggle_button_disabled_border": "darkgray",
+    "toggle_button_disabled_text": "black",
+    "toggle_button_border": "#A9A9A9",
+
+    # ComboBox popup specific colors
+    "combobox_popup_border_color": "#D0D0D0",
+    "combobox_popup_bg_color": "#FFFFFF",
+    "combobox_popup_item_hover_bg": "#F0F7FF",
+    "combobox_popup_item_selected_bg": "#4CAF50",
+    "combobox_popup_item_selected_text": "white",
+    "combobox_text_color": "#333333",
 }
 
 # Merge common styles with theme-specific colors

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, QApplication, QWidget, QStylePainter, QStyle, QStyleOptionComboBox
 from PyQt5.QtCore import Qt, QObject, QEvent, QTimer, QRect, QSize
-from PyQt5.QtGui import QFontMetrics, QPainter, QPalette, QIcon
-from utils.const import DARK_STYLESHEET
+from PyQt5.QtGui import QFontMetrics, QPainter, QPalette, QIcon, QColor
+from utils.const import DARK_STYLESHEET, DARK_COLORS, LIGHT_COLORS
 
 class NoDecorationsDelegate(QStyledItemDelegate):
     """A delegate that removes all decorations and indicators from combo box items"""
@@ -124,11 +124,11 @@ class CenteredComboBox(QComboBox):
             text_rect = self.rect()
             text_rect.adjust(10, 0, -10, 0)  # Add some padding
             
-            # Set the text color based on the theme
+            # Set the text color based on the theme, converting the string color to QColor
             if self.is_dark_theme():
-                painter.setPen(Qt.white)
+                painter.setPen(QColor(DARK_COLORS["combobox_text_color"]))
             else:
-                painter.setPen(Qt.black)
+                painter.setPen(QColor(LIGHT_COLORS["combobox_text_color"]))
                 
             # painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
 
@@ -137,28 +137,30 @@ class CenteredComboBox(QComboBox):
         is_dark = self.is_dark_theme()
         
         if is_dark:
+            text_color = DARK_COLORS["combobox_text_color"]
             # Dark theme button appearance
-            line_edit_style = """
-                QLineEdit {
+            line_edit_style = f"""
+                QLineEdit {{
                     background: transparent;
-                    color: white;
+                    color: {text_color};
                     border: none;
                     padding-left: 0px;
                     padding-right: 0px;
                     margin: 0px;
-                }
+                }}
             """
         else:
+            text_color = LIGHT_COLORS["combobox_text_color"]
             # Light theme button appearance
-            line_edit_style = """
-                QLineEdit {
+            line_edit_style = f"""
+                QLineEdit {{
                     background: transparent;
-                    color: #333333;
+                    color: {text_color};
                     border: none;
                     padding-left: 0px;
                     padding-right: 0px;
                     margin: 0px;
-                }
+                }}
             """
             
         self.lineEdit().setStyleSheet(line_edit_style)
@@ -206,63 +208,75 @@ class CenteredComboBox(QComboBox):
         is_dark = self.is_dark_theme()
         
         if is_dark:
+            popup_border_color = DARK_COLORS["combobox_popup_border_color"]
+            popup_bg_color = DARK_COLORS["combobox_popup_bg_color"]
+            popup_item_selected_bg = DARK_COLORS["combobox_popup_item_selected_bg"]
+            popup_item_selected_text = DARK_COLORS["combobox_popup_item_selected_text"]
+            
             # Original dark theme styling (restored)
-            self.view().setStyleSheet("""
-                QListView {
-                    border: 1px solid #555;
+            self.view().setStyleSheet(f"""
+                QListView {{
+                    border: 1px solid {popup_border_color};
                     border-radius: 6px;
-                    background-color: #1E293B;
+                    background-color: {popup_bg_color};
                     outline: 10px;
                     padding: 14px;
-                }
+                }}
                 
-                QListView::item {
+                QListView::item {{
                     border-radius: 6px;
                     padding: 4px;
                     margin: 2px;
                     text-align: center;
-                }
+                }}
                 
-                QListView::item:selected {
-                    background-color: #2a82da;
-                    color: white;
-                }
-                QComboBox QAbstractItemView::item {
+                QListView::item:selected {{
+                    background-color: {popup_item_selected_bg};
+                    color: {popup_item_selected_text};
+                }}
+                QComboBox QAbstractItemView::item {{
                     text-align: center;
-                }
+                }}
             """)
         else:
+            popup_border_color = LIGHT_COLORS["combobox_popup_border_color"]
+            popup_bg_color = LIGHT_COLORS["combobox_popup_bg_color"]
+            popup_item_hover_bg = LIGHT_COLORS["combobox_popup_item_hover_bg"]
+            popup_item_selected_bg = LIGHT_COLORS["combobox_popup_item_selected_bg"]
+            popup_item_selected_text = LIGHT_COLORS["combobox_popup_item_selected_text"]
+            text_color = LIGHT_COLORS["combobox_text_color"]
+            
             # Light theme styling (enhanced for better appearance)
-            self.view().setStyleSheet("""
-                QListView {
-                    border: 1px solid #D0D0D0;
+            self.view().setStyleSheet(f"""
+                QListView {{
+                    border: 1px solid {popup_border_color};
                     border-radius: 8px;
-                    background-color: #FFFFFF;
+                    background-color: {popup_bg_color};
                     outline: none;
                     padding: 14px;
                     box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.15);
-                }
+                }}
                 
-                QListView::item {
+                QListView::item {{
                     border-radius: 6px;
                     padding: 6px;
                     margin: 3px;
-                    color: #333333;
+                    color: {text_color};
                     text-align: center;
-                }
+                }}
                 
-                QListView::item:hover {
-                    background-color: #F0F7FF;
-                }
+                QListView::item:hover {{
+                    background-color: {popup_item_hover_bg};
+                }}
                 
-                QListView::item:selected {
-                    background-color: #4CAF50;
-                    color: white;
-                }
+                QListView::item:selected {{
+                    background-color: {popup_item_selected_bg};
+                    color: {popup_item_selected_text};
+                }}
                                 
-                QComboBox QAbstractItemView::item {
+                QComboBox QAbstractItemView::item {{
                     text-align: center;
-                }
+                }}
             """)
 
         # Set window flags to remove frame and shadow
