@@ -1975,9 +1975,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Add buttons
     button_layout = QHBoxLayout()
     create_button = QPushButton("Create Node")
-    create_button.setProperty("type", "confirm")  # Set property for styling
     cancel_button = QPushButton("Cancel")
-    cancel_button.setProperty("type", "cancel")  # Set property for styling
+
+    # Apply the same styling as Start/Stop buttons
+    self.apply_button_style(create_button, 'start')  # Use 'start' style for Create button
+    self.apply_button_style(cancel_button, 'stop')   # Use 'stop' style for Cancel button
 
     button_layout.addWidget(create_button)
     button_layout.addWidget(cancel_button)
