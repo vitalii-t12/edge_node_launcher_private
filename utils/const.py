@@ -458,8 +458,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {combo_border};
     border-radius: {combo_border_radius};
     padding: 0px;
-    margin-left: 10px;
-    margin-right: 10px;
+    margin-left: 6px;
+    margin-right: 6px;
     min-width: {combo_min_width};
     min-height: 32px;
     max-height: 32px;
@@ -513,8 +513,8 @@ COMMON_STYLESHEET_TEMPLATE = """
     font-size: {button_font_size};
     font-weight: {button_font_weight}; 
     margin: {button_margin};
-    margin-left: 10px;
-    margin-right: 10px;
+    margin-left: 6px;
+    margin-right: 6px;
     border-radius: {button_border_radius};
   }}
   QPushButton:hover {{
