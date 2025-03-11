@@ -813,11 +813,20 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if self.is_container_running():
             self.add_log(f'Stopping container {container_name}...')
             
+            # Get node alias from config if available
+            container_config = self.config_manager.get_container(container_name)
+            node_alias = None
+            if container_config and container_config.node_alias:
+                node_alias = container_config.node_alias
+                message = f"Please wait while node '{node_alias}' is being stopped..."
+            else:
+                message = "Please wait while Edge Node is being stopped..."
+            
             # Show loading dialog for stopping operation - now with blue background
             self.toggle_dialog = LoadingDialog(
                 self, 
                 title="Stopping Node", 
-                message=f"Please wait while node '{container_name}' is being stopped...",
+                message=message,
                 size=50
             )
             self.toggle_dialog.show()
@@ -888,6 +897,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         # Process events to ensure immediate UI update
         QApplication.processEvents()
+        
+        # Show success notification
+        # Get node alias from config if available
+        node_display_name = container_name
+        container_config = self.config_manager.get_container(container_name)
+        if container_config and container_config.node_alias:
+            node_display_name = container_config.node_alias
+            self.toast.show_notification(NotificationType.SUCCESS, f"Node '{node_display_name}' stopped successfully")
+        else:
+            self.toast.show_notification(NotificationType.SUCCESS, "Edge Node stopped successfully")
+        
     except Exception as e:
         # Stop loading indicator in case of error
         self.loading_indicator.stop()
@@ -2006,11 +2026,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       from datetime import datetime
 
       # Show the loading dialog - now with blue background
-      node_display_name = display_name if display_name else container_name
+      node_display_name = display_name if display_name else None
+      
+      if node_display_name:
+        message = f"Please wait while node '{node_display_name}' is being launched..."
+      else:
+        message = "Please wait while new Edge Node is being launched..."
+        
       self.startup_dialog = LoadingDialog(
           self, 
           title="Starting Node", 
-          message=f"Please wait while node '{node_display_name}' is being launched...",
+          message=message,
           size=50
       )
       self.startup_dialog.show()
@@ -2066,6 +2092,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.launch_container(volume_name)
 
       self.add_log(f"Successfully created and started new node: {container_name}", color="green")
+      
+      # Show success notification
+      node_display_name = "Edge Node"
+      if display_name:
+        node_display_name = display_name
+        self.toast.show_notification(NotificationType.SUCCESS, f"New Node '{node_display_name}' created successfully")
+      else:
+        self.toast.show_notification(NotificationType.SUCCESS, "New Edge Node created successfully")
 
     except Exception as e:
       self.add_log(f"Failed to create new node: {str(e)}", color="red")
@@ -2115,10 +2149,19 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Show loading dialog if not already showing one from add_new_node
         startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
         if not startup_dialog_visible:
+            # Get node alias from config if available
+            container_config = self.config_manager.get_container(container_name)
+            node_alias = None
+            if container_config and container_config.node_alias:
+                node_alias = container_config.node_alias
+                message = f"Please wait while node '{node_alias}' is being launched..."
+            else:
+                message = "Please wait while Edge Node is being launched..."
+                
             self.launcher_dialog = LoadingDialog(
                 self, 
                 title="Launching Node", 
-                message=f"Please wait while node '{container_name}' is being launched...",
+                message=message,
                 size=50
             )
             self.launcher_dialog.show()
@@ -2189,7 +2232,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
         
         # Show success notification
-        self.toast.show_notification(NotificationType.SUCCESS, f"Container {container_name} launched successfully")
+        # Get node alias from config if available
+        node_display_name = container_name
+        container_config = self.config_manager.get_container(container_name)
+        if container_config and container_config.node_alias:
+            node_display_name = container_config.node_alias
+            self.toast.show_notification(NotificationType.SUCCESS, f"Node '{node_display_name}' launched successfully")
+        else:
+            self.toast.show_notification(NotificationType.SUCCESS, "Edge Node launched successfully")
         
     except Exception as e:
         # Stop loading indicator on error
