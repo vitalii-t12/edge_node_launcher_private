@@ -235,26 +235,12 @@ DARK_COLORS = {
     "text_edit_border": "#1E90FF",
     "plot_bg": "#243447",
     "plot_border": "#87CEEB",
-    "combo_bg": "#2A3440",
-    "combo_border": "#4A5561",
-    "combo_hover_bg": "#3A4450",
-    "combo_hover_border": "#5A6571",
-    "combo_arrow_color": "#B0B9C6",
-    "combo_dropdown_bg": "#2A3440",
-    "combo_dropdown_select_bg": "#3A4450",
-    "combo_dropdown_select_color": "white",
     "green_highlight": "#4CAF50",
     "button_copy_address_bg": "transparent",
     "add_node_button_bg": "#1E90FF",
     "add_node_button_border": "#87CEEB",
     "add_node_button_hover": "#104E8B",
-    
-    # ComboBox popup specific colors
-    "combobox_popup_border_color": "#555",
-    "combobox_popup_bg_color": "#1E293B",
-    "combobox_popup_item_selected_bg": "#2a82da",
-    "combobox_popup_item_selected_text": "white",
-    "combobox_text_color": "#FFFFFF",
+
     "confirm_button_bg": "#4CAF50",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
@@ -275,7 +261,23 @@ DARK_COLORS = {
     "toggle_button_disabled_hover": "darkgray",
     "toggle_button_disabled_border": "darkgray",
     "toggle_button_disabled_text": "black",
-    "toggle_button_border": "#87CEEB"
+    "toggle_button_border": "#87CEEB",
+
+    # ComboBox popup specific colors
+    "combo_bg": "#2A3440",
+    "combo_border": "#4A5561",
+    "combo_hover_bg": "#3A4450",
+    "combo_hover_border": "#5A6571",
+    "combo_arrow_color": "#B0B9C6",
+    "combo_dropdown_bg": "#2A3440",
+    "combo_dropdown_select_bg": "#3A4450",
+    "combo_dropdown_select_color": "white",
+    "combobox_popup_border_color": "#555",
+    "combobox_popup_bg_color": "#1E293B",
+    "combobox_popup_item_selected_bg": "#2a82da",
+    "combobox_popup_item_selected_text": "white",
+    "combobox_text_color": "#FFFFFF",
+    "combo_rectangle_text_color": "red",
 }
 
 # Color definitions for light theme
@@ -315,14 +317,6 @@ LIGHT_COLORS = {
     "text_edit_border": "#D3D3D3",
     "plot_bg": "#FFFFFF",
     "plot_border": "#A9A9A9",
-    "combo_bg": "#F9F9F9",
-    "combo_border": "#D0D0D0",
-    "combo_hover_bg": "#F0F7FF", 
-    "combo_hover_border": "#D0D0D0",
-    "combo_arrow_color": "transparent",
-    "combo_dropdown_bg": "#FFFFFF",
-    "combo_dropdown_select_bg": "red",
-    "combo_dropdown_select_color": "black",
     "green_highlight": "red",
     "button_copy_address_bg": "transparent",
     "add_node_button_bg": "transparent",
@@ -351,12 +345,21 @@ LIGHT_COLORS = {
     "toggle_button_border": "#87CEEB",
 
     # ComboBox popup specific colors
+    "combo_bg": "#F9F9F9",
+    "combo_border": "#D0D0D0",
+    "combo_hover_bg": "#F0F7FF",
+    "combo_hover_border": "#D0D0D0",
+    "combo_arrow_color": "transparent",
+    "combo_dropdown_bg": "#FFFFFF",
+    "combo_dropdown_select_bg": "red",
+    "combo_dropdown_select_color": "black",
     "combobox_popup_border_color": "#D0D0D0",
     "combobox_popup_bg_color": "#FFFFFF",
     "combobox_popup_item_hover_bg": "#F0F7FF",
     "combobox_popup_item_selected_bg": "#4CAF50",
     "combobox_popup_item_selected_text": "white",
     "combobox_text_color": "#333333",
+    "combo_rectangle_text_color": "orange",
 }
 
 # Merge common styles with theme-specific colors

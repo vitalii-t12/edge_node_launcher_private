@@ -57,6 +57,7 @@ class CenteredComboBox(QComboBox):
                 border-radius: 15px;
                 padding-left: 0px;
                 padding-right: 0px;
+                color: """ + (DARK_COLORS["combo_rectangle_text_color"] if self.is_dark_theme() else LIGHT_COLORS["combo_rectangle_text_color"]) + """;
             }
             QComboBox::drop-down {
                 subcontrol-origin: padding;
@@ -138,6 +139,7 @@ class CenteredComboBox(QComboBox):
         
         if is_dark:
             text_color = DARK_COLORS["combobox_text_color"]
+            combo_text_color = DARK_COLORS["combo_rectangle_text_color"]
             # Dark theme button appearance
             line_edit_style = f"""
                 QLineEdit {{
@@ -149,8 +151,36 @@ class CenteredComboBox(QComboBox):
                     margin: 0px;
                 }}
             """
+            
+            # Update the combo box style with the text color
+            self.setStyleSheet(f"""
+                QComboBox {{
+                    font-weight: normal !important;
+                    combobox-popup: 1;
+                    background: transparent;
+                    border-radius: 15px;
+                    padding-left: 0px;
+                    padding-right: 0px;
+                    color: {combo_text_color};
+                }}
+                QComboBox::drop-down {{
+                    subcontrol-origin: padding;
+                    subcontrol-position: right;
+                    width: 0px;
+                    border: none;
+                    background: transparent;
+                    image: none;
+                }}
+                QComboBox::down-arrow {{
+                    image: none;
+                    width: 0px;
+                    height: 0px;
+                    background: transparent;
+                }}
+            """)
         else:
             text_color = LIGHT_COLORS["combobox_text_color"]
+            combo_text_color = LIGHT_COLORS["combo_rectangle_text_color"]
             # Light theme button appearance
             line_edit_style = f"""
                 QLineEdit {{
@@ -162,6 +192,33 @@ class CenteredComboBox(QComboBox):
                     margin: 0px;
                 }}
             """
+            
+            # Update the combo box style with the text color
+            self.setStyleSheet(f"""
+                QComboBox {{
+                    font-weight: normal !important;
+                    combobox-popup: 1;
+                    background: transparent;
+                    border-radius: 15px;
+                    padding-left: 0px;
+                    padding-right: 0px;
+                    color: {combo_text_color};
+                }}
+                QComboBox::drop-down {{
+                    subcontrol-origin: padding;
+                    subcontrol-position: right;
+                    width: 0px;
+                    border: none;
+                    background: transparent;
+                    image: none;
+                }}
+                QComboBox::down-arrow {{
+                    image: none;
+                    width: 0px;
+                    height: 0px;
+                    background: transparent;
+                }}
+            """)
             
         self.lineEdit().setStyleSheet(line_edit_style)
 
