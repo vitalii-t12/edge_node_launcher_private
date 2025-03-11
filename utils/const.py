@@ -204,45 +204,44 @@ DARK_COLORS = {
     "bg_color": "#2b2b2b",
     "border_color": "#555555",
     "hover_color": "#3b3b3b",
-    "button_bg": "#1E90FF",
-    "button_border": "#1E90FF",
-    "button_hover": "#104E8B",
+    "button_bg": "#0071EA",
+    "button_border": "transparent",
+    "button_hover": "#0679F3",
     "progress_border": "#1E90FF",
     "progress_chunk": "#1E90FF",
-    "widget_bg": "#0D1F2D",
-    "debug_checkbox_color": "black",  # Orange for dark theme debug checkbox
+    "widget_bg": "#000C29",
+    "debug_checkbox_color": "white",  # Orange for dark theme debug checkbox
     
     # Log view specific colors
-    "log_view_bg": "#0D1F2D",
+    "log_view_bg": "#04254F",
     "log_view_text": "white",
     "log_view_border": "#1E90FF",
     
     # Info box specific colors
-    "info_box_bg": "#0D1F2D",
+    "info_box_bg": "#04254F",
     "info_box_text": "white",
     "info_box_border": "#1E90FF",
     
     # Graph specific colors
-    "graph_bg": "#243447",
-    "graph_border": "#87CEEB",
+    "graph_bg": "#001A3A",
+    "graph_border": "#10386A",
     "graph_text": "white",
     "graph_cpu_color": "#1E90FF",
     "graph_memory_color": "#4CAF50",
     "graph_gpu_color": "#FFD700",
     "graph_gpu_memory_color": "#FF6B6B",
     
-    "text_edit_bg": "#0D1F2D",
-    "text_edit_border": "#1E90FF",
-    "plot_bg": "#243447",
-    "plot_border": "#87CEEB",
-    "green_highlight": "#4CAF50",
+    "text_edit_bg": "#FFFFFF",
+    "text_edit_border": "#D3D3D3",
+    "plot_bg": "#FFFFFF",
+    "plot_border": "#A9A9A9",
+    "green_highlight": "red",
     "button_copy_address_bg": "transparent",
-    "add_node_button_bg": "#1E90FF",
-    "add_node_button_border": "#87CEEB",
-    "add_node_button_hover": "#104E8B",
+    "add_node_button_bg": "#0071EA",
+    "add_node_button_border": "transparent",
+    "add_node_button_hover": "#0679F3",
     "add_node_button_hover_text": "#FFFFFF",
-
-    "confirm_button_bg": "#4CAF50",
+    "confirm_button_bg": "#1B47F7",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
     "cancel_button_bg": "#F44336",
@@ -250,14 +249,14 @@ DARK_COLORS = {
     "cancel_button_hover": "#D32F2F",
     
     # Toggle button states
-    "toggle_button_start_bg": "orange",
-    "toggle_button_start_hover": "#45A049",
-    "toggle_button_start_border": "#45A049",
+    "toggle_button_start_bg": "#1B47F7",
+    "toggle_button_start_hover": "#4458FF",
+    "toggle_button_start_border": "transparent",
     "toggle_button_start_text": "white",
-    "toggle_button_stop_bg": "#F44336",
-    "toggle_button_stop_hover": "#D32F2F",
-    "toggle_button_stop_text": "#D32F2F",
-    "toggle_button_stop_border": "#D32F2F",
+    "toggle_button_stop_bg": "#FADC33",
+    "toggle_button_stop_hover": "#FFE138",
+    "toggle_button_stop_border": "transparent",
+    "toggle_button_stop_text": "#C4AC26",
     "toggle_button_disabled_bg": "gray",
     "toggle_button_disabled_hover": "darkgray",
     "toggle_button_disabled_border": "darkgray",
@@ -265,20 +264,21 @@ DARK_COLORS = {
     "toggle_button_border": "#87CEEB",
 
     # ComboBox popup specific colors
-    "combo_bg": "#2A3440",
-    "combo_border": "#4A5561",
-    "combo_hover_bg": "#3A4450",
-    "combo_hover_border": "#5A6571",
-    "combo_arrow_color": "#B0B9C6",
-    "combo_dropdown_bg": "#2A3440",
-    "combo_dropdown_select_bg": "#3A4450",
-    "combo_dropdown_select_color": "white",
-    "combobox_popup_border_color": "#555",
-    "combobox_popup_bg_color": "#1E293B",
-    "combobox_popup_item_selected_bg": "#2a82da",
+    "combo_bg": "#F9F9F9",
+    "combo_border": "#10386A",
+    "combo_hover_bg": "#F0F7FF",
+    "combo_hover_border": "#0071EA",
+    "combo_arrow_color": "transparent",
+    "combo_dropdown_bg": "#FFFFFF",
+    "combo_dropdown_select_bg": "red",
+    "combo_dropdown_select_color": "black",
+    "combobox_popup_border_color": "#1E90FF",
+    "combobox_popup_bg_color": "#04254F",
+    "combobox_popup_item_hover_bg": "transparent",
+    "combobox_popup_item_selected_bg": "#1B47F7",
     "combobox_popup_item_selected_text": "white",
-    "combobox_text_color": "#FFFFFF",
-    "combo_rectangle_text_color": "red",
+    "combobox_text_color": "#333333",
+    "combo_rectangle_text_color": "white",
 }
 
 # Color definitions for light theme
@@ -288,7 +288,7 @@ LIGHT_COLORS = {
     "border_color": "#cccccc",
     "hover_color": "#f5f5f5",
     "button_bg": "#0071EA",
-    "button_border": "#0679F3",
+    "button_border": "transparent",
     "button_hover": "#0679F3",
     "progress_border": "#D3D3D3",
     "progress_chunk": "#D3D3D3",
@@ -301,7 +301,7 @@ LIGHT_COLORS = {
     "log_view_border": "#D3D3D3",
     
     # Info box specific colors
-    "info_box_bg": "#F4F4F8",
+    "info_box_bg": "#FFFFFF",
     "info_box_text": "black",
     "info_box_border": "#D3D3D3",
     
@@ -320,9 +320,9 @@ LIGHT_COLORS = {
     "plot_border": "#A9A9A9",
     "green_highlight": "red",
     "button_copy_address_bg": "transparent",
-    "add_node_button_bg": "transparent",
-    "add_node_button_border": "#0071EA",
-    "add_node_button_hover": "#0071EA",
+    "add_node_button_bg": "#0071EA",
+    "add_node_button_border": "transparent",
+    "add_node_button_hover": "#0679F3",
     "add_node_button_hover_text": "#FFFFFF",
     "confirm_button_bg": "#1B47F7",
     "confirm_button_border": "#45A049",
@@ -334,12 +334,12 @@ LIGHT_COLORS = {
     # Toggle button states
     "toggle_button_start_bg": "#1B47F7",
     "toggle_button_start_hover": "#4458FF",
-    "toggle_button_start_border": "#0E3CDB",
+    "toggle_button_start_border": "transparent",
     "toggle_button_start_text": "white",
-    "toggle_button_stop_bg": "#F44336",
-    "toggle_button_stop_hover": "#D32F2F",
-    "toggle_button_stop_border": "#D32F2F",
-    "toggle_button_stop_text": "#D32F2F",
+    "toggle_button_stop_bg": "#FADC33",
+    "toggle_button_stop_hover": "#FFE138",
+    "toggle_button_stop_border": "transparent",
+    "toggle_button_stop_text": "#C4AC26",
     "toggle_button_disabled_bg": "gray",
     "toggle_button_disabled_hover": "darkgray",
     "toggle_button_disabled_border": "darkgray",
@@ -350,18 +350,18 @@ LIGHT_COLORS = {
     "combo_bg": "#F9F9F9",
     "combo_border": "#D0D0D0",
     "combo_hover_bg": "#F0F7FF",
-    "combo_hover_border": "#D0D0D0",
+    "combo_hover_border": "#1B47F7",
     "combo_arrow_color": "transparent",
     "combo_dropdown_bg": "#FFFFFF",
     "combo_dropdown_select_bg": "red",
     "combo_dropdown_select_color": "black",
     "combobox_popup_border_color": "#D0D0D0",
-    "combobox_popup_bg_color": "#FFFFFF",
-    "combobox_popup_item_hover_bg": "#F0F7FF",
-    "combobox_popup_item_selected_bg": "#4CAF50",
+    "combobox_popup_bg_color": "#F4F4F8",
+    "combobox_popup_item_hover_bg": "transparent",
+    "combobox_popup_item_selected_bg": "#1B47F7",
     "combobox_popup_item_selected_text": "white",
     "combobox_text_color": "#333333",
-    "combo_rectangle_text_color": "orange",
+    "combo_rectangle_text_color": "#1B47F7",
 }
 
 # Merge common styles with theme-specific colors
@@ -652,38 +652,6 @@ DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME) + ADDITIONAL_S
 LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + ADDITIONAL_STYLES + """
   QDialog QLabel {
     color: black;
-  }
-
-  PlotWidget .axis {
-    color: black;
-  }
-
-  PlotWidget .plotLabel {
-    color: black;
-  }
-
-  QComboBox:hover {
-    border: 1px solid #D0D0D0;
-  }
-  
-  QComboBox::drop-down {
-    border: none;
-    background: transparent;
-    width: 0px;
-  }
-  
-  QComboBox::down-arrow {
-    width: 0px;
-    height: 0px;
-    background: transparent;
-    border: none;
-  }
-  
-  QComboBox QAbstractItemView::item {
-    min-height: 26px;
-    padding: 4px 8px;
-    margin: 2px 0px;
-    border-radius: 6px;
   }
   
 """

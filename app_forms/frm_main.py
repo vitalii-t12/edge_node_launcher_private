@@ -433,7 +433,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     top_button_area.addWidget(self.explorer_button)
     
     # Add some spacing between the explorer button and info box
-    top_button_area.addSpacing(10)
+    top_button_area.addSpacing(7)
     
     # Info box
     info_box = QGroupBox()
