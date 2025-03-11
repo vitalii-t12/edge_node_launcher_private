@@ -761,7 +761,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def apply_stylesheet(self):
     is_dark = self._current_stylesheet == DARK_STYLESHEET
     self.logView.setObjectName("logView")  # Set object name for logView
-    
+    self.change_text_color()
+
     # Apply larger font size for info box labels on macOS
     if platform.system().lower() == 'darwin':
       # Additional macOS-specific styles
