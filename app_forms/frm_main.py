@@ -218,8 +218,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             'border': colors['toggle_button_stop_border']
         },
         'disabled': {
-            'bg': 'toggle_button_disabled_bg',
-            'hover': 'toggle_button_disabled_hover',
+            'bg': colors['toggle_button_disabled_bg'],
+            'hover': colors['toggle_button_disabled_hover'],
             'text': colors['toggle_button_disabled_text'],
             'border': colors['toggle_button_disabled_border']
         },
@@ -677,8 +677,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.apply_stylesheet()
     self.plot_graphs()
+    
     # Update the toggle button styling for theme change
     self.update_toggle_button_text()
+    
+    # Also directly re-apply the current button style to ensure it updates
+    current_text = self.toggleButton.text()
+    if current_text == LAUNCH_CONTAINER_BUTTON_TEXT:
+        self.apply_button_style(self.toggleButton, 'toggle_start')
+    elif current_text == STOP_CONTAINER_BUTTON_TEXT:
+        self.apply_button_style(self.toggleButton, 'toggle_stop')
     
     # Apply theme to the combobox dropdown
     if hasattr(self.container_combo, 'apply_default_theme'):
@@ -2419,10 +2427,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
 
   def update_toggle_button_text(self):
-    # Get the current index and container name from the data
+    """Update the toggle button text and style based on the current container state"""
+    # Get the current index from the combo box
     current_index = self.container_combo.currentIndex()
     
-    # Store current button state
+    # Get the current text to check if it needs to be updated
     current_text = self.toggleButton.text()
     current_enabled = self.toggleButton.isEnabled()
     
@@ -2468,8 +2477,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     new_text = STOP_CONTAINER_BUTTON_TEXT if is_running else LAUNCH_CONTAINER_BUTTON_TEXT
     new_style = 'toggle_stop' if is_running else 'toggle_start'
     
-    # Only update if state changed
+    # Update text if changed
     if current_text != new_text:
         self.toggleButton.setText(new_text)
-        self.apply_button_style(self.toggleButton, new_style)
-        self.toggleButton.setEnabled(True)
+    
+    # Always apply the style to ensure it updates when theme changes
+    self.apply_button_style(self.toggleButton, new_style)
+    self.toggleButton.setEnabled(True)
