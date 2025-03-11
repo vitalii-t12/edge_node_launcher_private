@@ -400,7 +400,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.container_combo.setFont(QFont("Courier New", 10))
     self.container_combo.currentTextChanged.connect(self._on_container_selected)
     self.container_combo.setMinimumHeight(32)  # Make dropdown slightly taller
-
+    
+    # Set the initial theme directly
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    if hasattr(self.container_combo, 'set_theme'):
+        self.container_combo.set_theme(is_dark)
     container_selector_layout.addWidget(self.container_combo)
     
     top_button_area.addLayout(container_selector_layout)
@@ -664,10 +668,12 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self._current_stylesheet = LIGHT_STYLESHEET
         self.themeToggleButton.setText(DARK_DASHBOARD_BUTTON_TEXT)
         self.force_debug_checkbox.setProperty('class', 'light')
+        is_dark = False
     else:
         self._current_stylesheet = DARK_STYLESHEET
         self.themeToggleButton.setText(LIGHT_DASHBOARD_BUTTON_TEXT)
         self.force_debug_checkbox.setProperty('class', 'dark')
+        is_dark = True
     
     # Update button colors for the new theme
     self.init_button_colors()
@@ -688,8 +694,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     elif current_text == STOP_CONTAINER_BUTTON_TEXT:
         self.apply_button_style(self.toggleButton, 'toggle_stop')
     
-    # Apply theme to the combobox dropdown
-    if hasattr(self.container_combo, 'apply_default_theme'):
+    # Apply theme to the combobox dropdown using the new method
+    if hasattr(self.container_combo, 'set_theme'):
+        self.container_combo.set_theme(is_dark)
+    elif hasattr(self.container_combo, 'apply_default_theme'):
         self.container_combo.apply_default_theme()
     
     # Force style update

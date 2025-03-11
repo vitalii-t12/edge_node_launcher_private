@@ -238,6 +238,11 @@ class CenteredComboBox(QComboBox):
 
     def is_dark_theme(self):
         """Detect if dark theme is currently active based on main window's stylesheet"""
+        # If we have a stored theme value, use it first
+        if hasattr(self, '_is_dark_theme') and self._is_dark_theme is not None:
+            return self._is_dark_theme
+        
+        # Legacy approach (as fallback)
         # Get the main window
         parent = self.parent()
         while parent is not None:
@@ -253,6 +258,11 @@ class CenteredComboBox(QComboBox):
             return bg_color.lightness() < 128
             
         return True  # Default to dark theme if can't determine
+
+    def set_theme(self, is_dark):
+        """Set the theme directly from the parent component"""
+        self._is_dark_theme = bool(is_dark)
+        self.apply_default_theme()
 
     def showPopup(self):
         """Override showPopup to ensure all items are center-aligned and have rounded corners with theme awareness"""
