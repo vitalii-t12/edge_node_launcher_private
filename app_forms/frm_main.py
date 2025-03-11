@@ -440,7 +440,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     info_box.setObjectName("infoBox")
     info_box.setContentsMargins(5, 0, 5, 0)  # Add left and right margins directly to the widget
     info_box_layout = QVBoxLayout()
-    info_box_layout.setContentsMargins(5, 8, 5, 8)  # Left, Top, Right, Bottom margins inside the box
+    info_box_layout.setContentsMargins(5, 6, 5, 8)  # Left, Top, Right, Bottom margins inside the box
 
     # Add loading indicator
     self.loading_indicator = LoadingIndicator(size=30)
