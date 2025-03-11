@@ -240,6 +240,7 @@ DARK_COLORS = {
     "add_node_button_bg": "#1E90FF",
     "add_node_button_border": "#87CEEB",
     "add_node_button_hover": "#104E8B",
+    "add_node_button_hover_text": "#FFFFFF",
 
     "confirm_button_bg": "#4CAF50",
     "confirm_button_border": "#45A049",
@@ -322,6 +323,7 @@ LIGHT_COLORS = {
     "add_node_button_bg": "transparent",
     "add_node_button_border": "#0071EA",
     "add_node_button_hover": "#0071EA",
+    "add_node_button_hover_text": "#FFFFFF",
     "confirm_button_bg": "#1B47F7",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
@@ -589,6 +591,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   #addNodeButton:hover {{
     background-color: {add_node_button_hover};
+    color: {add_node_button_hover_text};
   }}
   #toggleContainerButton {{
     min-height: 40px;
