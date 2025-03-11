@@ -764,7 +764,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       # Apply margin directly to logView with its own stylesheet
       self.logView.setStyleSheet("""
         QTextEdit#logView {
-          margin-bottom: 13px;
+          margin-bottom: 10px;
         }
       """)
     else:
