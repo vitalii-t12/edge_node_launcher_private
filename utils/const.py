@@ -205,12 +205,12 @@ DARK_COLORS = {
     "border_color": "#555555",
     "hover_color": "#3b3b3b",
     "button_bg": "#1E90FF",
-    "button_border": "#87CEEB",
+    "button_border": "#1E90FF",
     "button_hover": "#104E8B",
     "progress_border": "#1E90FF",
     "progress_chunk": "#1E90FF",
     "widget_bg": "#0D1F2D",
-    "debug_checkbox_color": "#FFA500",  # Orange for dark theme debug checkbox
+    "debug_checkbox_color": "black",  # Orange for dark theme debug checkbox
     
     # Log view specific colors
     "log_view_bg": "#0D1F2D",
@@ -269,17 +269,17 @@ DARK_COLORS = {
 
 # Color definitions for light theme
 LIGHT_COLORS = {
-    "text_color": "black",
+    "text_color": "white",
     "bg_color": "white",
     "border_color": "#cccccc",
     "hover_color": "#f5f5f5",
-    "button_bg": "#D3D3D3",
-    "button_border": "#A9A9A9",
-    "button_hover": "#A9A9A9",
+    "button_bg": "#0071EA",
+    "button_border": "#0679F3",
+    "button_hover": "#0679F3",
     "progress_border": "#D3D3D3",
     "progress_chunk": "#D3D3D3",
-    "widget_bg": "#F0F0F0",
-    "debug_checkbox_color": "#0066CC",  # Blue for light theme debug checkbox
+    "widget_bg": "#E6E6EA",
+    "debug_checkbox_color": "black",  # Blue for light theme debug checkbox
     
     # Log view specific colors
     "log_view_bg": "#FFFFFF",
@@ -287,12 +287,12 @@ LIGHT_COLORS = {
     "log_view_border": "#D3D3D3",
     
     # Info box specific colors
-    "info_box_bg": "#FFFFFF",
+    "info_box_bg": "#F4F4F8",
     "info_box_text": "black",
     "info_box_border": "#D3D3D3",
     
     # Graph specific colors
-    "graph_bg": "#FFFFFF",
+    "graph_bg": "#F4F4F8",
     "graph_border": "#D3D3D3",
     "graph_text": "black",
     "graph_cpu_color": "#0066CC",
@@ -310,14 +310,14 @@ LIGHT_COLORS = {
     "combo_hover_border": "#D0D0D0",
     "combo_arrow_color": "transparent",
     "combo_dropdown_bg": "#FFFFFF",
-    "combo_dropdown_select_bg": "#E6F2E6",
+    "combo_dropdown_select_bg": "red",
     "combo_dropdown_select_color": "black",
-    "green_highlight": "#4CAF50",
+    "green_highlight": "red",
     "button_copy_address_bg": "transparent",
-    "add_node_button_bg": "#D3D3D3",
-    "add_node_button_border": "#A9A9A9",
-    "add_node_button_hover": "#A9A9A9",
-    "confirm_button_bg": "#4CAF50",
+    "add_node_button_bg": "transparent",
+    "add_node_button_border": "#0071EA",
+    "add_node_button_hover": "#0071EA",
+    "confirm_button_bg": "#1B47F7",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
     "cancel_button_bg": "#F44336",
@@ -325,9 +325,9 @@ LIGHT_COLORS = {
     "cancel_button_hover": "#D32F2F",
     
     # Toggle button states
-    "toggle_button_start_bg": "#4CAF50",
-    "toggle_button_start_hover": "#45A049",
-    "toggle_button_start_border": "#45A049",
+    "toggle_button_start_bg": "#374CF8",
+    "toggle_button_start_hover": "#4458FF",
+    "toggle_button_start_border": "#374CF8",
     "toggle_button_stop_bg": "#F44336",
     "toggle_button_stop_hover": "#D32F2F",
     "toggle_button_stop_border": "#D32F2F",
@@ -373,7 +373,7 @@ DETAILED_CHECKBOX_STYLE = """
         width: 18px;
         height: 18px;
         border-radius: 15px;
-        border: 2px solid #666;
+        border: 1px solid #666;
     }}
     
     QCheckBox::indicator:unchecked {{
@@ -419,7 +419,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     color: {text_color};
   }}
   QProgressBar {{
-    border: 2px solid {progress_border};
+    border: 1px solid {progress_border};
     border-radius: {border_radius};
     text-align: {text_align_center};
     height: {progress_height};
@@ -508,7 +508,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   QPushButton {{
     background-color: {button_bg}; 
     color: {text_color}; 
-    border: 2px solid {button_border}; 
+    border: 1px solid {button_border}; 
     padding: {button_padding}; 
     font-size: {button_font_size};
     font-weight: {button_font_weight}; 
@@ -522,14 +522,14 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   QPushButton[type="confirm"] {{
     background-color: {confirm_button_bg};
-    border: 2px solid {confirm_button_border};
+    border: 1px solid {confirm_button_border};
   }}
   QPushButton[type="confirm"]:hover {{
     background-color: {confirm_button_hover};
   }}
   QPushButton[type="cancel"] {{
     background-color: {cancel_button_bg};
-    border: 2px solid {cancel_button_border};
+    border: 1px solid {cancel_button_border};
   }}
   QPushButton[type="cancel"]:hover {{
     background-color: {cancel_button_hover};
@@ -555,7 +555,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   #addNodeButton {{
     background-color: {add_node_button_bg};
     color: {text_color};
-    border: 2px solid {add_node_button_border};
+    border: 1px solid {add_node_button_border};
     padding: 5px 10px;
     border-radius: {border_radius};
     min-height: 32px;
