@@ -636,10 +636,18 @@ ADDITIONAL_STYLES = """
 """
 
 # Apply the common template with dark theme values
-DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME) + ADDITIONAL_STYLES
+DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME) + ADDITIONAL_STYLES + """
+  QDialog QLabel {
+    color: white;
+  }
+"""
 
 # Apply the common template with light theme values, with additional light-specific styles
 LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + ADDITIONAL_STYLES + """
+  QDialog QLabel {
+    color: black;
+  }
+
   PlotWidget .axis {
     color: black;
   }

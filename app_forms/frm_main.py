@@ -1945,7 +1945,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Create dialog
     dialog = QDialog(self)
-    dialog.setWindowTitle("Add New Node")
+    dialog.setWindowTitle(ADD_NEW_NODE_DIALOG_TITLE)
     dialog.setMinimumWidth(400)
 
     layout = QVBoxLayout()
