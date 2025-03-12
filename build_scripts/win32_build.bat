@@ -26,8 +26,13 @@ shift
 goto :parse_args
 :end_parse_args
 
-REM Your base PyInstaller command
-set PYINSTALLER_CMD=pyinstaller -w --onefile -n "EdgeNodeLauncher" --icon=assets\r1_icon.ico main.py
+REM Clean previous build artifacts
+@REM if exist build rmdir /s /q build
+@REM if exist dist rmdir /s /q dist
+@REM if exist "%APP_NAME%.spec" del "%APP_NAME%.spec"
+
+REM Your base PyInstaller command with additional options for icon
+set PYINSTALLER_CMD=pyinstaller -w --onefile --clean --noconfirm -n "EdgeNodeLauncher" --icon=assets\r1_icon.ico --add-data "assets\r1_icon.ico;assets" main.py
 set APP_NAME=EdgeNodeLauncher
 set OUTPUT_DIR=dist
 
