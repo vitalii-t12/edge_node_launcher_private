@@ -7,6 +7,15 @@ on:
         description: "Branch to run the workflow on"
         required: true
         default: "main"
+      build_type:
+        description: "Build type for Windows (exe-only, msi-only, or both)"
+        required: true
+        default: "msi-only"
+        type: choice
+        options:
+          - msi-only
+          - exe-only
+          - both
 
 jobs:
   check-version:
@@ -54,7 +63,7 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            build: ./build_scripts/win32_build.bat --msi
+            build: ./build_scripts/win32_build.bat --${{ github.event.inputs.build_type }}
             name: EdgeNodeLauncher-WIN32
             platformDependencies: |
               choco install wixtoolset -y
@@ -114,64 +123,56 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
+      # Only sign EXE if we built it
       - name: Sign Windows exe
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && (github.event.inputs.build_type == 'exe-only' || github.event.inputs.build_type == 'both')
         uses: sslcom/esigner-codesign@develop
         with:
-          # Sign and timestamp code object.
           command: sign
-          # SSL.com account username
           username: ${{ secrets.SSL_USERNAME }}
-          # SSL.com account password.
           password: ${{ secrets.SSL_PASSWORD }}
-          # Credential ID for signing certificate.
           credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
-          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
           totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
-          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
-          # Directory where signed code object(s) will be written.
           output_path: ${{ github.workspace }}/signed-exe
-          # Scan code before sign
           malware_block: true
-          # Environment Name, For Production 'PROD' or For Staging 'TEST'
           environment_name: PROD
 
+      # Only sign MSI if we built it
       - name: Sign Windows msi
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && (github.event.inputs.build_type == 'msi-only' || github.event.inputs.build_type == 'both')
         uses: sslcom/esigner-codesign@develop
         with:
-          # Sign and timestamp code object.
           command: sign
-          # SSL.com account username
           username: ${{ secrets.SSL_USERNAME }}
-          # SSL.com account password.
           password: ${{ secrets.SSL_PASSWORD }}
-          # Credential ID for signing certificate.
           credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
-          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
           totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
-          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
-          file_path: ${{ github.workspace }}/EdgeNodeLauncher.msi
-          # Directory where signed code object(s) will be written.
+          file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.msi
           output_path: ${{ github.workspace }}/signed-msi
-          # Scan code before sign
           malware_block: true
-          # Environment Name, For Production 'PROD' or For Staging 'TEST'
           environment_name: PROD
 
+      # Move signed files back to dist
       - name: Replace non-signed versions with signed ones
         if: runner.os == 'Windows'
         run: |
-          rm dist/EdgeNodeLauncher.exe
-          mv signed-exe/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
-          mv signed-msi/EdgeNodeLauncher.msi dist/
+          # Move signed EXE if it exists
+          if exist signed-exe\EdgeNodeLauncher.exe (
+            if exist dist\EdgeNodeLauncher.exe del dist\EdgeNodeLauncher.exe
+            move signed-exe\EdgeNodeLauncher.exe dist\
+          )
           
-          # Create a versioned copy of the MSI
-          for /f "tokens=2 delims=''" %%v in ('type ver.py') do set VERSION=%%v
-          copy dist\EdgeNodeLauncher.msi dist\EdgeNodeLauncher-v%VERSION%.msi
+          # Move signed MSI if it exists
+          if exist signed-msi\EdgeNodeLauncher.msi (
+            move signed-msi\EdgeNodeLauncher.msi dist\
+            
+            # Create a versioned copy of the MSI
+            for /f "tokens=2 delims=''" %%v in ('type ver.py') do set VERSION=%%v
+            copy dist\EdgeNodeLauncher.msi dist\EdgeNodeLauncher-v%VERSION%.msi
+          )
 
-      # Upload EXE and other files (except MSI)
+      # Upload EXE and other non-MSI files
       - name: Save build artifacts (except MSI)
         uses: actions/upload-artifact@v4
         with:
@@ -182,7 +183,7 @@ jobs:
 
       # Upload MSI file separately (Windows only)
       - name: Save MSI installer as separate artifact
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && (github.event.inputs.build_type == 'msi-only' || github.event.inputs.build_type == 'both')
         uses: actions/upload-artifact@v4
         with:
           name: EdgeNodeLauncher-MSI-v${{ env.VERSION }}
@@ -210,7 +211,7 @@ jobs:
           path: ./all-builds/EdgeNodeLauncher-WIN32
 
       # Download MSI artifacts separately
-      - name: Download Windows MSI installer
+      - name: Download Windows MSI executable
         uses: actions/download-artifact@v4
         with:
           name: EdgeNodeLauncher-MSI-v${{ env.VERSION }}
