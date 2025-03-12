@@ -113,6 +113,19 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
+        
+      - name: Windows-specific debug logging
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          echo "Windows-specific directory listing:"
+          echo "Workspace directory (CMD):"
+          dir ${{ github.workspace }}
+          echo "Dist directory (CMD):"
+          dir ${{ github.workspace }}\dist
+          echo "Checking specific EXE exists:"
+          if exist "${{ github.workspace }}\dist\EdgeNodeLauncher.exe" (echo "EdgeNodeLauncher.exe exists") else (echo "EdgeNodeLauncher.exe NOT found")
+
       - name: List workspace content
         shell: bash
         run: |
@@ -124,6 +137,7 @@ jobs:
         run: |
           echo "Listing dist directory content:"
           ls -la ${{ github.workspace }}/dist
+          
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
