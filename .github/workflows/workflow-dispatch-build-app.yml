@@ -54,7 +54,7 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            build: ./build_scripts/win32_build.bat
+            build: ./build_scripts/win32_build.bat --both
             name: EdgeNodeLauncher-WIN32
             platformDependencies: ""
 
@@ -126,19 +126,6 @@ jobs:
           dir ${{ github.workspace }}\dist
           echo "Checking specific EXE exists:"
           if exist "${{ github.workspace }}\dist\EdgeNodeLauncher.exe" (echo "EdgeNodeLauncher.exe exists") else (echo "EdgeNodeLauncher.exe NOT found")
-
-      - name: List workspace content
-        shell: bash
-        run: |
-          echo "Listing workspace content:"
-          ls -la ${{ github.workspace }}
-          
-      - name: List dist directory content
-        shell: bash
-        run: |
-          echo "Listing dist directory content:"
-          ls -la ${{ github.workspace }}/dist
-          
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
