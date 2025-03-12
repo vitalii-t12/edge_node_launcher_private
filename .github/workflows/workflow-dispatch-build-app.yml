@@ -114,7 +114,10 @@ jobs:
           VERSION=$(cat ver.py | grep -o "'.*'" | tr -d "'")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      - run: ${{ matrix.platformDependencies }}and contents of a Windows installer package (typically an MSI file). Developers use these files to specify information like the files to install, registry entries, shortcuts, and other installation details. The WiX Toolset then compiles (using tools like Candle
+      - run: ${{ matrix.platformDependencies }}
+      - name: Setup env
+        run: |
+          pip install -r requirements.txt
           pip3 install --upgrade PyInstaller pyinstaller-hooks-contrib
 
       - name: Build app
