@@ -121,6 +121,7 @@ jobs:
           echo "Windows-specific directory listing:"
           echo "Workspace directory (CMD):"
           dir ${{ github.workspace }}
+          dir ${{ github.workspace }}\..
           echo "Dist directory (CMD):"
           dir ${{ github.workspace }}\dist
           echo "Checking specific EXE exists:"
