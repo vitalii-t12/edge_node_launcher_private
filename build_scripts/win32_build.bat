@@ -27,12 +27,24 @@ goto :parse_args
 :end_parse_args
 
 REM Clean previous build artifacts
-@REM if exist build rmdir /s /q build
-@REM if exist dist rmdir /s /q dist
-@REM if exist "%APP_NAME%.spec" del "%APP_NAME%.spec"
+if exist build rmdir /s /q build
+if exist dist rmdir /s /q dist
+if exist "%APP_NAME%.spec" del "%APP_NAME%.spec"
 
-REM Your base PyInstaller command with additional options for icon
-set PYINSTALLER_CMD=pyinstaller -w --onefile --clean --noconfirm -n "EdgeNodeLauncher" --icon=assets\r1_icon.ico --add-data "assets\r1_icon.ico;assets" main.py
+REM Set environment variables to optimize Python and suppress debug output
+set PYTHONOPTIMIZE=1
+set PYTHONHOME=
+set PYTHONDONTWRITEBYTECODE=1
+set PYTHONUNBUFFERED=1
+
+REM Your base PyInstaller command with additional options for console suppression
+set PYINSTALLER_CMD=pyinstaller --noconsole --windowed --onefile --clean --noconfirm ^
+  --manifest=app.manifest ^
+  --name="EdgeNodeLauncher" ^
+  --icon=assets\r1_icon.ico ^
+  --add-data "assets\r1_icon.ico;assets" ^
+  --log-level=WARN ^
+  launcher.py
 set APP_NAME=EdgeNodeLauncher
 set OUTPUT_DIR=dist
 
@@ -150,6 +162,11 @@ echo.
 echo Build summary:
 if %BUILD_EXE%==1 echo - EXE package: %OUTPUT_DIR%\%APP_NAME%.exe
 if %BUILD_MSI%==1 echo - MSI installer: %OUTPUT_DIR%\%APP_NAME%.msi
+echo.
+
+REM Run post-build tasks
+echo Running post-build tasks...
+call "%~dp0\post_build.bat"
 echo.
 
 endlocal

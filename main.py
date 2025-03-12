@@ -1,3 +1,6 @@
+# Import subprocess hook first to patch all subprocess calls
+import utils.subprocess_hook
+
 import sys
 import os
 from PyQt5.QtWidgets import QApplication
@@ -17,7 +20,7 @@ if __name__ == '__main__':
     
     # Set app name for better integration
     app.setApplicationName("EdgeNodeLauncher")
-    app.setOrganizationName("Naeural")
+    app.setOrganizationName("Ratio1")
     
     # Apply icon from helper
     icon = apply_icon_to_app(app)
@@ -26,7 +29,7 @@ if __name__ == '__main__':
     if os.name == 'nt':
         try:
             import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("naeural.edge_node_launcher")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ratio1.edge_node_launcher")
             print("Set Windows AppUserModelID for taskbar icon")
         except Exception as e:
             print(f"Error setting AppUserModelID: {e}")

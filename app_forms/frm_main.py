@@ -368,7 +368,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     if os.name == 'nt':  # Windows
       try:
         import ctypes
-        myappid = 'naeural.edge_node_launcher'  # arbitrary string
+        myappid = 'ratio1.edge_node_launcher'  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.add_log(f"Set Windows taskbar AppUserModelID to {myappid}", debug=True)
       except Exception as e:
