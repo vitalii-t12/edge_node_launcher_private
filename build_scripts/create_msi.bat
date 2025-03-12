@@ -9,37 +9,18 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-REM Check if PyInstaller output exists in either possible location
-set EXE_FOUND=0
-if exist "..\dist\EdgeNodeLauncher.exe" (
-    set EXE_FOUND=1
-    set EXE_PATH=..\dist\EdgeNodeLauncher.exe
-    set DIST_PATH=..\dist
-) else if exist "dist\EdgeNodeLauncher.exe" (
-    set EXE_FOUND=1
-    set EXE_PATH=dist\EdgeNodeLauncher.exe
-    set DIST_PATH=dist
-)
-
-if %EXE_FOUND% EQU 0 (
+REM Check if PyInstaller output exists
+if not exist "..\dist\EdgeNodeLauncher.exe" (
     echo ERROR: EdgeNodeLauncher.exe not found in dist folder. 
     echo Please run win32_build.bat first to generate the executable.
     exit /b 1
 )
 
 REM Ensure dist folder exists
-if not exist "%DIST_PATH%" mkdir "%DIST_PATH%"
+if not exist "..\dist" mkdir "..\dist"
 
 REM Get version from ver.py
-if exist "..\ver.py" (
-    for /f "tokens=2 delims=''" %%v in ('type ..\ver.py') do set VERSION=%%v
-) else if exist "ver.py" (
-    for /f "tokens=2 delims=''" %%v in ('type ver.py') do set VERSION=%%v
-) else (
-    echo ERROR: ver.py not found
-    exit /b 1
-)
-
+for /f "tokens=2 delims=''" %%v in ('type ..\ver.py') do set VERSION=%%v
 echo Using version: %VERSION%
 
 REM Update the version in the WiX file
@@ -63,7 +44,7 @@ echo Building MSI installer...
 
 REM Compile WiX source file
 echo Compiling WiX source file...
-candle EdgeNodeLauncher.wxs -dSourcePath=%EXE_PATH%
+candle EdgeNodeLauncher.wxs
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: WiX compilation failed.
     exit /b 1
@@ -71,14 +52,14 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Link WiX objects - output directly to dist folder
 echo Linking WiX objects...
-light -ext WixUIExtension EdgeNodeLauncher.wixobj -out %DIST_PATH%\EdgeNodeLauncher.msi
+light -ext WixUIExtension EdgeNodeLauncher.wixobj -out ..\dist\EdgeNodeLauncher.msi
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: WiX linking failed.
     exit /b 1
 )
 
 REM Create versioned copy of the MSI inside dist folder
-copy %DIST_PATH%\EdgeNodeLauncher.msi %DIST_PATH%\EdgeNodeLauncher-v%VERSION%.msi
-echo MSI installer created successfully: %DIST_PATH%\EdgeNodeLauncher.msi and %DIST_PATH%\EdgeNodeLauncher-v%VERSION%.msi
+copy ..\dist\EdgeNodeLauncher.msi ..\dist\EdgeNodeLauncher-v%VERSION%.msi
+echo MSI installer created successfully: ..\dist\EdgeNodeLauncher.msi and ..\dist\EdgeNodeLauncher-v%VERSION%.msi
 
 endlocal 

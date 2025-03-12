@@ -30,7 +30,7 @@
         <Directory Id="INSTALLFOLDER" Name="EdgeNodeLauncher">
           <Component Id="MainExecutable" Guid="*">
             <File Id="ExeFile" 
-                  Source="$(var.SourcePath)" 
+                  Source="..\dist\EdgeNodeLauncher.exe" 
                   KeyPath="yes" />
           </Component>
         </Directory>
