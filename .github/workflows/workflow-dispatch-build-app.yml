@@ -113,11 +113,17 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
-        - name: debug
-        run: ls ${{ github.workspace }}
-
-        - name: debug2
-        run: ls ${{ github.workspace }}/dist/
+      - name: List workspace content
+        shell: bash
+        run: |
+          echo "Listing workspace content:"
+          ls -la ${{ github.workspace }}
+          
+      - name: List dist directory content
+        shell: bash
+        run: |
+          echo "Listing dist directory content:"
+          ls -la ${{ github.workspace }}/dist
 
       - name: Sign Windows app
         if: runner.os == 'Windows'
