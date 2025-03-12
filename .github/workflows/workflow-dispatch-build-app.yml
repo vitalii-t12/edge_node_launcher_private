@@ -54,9 +54,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            build: ./build_scripts/win32_build.bat
+            build: ./build_scripts/win32_build.bat --msi
             name: EdgeNodeLauncher-WIN32
-            platformDependencies: ""
+            platformDependencies: |
+              choco install wixtoolset -y
 
           - os: ubuntu-24.04
             build: |
@@ -113,7 +114,7 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
-      - name: Sign Windows app
+      - name: Sign Windows exe
         if: runner.os == 'Windows'
         uses: sslcom/esigner-codesign@develop
         with:
@@ -130,17 +131,41 @@ jobs:
           # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
-          output_path: ${{ github.workspace }}/signed
+          output_path: ${{ github.workspace }}/signed-exe
           # Scan code before sign
           malware_block: true
           # Environment Name, For Production 'PROD' or For Staging 'TEST'
           environment_name: PROD
 
-      - name: Replace non-signed version with signed one
+      - name: Sign Windows msi
+        if: runner.os == 'Windows'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          # Sign and timestamp code object.
+          command: sign
+          # SSL.com account username
+          username: ${{ secrets.SSL_USERNAME }}
+          # SSL.com account password.
+          password: ${{ secrets.SSL_PASSWORD }}
+          # Credential ID for signing certificate.
+          credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
+          totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
+          file_path: ${{ github.workspace }}/EdgeNodeLauncher.msi
+          # Directory where signed code object(s) will be written.
+          output_path: ${{ github.workspace }}/signed-msi
+          # Scan code before sign
+          malware_block: true
+          # Environment Name, For Production 'PROD' or For Staging 'TEST'
+          environment_name: PROD
+
+      - name: Replace non-signed versions with signed ones
         if: runner.os == 'Windows'
         run: |
           rm dist/EdgeNodeLauncher.exe
-          mv signed/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
+          mv signed-exe/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
+          mv signed-msi/EdgeNodeLauncher.msi dist/EdgeNodeLauncher.msi
 
       - name: Save build artifacts
         uses: actions/upload-artifact@v4
