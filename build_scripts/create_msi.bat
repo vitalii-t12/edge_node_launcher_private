@@ -1,33 +1,24 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-echo === MSI creation script started ===
-echo Current directory: %CD%
-
 REM Check if WiX Toolset is installed
-echo Checking for WiX Toolset...
 where candle >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: WiX Toolset not found. Please install WiX Toolset to generate MSI installers.
     echo Download from: https://wixtoolset.org/releases/
     exit /b 1
-) else (
-    echo WiX Toolset found
 )
 
 REM Check if PyInstaller output exists in either possible location
-echo Checking for EdgeNodeLauncher.exe...
 set EXE_FOUND=0
 if exist "..\dist\EdgeNodeLauncher.exe" (
     set EXE_FOUND=1
     set EXE_PATH=..\dist\EdgeNodeLauncher.exe
     set DIST_PATH=..\dist
-    echo Found exe at ..\dist\EdgeNodeLauncher.exe
 ) else if exist "dist\EdgeNodeLauncher.exe" (
     set EXE_FOUND=1
     set EXE_PATH=dist\EdgeNodeLauncher.exe
     set DIST_PATH=dist
-    echo Found exe at dist\EdgeNodeLauncher.exe
 )
 
 if %EXE_FOUND% EQU 0 (
@@ -37,39 +28,21 @@ if %EXE_FOUND% EQU 0 (
 )
 
 REM Ensure dist folder exists
-echo Ensuring dist folder exists: %DIST_PATH%
-if not exist "%DIST_PATH%" (
-    echo Creating %DIST_PATH% directory
-    mkdir "%DIST_PATH%"
-)
+if not exist "%DIST_PATH%" mkdir "%DIST_PATH%"
 
 REM Get version from ver.py
-echo Getting version from ver.py...
 if exist "..\ver.py" (
-    echo Found ..\ver.py
-    for /f "tokens=2 delims=''" %%v in ('type ..\ver.py') do (
-        set VERSION=%%v
-        echo Version from ..\ver.py: %%v
-    )
+    for /f "tokens=2 delims=''" %%v in ('type ..\ver.py') do set VERSION=%%v
 ) else if exist "ver.py" (
-    echo Found ver.py
-    for /f "tokens=2 delims=''" %%v in ('type ver.py') do (
-        set VERSION=%%v
-        echo Version from ver.py: %%v
-    )
+    for /f "tokens=2 delims=''" %%v in ('type ver.py') do set VERSION=%%v
 ) else (
     echo ERROR: ver.py not found
-    echo Current directory contents:
-    dir
-    echo Parent directory contents:
-    dir ..
     exit /b 1
 )
 
 echo Using version: %VERSION%
 
 REM Update the version in the WiX file
-echo Updating version in WiX file...
 powershell -Command "(Get-Content EdgeNodeLauncher.wxs) -replace 'Version=\"1.0.0\"', 'Version=\"%VERSION%\"' | Set-Content EdgeNodeLauncher.wxs"
 powershell -Command "(Get-Content EdgeNodeLauncher.wxs) -replace 'Your Company', 'Ratio One' | Set-Content EdgeNodeLauncher.wxs"
 
@@ -90,32 +63,22 @@ echo Building MSI installer...
 
 REM Compile WiX source file
 echo Compiling WiX source file...
-echo Command: candle EdgeNodeLauncher.wxs -dSourcePath=%EXE_PATH%
 candle EdgeNodeLauncher.wxs -dSourcePath=%EXE_PATH%
-set CANDLE_RESULT=%ERRORLEVEL%
-echo Candle returned: %CANDLE_RESULT%
-
-if %CANDLE_RESULT% NEQ 0 (
+if %ERRORLEVEL% NEQ 0 (
     echo ERROR: WiX compilation failed.
     exit /b 1
 )
 
 REM Link WiX objects - output directly to dist folder
 echo Linking WiX objects...
-echo Command: light -ext WixUIExtension EdgeNodeLauncher.wixobj -out %DIST_PATH%\EdgeNodeLauncher.msi
 light -ext WixUIExtension EdgeNodeLauncher.wixobj -out %DIST_PATH%\EdgeNodeLauncher.msi
-set LIGHT_RESULT=%ERRORLEVEL%
-echo Light returned: %LIGHT_RESULT%
-
-if %LIGHT_RESULT% NEQ 0 (
+if %ERRORLEVEL% NEQ 0 (
     echo ERROR: WiX linking failed.
     exit /b 1
 )
 
 REM Create versioned copy of the MSI inside dist folder
-echo Creating versioned copy of MSI...
 copy %DIST_PATH%\EdgeNodeLauncher.msi %DIST_PATH%\EdgeNodeLauncher-v%VERSION%.msi
 echo MSI installer created successfully: %DIST_PATH%\EdgeNodeLauncher.msi and %DIST_PATH%\EdgeNodeLauncher-v%VERSION%.msi
 
-echo === MSI creation script completed successfully ===
 endlocal 
