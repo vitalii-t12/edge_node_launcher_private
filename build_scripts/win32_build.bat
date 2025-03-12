@@ -79,10 +79,28 @@ if %BUILD_MSI%==1 (
     echo             ^<Directory Id="ProgramFilesFolder"^> >> wix\product.wxs
     echo                 ^<Directory Id="INSTALLFOLDER" Name="%APP_NAME%"^> >> wix\product.wxs
     echo                     ^<Component Id="ApplicationComponent" Guid="*"^> >> wix\product.wxs
+    echo                         ^<File Id="IconResource" Source="assets\r1_icon.ico" /^> >> wix\product.wxs
     echo                         ^<File Id="ApplicationExecutable" Source="%OUTPUT_DIR%\%APP_NAME%.exe" KeyPath="yes"^> >> wix\product.wxs
     echo                             ^<Shortcut Id="ApplicationStartMenuShortcut" Directory="ProgramMenuDir" Name="%APP_NAME%" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="AppIcon.ico" /^> >> wix\product.wxs
     echo                             ^<Shortcut Id="ApplicationDesktopShortcut" Directory="DesktopFolder" Name="%APP_NAME%" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="AppIcon.ico" /^> >> wix\product.wxs
     echo                         ^</File^> >> wix\product.wxs
+    echo                         ^<ProgId Id="%APP_NAME%.Document" Description="%APP_NAME% Application" Icon="AppIcon.ico"^> >> wix\product.wxs
+    echo                             ^<Extension Id="exe" ContentType="application/exe"^> >> wix\product.wxs
+    echo                                 ^<Verb Id="open" Command="Open" TargetFile="ApplicationExecutable" Argument="%%1" /^> >> wix\product.wxs
+    echo                             ^</Extension^> >> wix\product.wxs
+    echo                         ^</ProgId^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKLM" Key="SOFTWARE\Classes\Applications\%APP_NAME%.exe\DefaultIcon" Type="string" Value="[INSTALLFOLDER]%APP_NAME%.exe,0" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKLM" Key="SOFTWARE\Classes\Applications\%APP_NAME%.exe\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]%APP_NAME%.exe&quot; &quot;%%1&quot;" /^> >> wix\product.wxs
+    
+    REM Additional registry entries for thorough icon integration
+    echo                         ^<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\%APP_NAME%.exe" Type="string" Value="[INSTALLFOLDER]%APP_NAME%.exe" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\%APP_NAME%.exe" Name="Path" Type="string" Value="[INSTALLFOLDER]" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKCU" Key="Software\Classes\%APP_NAME%File" Name="FriendlyTypeName" Type="string" Value="%APP_NAME% File" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKCU" Key="Software\Classes\%APP_NAME%File\DefaultIcon" Type="string" Value="[INSTALLFOLDER]%APP_NAME%.exe,0" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKLM" Key="SOFTWARE\Classes\%APP_NAME%.exe" Name="FriendlyAppName" Type="string" Value="%APP_NAME%" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKLM" Key="SOFTWARE\Classes\%APP_NAME%.exe\DefaultIcon" Type="string" Value="[INSTALLFOLDER]%APP_NAME%.exe,0" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKCU" Key="Software\Classes\Applications\%APP_NAME%.exe\DefaultIcon" Type="string" Value="[INSTALLFOLDER]%APP_NAME%.exe,0" /^> >> wix\product.wxs
+    echo                         ^<RegistryValue Root="HKCU" Key="Software\Classes\Applications\%APP_NAME%.exe\Taskbar\DefaultIcon" Type="string" Value="[INSTALLFOLDER]%APP_NAME%.exe,0" /^> >> wix\product.wxs
     echo                     ^</Component^> >> wix\product.wxs
     echo                 ^</Directory^> >> wix\product.wxs
     echo             ^</Directory^> >> wix\product.wxs

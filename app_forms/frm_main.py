@@ -112,7 +112,7 @@ def log_with_color(message, color="gray"):
   return
 
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
-  def __init__(self):
+  def __init__(self, app_icon=None):
     self.logView = None
     self.log_buffer = []
     self.__force_debug = False
@@ -139,15 +139,24 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Initialize the button colors based on current theme
     self.init_button_colors()
-    
+
     self.runs_in_production = self.is_running_in_production()
-    
+
+    # Set the application icon
+    self.app_icon = app_icon
+    if self.app_icon is None:
+      # Fall back to the base64 icon if no file-based icon is provided
+      self._icon = get_icon_from_base64(ICON_BASE64)
+    else:
+      self._icon = self.app_icon
+      self.add_log(f"Using provided application icon", debug=True)
+
     # Initialize config manager for container configurations
     self.config_manager = ConfigManager()
     
     # Initialize force debug from saved settings
     self.__force_debug = self.config_manager.get_force_debug()
-    
+
     self.initUI()
     
     # Set initial theme class
@@ -351,18 +360,33 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
 
   def set_windows_taskbar_icon(self):
-    if os.name == 'nt':
-      import ctypes
-      myappid = 'ratio1.edge_node_launcher'  # arbitrary string
-      ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    # TODO: Add support for other OS (Linux, MacOS)
+    # Set app id for Windows taskbar
+    if os.name == 'nt':  # Windows
+      try:
+        import ctypes
+        myappid = 'naeural.edge_node_launcher'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        self.add_log(f"Set Windows taskbar AppUserModelID to {myappid}", debug=True)
+      except Exception as e:
+        self.add_log(f"Error setting Windows AppUserModelID: {str(e)}", debug=True)
+
+    # Apply icon to window and application
+    self.setWindowIcon(self._icon)
+    app = QApplication.instance()
+    if app:
+      app.setWindowIcon(self._icon)
+      self.add_log(f"Applied icon to application and window", debug=True)
     return
-  
+
   def initUI(self):
     HEIGHT = 1100
     self.setWindowTitle(WINDOW_TITLE)
     self.setGeometry(0, 0, 1800, HEIGHT)
     self.center()
+
+    # Set the icon right at the beginning
+    self.setWindowIcon(self._icon)
+    self.set_windows_taskbar_icon()
 
     # Create the main layout
     main_layout = QVBoxLayout(self)
@@ -657,9 +681,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     self.setLayout(main_layout)
     self.apply_stylesheet()
-    
-    self.setWindowIcon(self._icon)
-    self.set_windows_taskbar_icon()
 
     return
   
