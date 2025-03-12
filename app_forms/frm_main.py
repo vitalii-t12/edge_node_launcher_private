@@ -731,51 +731,53 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
   def update_copy_button_icons(self):
     """Update the copy button icons based on the current theme."""
-    # Determine icon color based on theme
-    is_light_theme = self._current_stylesheet == LIGHT_STYLESHEET
-    
-    # Create icon with appropriate color
-    icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'assets', 'copy_icon.svg')
-    
-    if os.path.exists(icon_path):
-        # Read the SVG file
-        with open(icon_path, 'r') as f:
-            svg_content = f.read()
+    try:
+      # Import the icon module - handle both relative and absolute imports
+      try:
+        # Try relative import first (works in development)
+        import sys
+        from pathlib import Path
         
-        # Set the fill color based on theme
-        if is_light_theme:
-            # Use black fill for light theme
-            modified_svg = svg_content.replace('fill="#e8eaed"', 'fill="#000000"')
-        else:
-            # Use light gray fill for dark theme
-            modified_svg = svg_content.replace('fill="#e8eaed"', 'fill="#e8eaed"')
+        # Add parent directory to path if needed
+        parent_dir = Path(__file__).resolve().parent.parent
+        if str(parent_dir) not in sys.path:
+            sys.path.append(str(parent_dir))
+            
+        from app_icons import get_copy_icon
+      except ImportError:
+        # Fallback for packaged app
+        from app_icons import get_copy_icon
         
-        # Create renderer with the modified SVG content
-        renderer = QSvgRenderer()
-        renderer.load(bytes(modified_svg, 'utf-8'))
-        
-        # Render to pixmap
-        pixmap = QPixmap(24, 24)
-        pixmap.fill(Qt.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        # Create icon
-        copy_icon = QIcon(pixmap)
-        
-        # Update buttons
-        self.copyAddrButton.setIcon(copy_icon)
-        self.copyAddrButton.setIconSize(QSize(20, 20))
-        self.copyEthButton.setIcon(copy_icon)
-        self.copyEthButton.setIconSize(QSize(20, 20))
-    else:
-        # Fallback to system icon if SVG not found
+      # Determine if we're using light theme
+      is_light_theme = self._current_stylesheet == LIGHT_STYLESHEET
+      
+      # Get the icon with appropriate color
+      copy_icon = get_copy_icon(is_light_theme)
+      
+      # Set icon size
+      icon_size = QSize(20, 20)
+      
+      # Apply to buttons
+      self.copyAddrButton.setIcon(copy_icon)
+      self.copyAddrButton.setIconSize(icon_size)
+      self.copyEthButton.setIcon(copy_icon)
+      self.copyEthButton.setIconSize(icon_size)
+      
+    except Exception as e:
+      # Log error and fallback to text
+      self.add_log(f"Error setting copy icons: {str(e)}", debug=True)
+      
+      # Fallback to system icon if there's an error
+      try:
         default_icon = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         self.copyAddrButton.setIcon(default_icon)
         self.copyAddrButton.setIconSize(QSize(20, 20))
         self.copyEthButton.setIcon(default_icon)
         self.copyEthButton.setIconSize(QSize(20, 20))
+      except:
+        # Last resort fallback to text
+        self.copyAddrButton.setText("Copy")
+        self.copyEthButton.setText("Copy")
 
   def change_text_color(self):
     if self._current_stylesheet == DARK_STYLESHEET:
