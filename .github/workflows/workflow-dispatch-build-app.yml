@@ -165,13 +165,28 @@ jobs:
         run: |
           rm dist/EdgeNodeLauncher.exe
           mv signed-exe/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
-          mv signed-msi/EdgeNodeLauncher.msi dist/EdgeNodeLauncher.msi
+          mv signed-msi/EdgeNodeLauncher.msi dist/
+          
+          # Create a versioned copy of the MSI
+          for /f "tokens=2 delims=''" %%v in ('type ver.py') do set VERSION=%%v
+          copy dist\EdgeNodeLauncher.msi dist\EdgeNodeLauncher-v%VERSION%.msi
 
-      - name: Save build artifacts
+      # Upload EXE and other files (except MSI)
+      - name: Save build artifacts (except MSI)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-v${{ env.VERSION }}-${{ github.sha }}
-          path: dist/*
+          path: |
+            dist/*
+            !dist/*.msi
+
+      # Upload MSI file separately (Windows only)
+      - name: Save MSI installer as separate artifact
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdgeNodeLauncher-MSI-v${{ env.VERSION }}
+          path: dist/*.msi
 
   collect-artifacts:
     needs: build
@@ -193,6 +208,13 @@ jobs:
         with:
           name: EdgeNodeLauncher-WIN32-v${{ env.VERSION }}-${{ github.sha }}
           path: ./all-builds/EdgeNodeLauncher-WIN32
+
+      # Download MSI artifacts separately
+      - name: Download Windows MSI installer
+        uses: actions/download-artifact@v4
+        with:
+          name: EdgeNodeLauncher-MSI-v${{ env.VERSION }}
+          path: ./all-builds/EdgeNodeLauncher-MSI
 
       - name: Download Ubuntu 24.04 build artifacts
         uses: actions/download-artifact@v4
