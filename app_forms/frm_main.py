@@ -142,18 +142,22 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     self.runs_in_production = self.is_running_in_production()
 
-    # Set the application icon
-    self.app_icon = app_icon
-    if self.app_icon is None:
-      # Fall back to the base64 icon if no file-based icon is provided
-      self._icon = get_icon_from_base64(ICON_BASE64)
+    # Set the application icon - use the provided icon directly
+    self._icon = app_icon
+    if self._icon is None:
+      # Only fall back to base64 if no icon provided
+      from utils.icon_helper import get_app_icon
+      self._icon = get_app_icon()
+      self.add_log("Loaded application icon via helper", debug=True)
     else:
-      self._icon = self.app_icon
-      self.add_log(f"Using provided application icon", debug=True)
+      self.add_log("Using provided application icon", debug=True)
+
+    # Apply window icon immediately
+    self.setWindowIcon(self._icon)
 
     # Initialize config manager for container configurations
     self.config_manager = ConfigManager()
-    
+
     # Initialize force debug from saved settings
     self.__force_debug = self.config_manager.get_force_debug()
 
