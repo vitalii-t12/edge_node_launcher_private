@@ -113,6 +113,12 @@ jobs:
       - name: Build app
         run: ${{ matrix.build }}
 
+        - name: debug
+        run: ls ${{ github.workspace }}
+
+        - name: debug2
+        run: ls ${{ github.workspace }}/dist/
+
       - name: Sign Windows app
         if: runner.os == 'Windows'
         uses: sslcom/esigner-codesign@develop
