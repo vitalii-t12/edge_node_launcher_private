@@ -43,10 +43,12 @@ if %BUILD_MSI% EQU 1 (
     
     REM If we didn't build the EXE and it doesn't exist, show an error
     if %BUILD_EXE% EQU 0 (
-        if not exist "..\dist\EdgeNodeLauncher.exe" (
-            echo ERROR: EdgeNodeLauncher.exe not found in dist folder. 
-            echo Please run win32_build.bat --exe-only first or use win32_build.bat --msi to build both.
-            exit /b 1
+        if not exist "dist\EdgeNodeLauncher.exe" (
+            if not exist "..\dist\EdgeNodeLauncher.exe" (
+                echo ERROR: EdgeNodeLauncher.exe not found in dist folder. 
+                echo Please run win32_build.bat --exe-only first or use win32_build.bat --msi to build both.
+                exit /b 1
+            )
         )
     )
     
