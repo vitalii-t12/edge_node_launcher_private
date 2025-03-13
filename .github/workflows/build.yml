@@ -215,7 +215,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           cd dist
-          zip -r EdgeNodeLauncher-macOS-v${{ env.VERSION }}.zip EdgeNodeLauncher.app
+          zip -r EdgeNodeLauncher-v${{ env.VERSION }}-macOS.zip EdgeNodeLauncher.app
           cd ..
 
       # Upload Windows EXE to release
@@ -246,7 +246,7 @@ jobs:
         uses: svenstaro/upload-release-action@master
         with:
           file: dist/EdgeNodeLauncher
-          asset_name: EdgeNodeLauncher-${{ matrix.name }}-v${{ env.VERSION }}
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}
           tag: ${{ env.VERSION }}
           repo_name: ${{ github.repository }}
           overwrite: true
@@ -256,8 +256,8 @@ jobs:
         if: runner.os == 'macOS'
         uses: svenstaro/upload-release-action@master
         with:
-          file: dist/EdgeNodeLauncher-macOS-v${{ env.VERSION }}.zip
-          asset_name: EdgeNodeLauncher-macOS-v${{ env.VERSION }}.zip
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-macOS.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-macOS.zip
           tag: ${{ env.VERSION }}
           repo_name: ${{ github.repository }}
           overwrite: true
