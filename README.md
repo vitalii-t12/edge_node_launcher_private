@@ -1,6 +1,6 @@
 # Edge Node Launcher
 
-Edge Node Launcher is a desktop application designed to manage the containerized edge node of Naeural Edge Protocol. It allows you to edit environment files, check Docker availability, launch and stop Docker containers, plot data from JSON files, and perform other management tasks.
+Edge Node Launcher is a desktop application designed to manage the containerized edge node of  Edge Protocol. It allows you to edit environment files, check Docker availability, launch and stop Docker containers, plot data from JSON files, and perform other management tasks.
 
 ## Table of Contents
 - [Features](#features)
@@ -148,7 +148,7 @@ The application uses stylesheets for UI theming. The stylesheets are defined in 
 If you use this software in your research, please cite the following paper:
 
 ```bibtex
-@misc{milik2024naeuralaios,
+@misc{milik2024aios,
   title={Naeural AI OS -- Decentralized ubiquitous computing MLOps execution engine}, 
   author={Beatrice Milik and Stefan Saraev and Cristian Bleotiu and Radu Lupaescu and Bogdan Hobeanu and Andrei Ionut Damian},
   year={2024},

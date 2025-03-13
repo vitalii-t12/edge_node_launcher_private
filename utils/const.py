@@ -14,7 +14,7 @@ E2_PEM_FILE = 'e2.pem'
 # ============================================================================
 DOCKER_VOLUME = 'ratio1_vol'
 DOCKER_IMAGE = 'ratio1/edge_node'
-DOCKER_TAG = 'testnet'
+DOCKER_TAG = 'mainnet'
 DOCKER_CONTAINER_NAME = 'r1node'
 DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 
@@ -23,7 +23,7 @@ DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 # ============================================================================
 REFRESH_TIME = 20_000
 MAX_HISTORY_QUEUE = 5 * 60 // 10  # 5 minutes @ 10 seconds each hb
-AUTO_UPDATE_CHECK_INTERVAL = 60
+AUTO_UPDATE_CHECK_INTERVAL = 3600 # 1 hour
 DOCKER_IMAGE_AUTO_UPDATE_CHECK_INTERVAL = 300  # 5 minutes
 MAX_ALIAS_LENGTH = 15  # Maximum length for aliases (node name and authorized addresses)
 
@@ -133,7 +133,7 @@ DAPP_URLS = {
     'devnet': 'https://devnet-app.ratio1.ai/'
 }
 
-DEFAULT_ENVIRONMENT = 'testnet'
+DEFAULT_ENVIRONMENT = 'mainnet'
 
 # ============================================================================
 # TEMPLATES
@@ -180,13 +180,17 @@ COMMON_STYLES = {
     "progress_height": "30px",
     "button_padding": "10px 20px",
     "button_font_size": "16px",
-    "button_margin": "4px 2px",
+    "button_margin": "4px 5px",
     "button_border_radius": "15px",
     "combo_border_radius": "15px",
     "combo_padding": "4px",
     "combo_min_width": "100px",
     "combo_dropdown_width": "20px",
-    "text_align_center": "center"
+    "text_align_center": "center",
+    "font_weight_normal": "normal",
+    "font_weight_bold": "bold",
+    "button_font_weight": "normal",
+    "info_box_font_weight": "normal"
 }
 
 COMMON_COLORS = {
@@ -200,50 +204,44 @@ DARK_COLORS = {
     "bg_color": "#2b2b2b",
     "border_color": "#555555",
     "hover_color": "#3b3b3b",
-    "button_bg": "#1E90FF",
-    "button_border": "#87CEEB",
-    "button_hover": "#104E8B",
+    "button_bg": "#0071EA",
+    "button_border": "transparent",
+    "button_hover": "#0679F3",
     "progress_border": "#1E90FF",
     "progress_chunk": "#1E90FF",
-    "widget_bg": "#0D1F2D",
+    "widget_bg": "#000C29",
+    "debug_checkbox_color": "white",  # Orange for dark theme debug checkbox
     
     # Log view specific colors
-    "log_view_bg": "#0D1F2D",
+    "log_view_bg": "#04254F",
     "log_view_text": "white",
     "log_view_border": "#1E90FF",
     
     # Info box specific colors
-    "info_box_bg": "#0D1F2D",
+    "info_box_bg": "#04254F",
     "info_box_text": "white",
     "info_box_border": "#1E90FF",
     
     # Graph specific colors
-    "graph_bg": "#243447",
-    "graph_border": "#87CEEB",
+    "graph_bg": "#001A3A",
+    "graph_border": "#10386A",
     "graph_text": "white",
     "graph_cpu_color": "#1E90FF",
     "graph_memory_color": "#4CAF50",
     "graph_gpu_color": "#FFD700",
     "graph_gpu_memory_color": "#FF6B6B",
     
-    "text_edit_bg": "#0D1F2D",
-    "text_edit_border": "#1E90FF",
-    "plot_bg": "#243447",
-    "plot_border": "#87CEEB",
-    "combo_bg": "#2A3440",
-    "combo_border": "#4A5561",
-    "combo_hover_bg": "#3A4450",
-    "combo_hover_border": "#5A6571",
-    "combo_arrow_color": "#B0B9C6",
-    "combo_dropdown_bg": "#2A3440",
-    "combo_dropdown_select_bg": "#3A4450",
-    "combo_dropdown_select_color": "white",
-    "green_highlight": "#4CAF50",
+    "text_edit_bg": "#FFFFFF",
+    "text_edit_border": "#D3D3D3",
+    "plot_bg": "#FFFFFF",
+    "plot_border": "#A9A9A9",
+    "green_highlight": "red",
     "button_copy_address_bg": "transparent",
-    "add_node_button_bg": "#1E90FF",
-    "add_node_button_border": "#87CEEB",
-    "add_node_button_hover": "#104E8B",
-    "confirm_button_bg": "#4CAF50",
+    "add_node_button_bg": "#0071EA",
+    "add_node_button_border": "transparent",
+    "add_node_button_hover": "#0679F3",
+    "add_node_button_hover_text": "#FFFFFF",
+    "confirm_button_bg": "#1B47F7",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
     "cancel_button_bg": "#F44336",
@@ -251,26 +249,51 @@ DARK_COLORS = {
     "cancel_button_hover": "#D32F2F",
     
     # Toggle button states
-    "toggle_button_start_bg": "#4CAF50",
-    "toggle_button_start_hover": "#45A049",
-    "toggle_button_stop_bg": "#F44336",
-    "toggle_button_stop_hover": "#D32F2F",
+    "toggle_button_start_bg": "#1B47F7",
+    "toggle_button_start_hover": "#4458FF",
+    "toggle_button_start_border": "transparent",
+    "toggle_button_start_text": "white",
+    "toggle_button_stop_bg": "#FADC33",
+    "toggle_button_stop_hover": "#FFE138",
+    "toggle_button_stop_border": "transparent",
+    "toggle_button_stop_text": "#C4AC26",
     "toggle_button_disabled_bg": "gray",
-    "toggle_button_disabled_hover": "darkgray"
+    "toggle_button_disabled_hover": "darkgray",
+    "toggle_button_disabled_border": "darkgray",
+    "toggle_button_disabled_text": "black",
+    "toggle_button_border": "#87CEEB",
+
+    # ComboBox popup specific colors
+    "combo_bg": "#F9F9F9",
+    "combo_border": "#10386A",
+    "combo_hover_bg": "#F0F7FF",
+    "combo_hover_border": "#0071EA",
+    "combo_arrow_color": "transparent",
+    "combo_dropdown_bg": "#FFFFFF",
+    "combo_dropdown_select_bg": "red",
+    "combo_dropdown_select_color": "black",
+    "combobox_popup_border_color": "#1E90FF",
+    "combobox_popup_bg_color": "#04254F",
+    "combobox_popup_item_hover_bg": "transparent",
+    "combobox_popup_item_selected_bg": "#1B47F7",
+    "combobox_popup_item_selected_text": "white",
+    "combobox_text_color": "#333333",
+    "combo_rectangle_text_color": "white",
 }
 
 # Color definitions for light theme
 LIGHT_COLORS = {
-    "text_color": "black",
+    "text_color": "white",
     "bg_color": "white",
     "border_color": "#cccccc",
     "hover_color": "#f5f5f5",
-    "button_bg": "#D3D3D3",
-    "button_border": "#A9A9A9",
-    "button_hover": "#A9A9A9",
+    "button_bg": "#0071EA",
+    "button_border": "transparent",
+    "button_hover": "#0679F3",
     "progress_border": "#D3D3D3",
     "progress_chunk": "#D3D3D3",
-    "widget_bg": "#F0F0F0",
+    "widget_bg": "#E6E6EA",
+    "debug_checkbox_color": "black",  # Blue for light theme debug checkbox
     
     # Log view specific colors
     "log_view_bg": "#FFFFFF",
@@ -283,7 +306,7 @@ LIGHT_COLORS = {
     "info_box_border": "#D3D3D3",
     
     # Graph specific colors
-    "graph_bg": "#FFFFFF",
+    "graph_bg": "#F4F4F8",
     "graph_border": "#D3D3D3",
     "graph_text": "black",
     "graph_cpu_color": "#0066CC",
@@ -295,20 +318,13 @@ LIGHT_COLORS = {
     "text_edit_border": "#D3D3D3",
     "plot_bg": "#FFFFFF",
     "plot_border": "#A9A9A9",
-    "combo_bg": "#FFFFFF",
-    "combo_border": "#CCCCCC",
-    "combo_hover_bg": "#F5F5F5", 
-    "combo_hover_border": "#4CAF50",
-    "combo_arrow_color": "#666666",
-    "combo_dropdown_bg": "#FFFFFF",
-    "combo_dropdown_select_bg": "#F5F5F5",
-    "combo_dropdown_select_color": "black",
-    "green_highlight": "#4CAF50",
+    "green_highlight": "red",
     "button_copy_address_bg": "transparent",
-    "add_node_button_bg": "#D3D3D3",
-    "add_node_button_border": "#A9A9A9",
-    "add_node_button_hover": "#A9A9A9",
-    "confirm_button_bg": "#4CAF50",
+    "add_node_button_bg": "#0071EA",
+    "add_node_button_border": "transparent",
+    "add_node_button_hover": "#0679F3",
+    "add_node_button_hover_text": "#FFFFFF",
+    "confirm_button_bg": "#1B47F7",
     "confirm_button_border": "#45A049",
     "confirm_button_hover": "#45A049",
     "cancel_button_bg": "#F44336",
@@ -316,12 +332,36 @@ LIGHT_COLORS = {
     "cancel_button_hover": "#D32F2F",
     
     # Toggle button states
-    "toggle_button_start_bg": "#4CAF50",
-    "toggle_button_start_hover": "#45A049",
-    "toggle_button_stop_bg": "#F44336",
-    "toggle_button_stop_hover": "#D32F2F",
+    "toggle_button_start_bg": "#1B47F7",
+    "toggle_button_start_hover": "#4458FF",
+    "toggle_button_start_border": "transparent",
+    "toggle_button_start_text": "white",
+    "toggle_button_stop_bg": "#FADC33",
+    "toggle_button_stop_hover": "#FFE138",
+    "toggle_button_stop_border": "transparent",
+    "toggle_button_stop_text": "#C4AC26",
     "toggle_button_disabled_bg": "gray",
-    "toggle_button_disabled_hover": "darkgray"
+    "toggle_button_disabled_hover": "darkgray",
+    "toggle_button_disabled_border": "darkgray",
+    "toggle_button_disabled_text": "black",
+    "toggle_button_border": "#87CEEB",
+
+    # ComboBox popup specific colors
+    "combo_bg": "#F9F9F9",
+    "combo_border": "#D0D0D0",
+    "combo_hover_bg": "#F0F7FF",
+    "combo_hover_border": "#1B47F7",
+    "combo_arrow_color": "transparent",
+    "combo_dropdown_bg": "#FFFFFF",
+    "combo_dropdown_select_bg": "red",
+    "combo_dropdown_select_color": "black",
+    "combobox_popup_border_color": "#D0D0D0",
+    "combobox_popup_bg_color": "#F4F4F8",
+    "combobox_popup_item_hover_bg": "transparent",
+    "combobox_popup_item_selected_bg": "#1B47F7",
+    "combobox_popup_item_selected_text": "white",
+    "combobox_text_color": "#333333",
+    "combo_rectangle_text_color": "#1B47F7",
 }
 
 # Merge common styles with theme-specific colors
@@ -335,6 +375,71 @@ CHECKBOX_STYLE_TEMPLATE = """
     }}
 """
 
+# Debug checkbox style template
+DEBUG_CHECKBOX_STYLE_TEMPLATE = """
+    QCheckBox {{
+        color: {debug_checkbox_color};
+        font-weight: bold;
+    }}
+"""
+
+# Detailed checkbox styling with theme-specific customization
+DETAILED_CHECKBOX_STYLE = """
+    QCheckBox {{
+        margin-top: 4px;
+        spacing: 8px;
+        padding: 4px;
+        color: {debug_checkbox_color};
+        font-weight: bold;
+    }}
+    
+    QCheckBox:hover {{
+        background-color: transparent;
+    }}
+    
+    QCheckBox::indicator {{
+        width: 18px;
+        height: 18px;
+        border-radius: 15px;
+        border: 1px solid #666;
+    }}
+    
+    QCheckBox::indicator:unchecked {{
+        background-color: transparent;
+    }}
+    
+    QCheckBox::indicator:checked {{
+        background-color: #4CAF50;
+        border-color: #4CAF50;
+        image: url(:/icons/check.png);
+    }}
+    
+    QCheckBox::indicator:checked:hover {{
+        background-color: #45a049;
+        border-color: #45a049;
+    }}
+    
+    /* Dark theme specific */
+    .dark QCheckBox {{
+        color: {debug_checkbox_color};
+    }}
+    
+    .dark QCheckBox::indicator:unchecked {{
+        border-color: #888;
+        background-color: #333;
+    }}
+    
+    /* Light theme specific */
+    .light QCheckBox {{
+        color: {debug_checkbox_color};
+    }}
+    
+    .light QCheckBox::indicator:unchecked {{
+        border-color: #666;
+        background-color: #ffffff;
+    }}
+"""
+
 # Common stylesheet template with placeholders for theme-specific values
 COMMON_STYLESHEET_TEMPLATE = """
   QLabel {{
@@ -342,7 +447,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     color: {text_color};
   }}
   QProgressBar {{
-    border: 2px solid {progress_border};
+    border: 1px solid {progress_border};
     border-radius: {border_radius};
     text-align: {text_align_center};
     height: {progress_height};
@@ -361,7 +466,7 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {log_view_border};
     border-radius: {border_radius};
     padding: 8px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }}
   PlotWidget, QWidget[class="plot-container"] {{
     background-color: {graph_bg};
@@ -380,12 +485,15 @@ COMMON_STYLESHEET_TEMPLATE = """
     background-color: {combo_bg};
     border: 1px solid {combo_border};
     border-radius: {combo_border_radius};
-    padding: 5px 10px;
+    padding: 0px;
+    margin-left: 6px;
+    margin-right: 6px;
     min-width: {combo_min_width};
     min-height: 32px;
     max-height: 32px;
     font-family: "Courier New";
     font-size: 10pt;
+    text-align: center;
   }}
   QComboBox:hover {{
     background-color: {combo_hover_bg};
@@ -396,11 +504,13 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   QComboBox::drop-down {{
     border: none;
-    width: 30px;
+    width: 0px;
   }}
   QComboBox::down-arrow {{
     image: none;
     border: none;
+    width: 0px;
+    height: 0px;
   }}
   QComboBox QAbstractItemView {{
     background-color: {combo_dropdown_bg};
@@ -410,11 +520,12 @@ COMMON_STYLESHEET_TEMPLATE = """
     border: 1px solid {combo_border};
     border-radius: {border_radius};
     padding: 5px;
+    min-width: 190px;
   }}
   QComboBox QAbstractItemView::item {{
     min-height: 24px;
     padding: 3px 5px;
-    text-align:center;
+    text-align: center;
   }}
   QComboBox QAbstractItemView::item:hover {{
     background-color: {combo_hover_bg};
@@ -422,16 +533,16 @@ COMMON_STYLESHEET_TEMPLATE = """
   QComboBox QAbstractItemView::item:selected {{
     background-color: {combo_dropdown_select_bg};
   }}
-  QCheckBox {{
-    color: {text_color};
-  }}
   QPushButton {{
     background-color: {button_bg}; 
     color: {text_color}; 
-    border: 2px solid {button_border}; 
+    border: 1px solid {button_border}; 
     padding: {button_padding}; 
-    font-size: {button_font_size}; 
+    font-size: {button_font_size};
+    font-weight: {button_font_weight}; 
     margin: {button_margin};
+    margin-left: 6px;
+    margin-right: 6px;
     border-radius: {button_border_radius};
   }}
   QPushButton:hover {{
@@ -439,14 +550,14 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   QPushButton[type="confirm"] {{
     background-color: {confirm_button_bg};
-    border: 2px solid {confirm_button_border};
+    border: 1px solid {confirm_button_border};
   }}
   QPushButton[type="confirm"]:hover {{
     background-color: {confirm_button_hover};
   }}
   QPushButton[type="cancel"] {{
     background-color: {cancel_button_bg};
-    border: 2px solid {cancel_button_border};
+    border: 1px solid {cancel_button_border};
   }}
   QPushButton[type="cancel"]:hover {{
     background-color: {cancel_button_hover};
@@ -454,8 +565,17 @@ COMMON_STYLESHEET_TEMPLATE = """
   #copyAddrButton, #copyEthButton {{
     background-color: {button_copy_address_bg};
     border: none;
-    padding: 0px;
-    margin: 0px;
+    padding: 2px;
+    margin: 2px;
+    margin-left: 2px;
+    margin-right: 2px;
+    icon-size: 20px;
+    min-width: 28px;
+    min-height: 28px;
+  }}
+  #copyAddrButton:hover, #copyEthButton:hover {{
+    background-color: rgba(128, 128, 128, 0.2);
+    border-radius: 4px;
   }}
   #startNodeButton {{
     min-height: 40px;
@@ -463,7 +583,7 @@ COMMON_STYLESHEET_TEMPLATE = """
   #addNodeButton {{
     background-color: {add_node_button_bg};
     color: {text_color};
-    border: 2px solid {add_node_button_border};
+    border: 1px solid {add_node_button_border};
     padding: 5px 10px;
     border-radius: {border_radius};
     min-height: 32px;
@@ -471,17 +591,19 @@ COMMON_STYLESHEET_TEMPLATE = """
   }}
   #addNodeButton:hover {{
     background-color: {add_node_button_hover};
+    color: {add_node_button_hover_text};
   }}
   #toggleContainerButton {{
     min-height: 40px;
     max-height: 40px;
-    font-weight: bold;
   }}
   #infoBox {{
     background-color: {info_box_bg};
     border: 1px solid {info_box_border};
     border-radius: {border_radius};
     margin: 6px;
+    margin-left: 5px;
+    margin-right: 5px;
     padding: 8px;
     color: {info_box_text};
   }}
@@ -489,17 +611,23 @@ COMMON_STYLESHEET_TEMPLATE = """
     color: {info_box_text};
     font-family: "Courier New";
     font-size: 10pt;
+    font-weight: {info_box_font_weight};
     margin: 2px;
+    background-color: transparent;
   }}
   #infoBox QPushButton {{
     background-color: {button_copy_address_bg};
     border: none;
     padding: 0px;
     margin: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
     color: {text_color};
   }}
   #infoBoxText QLabel {{
     color: {info_box_text};
+    background-color: transparent;
+    font-weight: {info_box_font_weight};
   }}
   #myComboPopup {{
     background-color: #2e2e2e; 
@@ -508,18 +636,24 @@ COMMON_STYLESHEET_TEMPLATE = """
 
 """
 
+# Additional custom styles
+ADDITIONAL_STYLES = """
+  /* No additional styles needed anymore since we've set margins directly on layouts */
+"""
+
 # Apply the common template with dark theme values
-DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME)
+DARK_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**DARK_THEME) + ADDITIONAL_STYLES + """
+  QDialog QLabel {
+    color: white;
+  }
+"""
 
 # Apply the common template with light theme values, with additional light-specific styles
-LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + """
-  PlotWidget .axis {
+LIGHT_STYLESHEET = COMMON_STYLESHEET_TEMPLATE.format(**LIGHT_THEME) + ADDITIONAL_STYLES + """
+  QDialog QLabel {
     color: black;
   }
-
-  PlotWidget .plotLabel {
-    color: black;
-  }
+  
 """
 
 # Notification messages
@@ -531,4 +665,15 @@ NOTIFICATION_TITLE_STRINGS_ENUM = {
 }
 NOTIFICATION_ADDRESS_COPIED = "Address {address} copied to clipboard"
 NOTIFICATION_ADDRESS_COPY_FAILED = "No address available to copy. Try again after launching the Edge Node."
+
+# Add specific button selectors with 5px left and right margins
+#addNodeButton, #toggleContainerButton, #launchDAppButton, #explorerButton, #renameButton, #themeToggleButton {{
+#    margin-left: 5px;
+#    margin-right: 5px;
+#}}
+#
+#infoBox {{
+#    margin-left: 5px;
+#    margin-right: 5px;
+#}}
 

@@ -37,11 +37,25 @@ from PyQt5.QtWidgets import (
   QMenu,
   QAction,
   QSplitter,
-  QProgressBar
+  QProgressBar,
+  QDesktopWidget,
+  QMainWindow,
+  QScrollArea,
+  QToolButton,
+  QTextBrowser,
+  QListWidget,
+  QGridLayout,
+  QStackedWidget,
+  QFormLayout,
+  QListWidgetItem
 )
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtCore import (
+    Qt, QTimer, QSize, QThread, QObject, pyqtSignal, QUrl, QSettings,
+    QProcess, QPropertyAnimation, QModelIndex, QSortFilterProxyModel
+)
+from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter
 import pyqtgraph as pg
+from PyQt5.QtSvg import QSvgRenderer
 
 from models.NodeInfo import NodeInfo
 from models.NodeHistory import NodeHistory
@@ -68,6 +82,7 @@ from widgets.HostSelector import HostSelector
 from widgets.ModeSwitch import ModeSwitch
 from widgets.dialogs.DockerCheckDialog import DockerCheckDialog
 from widgets.CenteredComboBox import CenteredComboBox
+from widgets.LoadingDialog import LoadingDialog
 
 
 def get_platform_and_os_info():
@@ -97,7 +112,7 @@ def log_with_color(message, color="gray"):
   return
 
 class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
-  def __init__(self):
+  def __init__(self, app_icon=None):
     self.logView = None
     self.log_buffer = []
     self.__force_debug = False
@@ -124,15 +139,28 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Initialize the button colors based on current theme
     self.init_button_colors()
-    
+
     self.runs_in_production = self.is_running_in_production()
-    
+
+    # Set the application icon - use the provided icon directly
+    self._icon = app_icon
+    if self._icon is None:
+      # Only fall back to base64 if no icon provided
+      from utils.icon_helper import get_app_icon
+      self._icon = get_app_icon()
+      self.add_log("Loaded application icon via helper", debug=True)
+    else:
+      self.add_log("Using provided application icon", debug=True)
+
+    # Apply window icon immediately
+    self.setWindowIcon(self._icon)
+
     # Initialize config manager for container configurations
     self.config_manager = ConfigManager()
-    
+
     # Initialize force debug from saved settings
     self.__force_debug = self.config_manager.get_force_debug()
-    
+
     self.initUI()
     
     # Set initial theme class
@@ -179,6 +207,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.timer.start(REFRESH_TIME)  # Refresh every 10 seconds
     self.toast = ToastWidget(self)
 
+    # Initialize copy button icons based on current theme
+    self.update_copy_button_icons()
+
     return
 
   def init_button_colors(self):
@@ -188,37 +219,39 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     self.button_colors = {
         'start': {
-            'bg': colors['green_highlight'],
-            'hover': colors['confirm_button_hover'],
-            'text': colors['text_color'],
-            'border': colors['button_border']
+            'bg': colors['toggle_button_start_bg'],
+            'hover': colors['toggle_button_start_hover'],
+            'text': colors['toggle_button_start_text'],
+            'border': colors['toggle_button_start_border']
         },
         'stop': {
-            'bg': colors['cancel_button_bg'],
-            'hover': colors['cancel_button_hover'],
-            'text': colors['text_color'],
-            'border': colors['button_border']
+            'bg': colors['toggle_button_stop_bg'],
+            'hover': colors['toggle_button_stop_hover'],
+            'text': colors['toggle_button_stop_text'],
+            'border': colors['toggle_button_stop_border']
         },
         'disabled': {
-            'bg': 'gray',
-            'text': colors['text_color']
+            'bg': colors['toggle_button_disabled_bg'],
+            'hover': colors['toggle_button_disabled_hover'],
+            'text': colors['toggle_button_disabled_text'],
+            'border': colors['toggle_button_disabled_border']
         },
         'toggle_start': {
             'bg': colors['toggle_button_start_bg'],
             'hover': colors['toggle_button_start_hover'],
-            'text': colors['text_color'],
-            'border': colors['button_border']
+            'text': colors['toggle_button_start_text'],
+            'border': colors['toggle_button_start_border']
         },
         'toggle_stop': {
             'bg': colors['toggle_button_stop_bg'],
             'hover': colors['toggle_button_stop_hover'],
-            'text': colors['text_color'],
-            'border': colors['button_border']
+            'text': colors['toggle_button_stop_text'],
+            'border': colors['toggle_button_stop_border']
         },
         'toggle_disabled': {
             'bg': colors['toggle_button_disabled_bg'],
-            'text': colors['text_color'],
-            'border': colors['button_border'],
+            'text': colors['toggle_button_disabled_text'],
+            'border': colors['toggle_button_disabled_border'],
             'hover': colors['toggle_button_disabled_hover']
         }
     }
@@ -331,18 +364,33 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     return
 
   def set_windows_taskbar_icon(self):
-    if os.name == 'nt':
-      import ctypes
-      myappid = 'ratio1.edge_node_launcher'  # arbitrary string
-      ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    # TODO: Add support for other OS (Linux, MacOS)
+    # Set app id for Windows taskbar
+    if os.name == 'nt':  # Windows
+      try:
+        import ctypes
+        myappid = 'ratio1.edge_node_launcher'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        self.add_log(f"Set Windows taskbar AppUserModelID to {myappid}", debug=True)
+      except Exception as e:
+        self.add_log(f"Error setting Windows AppUserModelID: {str(e)}", debug=True)
+
+    # Apply icon to window and application
+    self.setWindowIcon(self._icon)
+    app = QApplication.instance()
+    if app:
+      app.setWindowIcon(self._icon)
+      self.add_log(f"Applied icon to application and window", debug=True)
     return
-  
+
   def initUI(self):
     HEIGHT = 1100
     self.setWindowTitle(WINDOW_TITLE)
     self.setGeometry(0, 0, 1800, HEIGHT)
     self.center()
+
+    # Set the icon right at the beginning
+    self.setWindowIcon(self._icon)
+    self.set_windows_taskbar_icon()
 
     # Create the main layout
     main_layout = QVBoxLayout(self)
@@ -360,13 +408,15 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     menu_widget.setFixedWidth(300)  # Set the fixed width here
     menu_layout = QVBoxLayout(menu_widget)
     menu_layout.setAlignment(Qt.AlignTop)
-    menu_layout.setContentsMargins(0, 0, 0, 0)
+    menu_layout.setContentsMargins(0, 2, 0, 2)  # Small top and bottom margins, no side margins
     
     top_button_area = QVBoxLayout()
+    top_button_area.setObjectName("topButtonArea")
+    top_button_area.setContentsMargins(5, 0, 5, 4)  # Add left and right margins (5px)
 
     # Container selector area
     container_selector_layout = QVBoxLayout()  # Changed to QVBoxLayout
-    container_selector_layout.setContentsMargins(0, 0, 0, 0)
+    # container_selector_layout.setContentsMargins(5, 4, 5, 4)  # Add left and right margins (5px)
     # Add Node button
     self.add_node_button = QPushButton("Add New Node")
     self.add_node_button.clicked.connect(self.show_add_node_dialog)
@@ -378,7 +428,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.container_combo.setFont(QFont("Courier New", 10))
     self.container_combo.currentTextChanged.connect(self._on_container_selected)
     self.container_combo.setMinimumHeight(32)  # Make dropdown slightly taller
-
+    
+    # Set the initial theme directly
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    if hasattr(self.container_combo, 'set_theme'):
+        self.container_combo.set_theme(is_dark)
     container_selector_layout.addWidget(self.container_combo)
     
     top_button_area.addLayout(container_selector_layout)
@@ -407,12 +461,14 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     top_button_area.addWidget(self.explorer_button)
     
     # Add some spacing between the explorer button and info box
-    top_button_area.addSpacing(10)
+    top_button_area.addSpacing(7)
     
     # Info box
     info_box = QGroupBox()
     info_box.setObjectName("infoBox")
+    info_box.setContentsMargins(5, 0, 5, 0)  # Add left and right margins directly to the widget
     info_box_layout = QVBoxLayout()
+    info_box_layout.setContentsMargins(5, 6, 5, 8)  # Left, Top, Right, Bottom margins inside the box
 
     # Add loading indicator
     self.loading_indicator = LoadingIndicator(size=30)
@@ -432,10 +488,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Add copy address button
     self.copyAddrButton = QPushButton()
-    self.copyAddrButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
     self.copyAddrButton.setToolTip(COPY_ADDRESS_TOOLTIP)
     self.copyAddrButton.clicked.connect(self.copy_address)
-    self.copyAddrButton.setFixedSize(24, 24)
+    self.copyAddrButton.setFixedSize(28, 28)  # Slightly larger button size
     self.copyAddrButton.setObjectName("copyAddrButton")
     self.copyAddrButton.hide()  # Initially hidden
     addr_layout.addWidget(self.copyAddrButton)
@@ -451,10 +506,9 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Add copy ethereum address button
     self.copyEthButton = QPushButton()
-    self.copyEthButton.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
     self.copyEthButton.setToolTip(COPY_ETH_ADDRESS_TOOLTIP)
     self.copyEthButton.clicked.connect(self.copy_eth_address)
-    self.copyEthButton.setFixedSize(24, 24)
+    self.copyEthButton.setFixedSize(28, 28)  # Slightly larger button size
     self.copyEthButton.setObjectName("copyEthButton")
     self.copyEthButton.hide()  # Initially hidden
     eth_addr_layout.addWidget(self.copyEthButton)
@@ -496,6 +550,8 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Bottom button area
     bottom_button_area = QVBoxLayout()
+    bottom_button_area.setObjectName("bottomButtonArea")
+    bottom_button_area.setContentsMargins(5, 4, 5, 0)  # Add left and right margins (5px)
     
     ## buttons
     # Add Rename Node button
@@ -514,64 +570,17 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.force_debug_checkbox.setChecked(self.__force_debug)  # Set initial state from config
     self.force_debug_checkbox.setFont(QFont("Courier New", 9, QFont.Bold))
     
-    # Create a more visible checkbox style that works in both themes
-    checkbox_style = """
-        QCheckBox {
-            margin-top: 4px;
-            spacing: 8px;
-            padding: 4px;
-            border-radius: 15px;
-            font-weight: bold;
-        }
-        
-        QCheckBox:hover {
-            background-color: rgba(128, 128, 128, 0.2);
-        }
-        
-        QCheckBox::indicator {
-            width: 18px;
-            height: 18px;
-            border-radius: 15px;
-            border: 2px solid #666;
-        }
-        
-        QCheckBox::indicator:unchecked {
-            background-color: transparent;
-        }
-        
-        QCheckBox::indicator:checked {
-            background-color: #4CAF50;
-            border-color: #4CAF50;
-            image: url(:/icons/check.png);
-        }
-        
-        QCheckBox::indicator:checked:hover {
-            background-color: #45a049;
-            border-color: #45a049;
-        }
-        
-        /* Dark theme specific */
-        .dark QCheckBox {
-            color: #ffffff;
-        }
-        
-        .dark QCheckBox::indicator:unchecked {
-            border-color: #888;
-            background-color: #333;
-        }
-        
-        /* Light theme specific */
-        .light QCheckBox {
-            color: #000000;
-        }
-        
-        .light QCheckBox::indicator:unchecked {
-            border-color: #666;
-            background-color: #ffffff;
-        }
-    """
+    # Apply custom styling to the debug checkbox
+    is_dark = self._current_stylesheet == DARK_STYLESHEET
+    if is_dark:
+        self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(
+            debug_checkbox_color=DARK_COLORS["debug_checkbox_color"]
+        ))
+    else:
+        self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(
+            debug_checkbox_color=LIGHT_COLORS["debug_checkbox_color"]
+        ))
     
-    self.force_debug_checkbox.setStyleSheet(checkbox_style)
     self.force_debug_checkbox.stateChanged.connect(self.toggle_force_debug)
     bottom_button_area.addWidget(self.force_debug_checkbox)
 
@@ -676,9 +685,6 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     self.setLayout(main_layout)
     self.apply_stylesheet()
-    
-    self.setWindowIcon(self._icon)
-    self.set_windows_taskbar_icon()
 
     return
   
@@ -687,43 +693,140 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         self._current_stylesheet = LIGHT_STYLESHEET
         self.themeToggleButton.setText(DARK_DASHBOARD_BUTTON_TEXT)
         self.force_debug_checkbox.setProperty('class', 'light')
+        is_dark = False
     else:
         self._current_stylesheet = DARK_STYLESHEET
         self.themeToggleButton.setText(LIGHT_DASHBOARD_BUTTON_TEXT)
         self.force_debug_checkbox.setProperty('class', 'dark')
+        is_dark = True
     
     # Update button colors for the new theme
     self.init_button_colors()
     
+    # Update copy button icons for the new theme
+    self.update_copy_button_icons()
+    
     self.apply_stylesheet()
     self.plot_graphs()
+    
     # Update the toggle button styling for theme change
     self.update_toggle_button_text()
+    
+    # Also directly re-apply the current button style to ensure it updates
+    current_text = self.toggleButton.text()
+    if current_text == LAUNCH_CONTAINER_BUTTON_TEXT:
+        self.apply_button_style(self.toggleButton, 'toggle_start')
+    elif current_text == STOP_CONTAINER_BUTTON_TEXT:
+        self.apply_button_style(self.toggleButton, 'toggle_stop')
+    
+    # Apply theme to the combobox dropdown using the new method
+    if hasattr(self.container_combo, 'set_theme'):
+        self.container_combo.set_theme(is_dark)
+    elif hasattr(self.container_combo, 'apply_default_theme'):
+        self.container_combo.apply_default_theme()
+    
     # Force style update
     self.force_debug_checkbox.style().unpolish(self.force_debug_checkbox)
     self.force_debug_checkbox.style().polish(self.force_debug_checkbox)
 
+  def update_copy_button_icons(self):
+    """Update the copy button icons based on the current theme."""
+    try:
+      # Import the icon module - handle both relative and absolute imports
+      try:
+        # Try relative import first (works in development)
+        import sys
+        from pathlib import Path
+        
+        # Add parent directory to path if needed
+        parent_dir = Path(__file__).resolve().parent.parent
+        if str(parent_dir) not in sys.path:
+            sys.path.append(str(parent_dir))
+            
+        from app_icons import get_copy_icon
+      except ImportError:
+        # Fallback for packaged app
+        from app_icons import get_copy_icon
+        
+      # Determine if we're using light theme
+      is_light_theme = self._current_stylesheet == LIGHT_STYLESHEET
+      
+      # Get the icon with appropriate color
+      copy_icon = get_copy_icon(is_light_theme)
+      
+      # Set icon size
+      icon_size = QSize(20, 20)
+      
+      # Apply to buttons
+      self.copyAddrButton.setIcon(copy_icon)
+      self.copyAddrButton.setIconSize(icon_size)
+      self.copyEthButton.setIcon(copy_icon)
+      self.copyEthButton.setIconSize(icon_size)
+      
+    except Exception as e:
+      # Log error and fallback to text
+      self.add_log(f"Error setting copy icons: {str(e)}", debug=True)
+      
+      # Fallback to system icon if there's an error
+      try:
+        default_icon = self.style().standardIcon(QStyle.SP_DialogSaveButton)
+        self.copyAddrButton.setIcon(default_icon)
+        self.copyAddrButton.setIconSize(QSize(20, 20))
+        self.copyEthButton.setIcon(default_icon)
+        self.copyEthButton.setIconSize(QSize(20, 20))
+      except:
+        # Last resort fallback to text
+        self.copyAddrButton.setText("Copy")
+        self.copyEthButton.setText("Copy")
+
   def change_text_color(self):
     if self._current_stylesheet == DARK_STYLESHEET:
-      self.force_debug_checkbox.setStyleSheet(CHECKBOX_STYLE_TEMPLATE.format(text_color=DARK_COLORS["text_color"]))
+      self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(debug_checkbox_color=DARK_COLORS["debug_checkbox_color"]))
     else:
-      self.force_debug_checkbox.setStyleSheet(CHECKBOX_STYLE_TEMPLATE.format(text_color=LIGHT_COLORS["text_color"]))
+      self.force_debug_checkbox.setStyleSheet(DETAILED_CHECKBOX_STYLE.format(debug_checkbox_color=LIGHT_COLORS["debug_checkbox_color"]))
 
   def apply_stylesheet(self):
     is_dark = self._current_stylesheet == DARK_STYLESHEET
-    self.setStyleSheet(self._current_stylesheet)
-    self.logView.setStyleSheet(self._current_stylesheet)
-    self.cpu_plot.setBackground(None)  # Reset the background to let the stylesheet take effect
+    self.logView.setObjectName("logView")  # Set object name for logView
+    self.change_text_color()
+
+    # Apply larger font size for info box labels on macOS
+    if platform.system().lower() == 'darwin':
+      # Additional macOS-specific styles
+      macos_style = """
+        #infoBox QLabel {
+          font-size: 12pt !important;
+        }
+        #infoBoxText QLabel {
+          font-size: 12pt !important;
+        }
+        QComboBox QAbstractItemView {
+          min-width: 254px !important; /* Wider dropdown on macOS */
+        }
+      """
+      # Apply base stylesheet plus macOS modifications
+      self.setStyleSheet(self._current_stylesheet + macos_style)
+      
+      # Apply margin directly to logView with its own stylesheet
+      self.logView.setStyleSheet("""
+        QTextEdit#logView {
+          margin-bottom: 6px;
+        }
+      """)
+    else:
+      # Apply regular stylesheet for other platforms
+      self.setStyleSheet(self._current_stylesheet)
+      self.logView.setStyleSheet("")
+    
+    # Reset plot backgrounds
+    self.cpu_plot.setBackground(None)
     self.memory_plot.setBackground(None)
     self.gpu_plot.setBackground(None)
     self.gpu_memory_plot.setBackground(None)
-    
+
   def toggle_container(self):
     # Get the current index and container name from the data
     current_index = self.container_combo.currentIndex()
-    if current_index < 0:
-        self.toast.show_notification(NotificationType.ERROR, "No container selected")
-        return
         
     # Get the actual container name from the item data
     container_name = self.container_combo.itemData(current_index)
@@ -738,24 +841,29 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         if self.is_container_running():
             self.add_log(f'Stopping container {container_name}...')
             
-            # Show loading indicator and clear info displays
-            self._clear_info_display()
-            self.loading_indicator.start()
+            # Get node alias from config if available
+            container_config = self.config_manager.get_container(container_name)
+            node_alias = None
+            if container_config and container_config.node_alias:
+                node_alias = container_config.node_alias
+                message = f"Please wait while node '{node_alias}' is being stopped..."
+            else:
+                message = "Please wait while Edge Node is being stopped..."
             
-            # Pass the container name explicitly to ensure we're stopping the right one
-            self.docker_handler.stop_container(container_name)
+            # Show loading dialog for stopping operation - now with blue background
+            self.toggle_dialog = LoadingDialog(
+                self, 
+                title="Stopping Node", 
+                message=message,
+                size=50
+            )
+            self.toggle_dialog.show()
             
-            # Clear and update all UI elements
-            self.update_toggle_button_text()
-            self.refresh_local_address()  # Updates address displays with cached data
-            self.maybe_refresh_uptime()   # Updates uptime displays
-            self.plot_data()              # Clears plots
-            
-            # Stop loading indicator
-            self.loading_indicator.stop()
-            
-            # Process events to ensure immediate UI update
+            # Process events to ensure dialog is visible
             QApplication.processEvents()
+            
+            # Add a small delay to ensure dialog is fully rendered
+            QTimer.singleShot(100, lambda: self._perform_container_stop(container_name))
         else:
             self.add_log(f'Starting container {container_name}...')
             
@@ -769,7 +877,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
                 volume_name = get_volume_name(container_name)
                 self.add_log(f"Generated volume name: {volume_name}", debug=True)
             
-            # Launch the container
+            # Launch the container (which now has its own loading dialog)
             self.launch_container(volume_name)
             
             # Update button state after launching
@@ -778,64 +886,69 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     except Exception as e:
         # Stop loading indicator in case of error
         self.loading_indicator.stop()
+        
+        # Close the loading dialog if it exists
+        toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
+        if toggle_dialog_visible:
+            self.toggle_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
+            
         self.add_log(f"Error toggling container: {str(e)}", color="red")
         self.toast.show_notification(NotificationType.ERROR, f"Error toggling container: {str(e)}")
 
-  def update_toggle_button_text(self):
-    # Get the current index and container name from the data
-    current_index = self.container_combo.currentIndex()
-    
-    # Store current button state
-    current_text = self.toggleButton.text()
-    current_enabled = self.toggleButton.isEnabled()
-    
-    if current_index < 0:
-        # Only update if state changed
-        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
-            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.apply_button_style(self.toggleButton, 'toggle_disabled')
-            self.toggleButton.setEnabled(False)
-        return
+  def _perform_container_stop(self, container_name):
+    """Perform the actual container stop operation after the dialog is shown."""
+    try:
+        # Clear info displays
+        self._clear_info_display()
+        self.loading_indicator.start()
         
-    # Get the actual container name from the item data
-    container_name = self.container_combo.itemData(current_index)
-    if not container_name:
-        # Only update if state changed
-        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
-            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-            self.apply_button_style(self.toggleButton, 'toggle_disabled')
-            self.toggleButton.setEnabled(False)
-        return
-    
-    # Check if container exists in Docker
-    container_exists = self.container_exists_in_docker(container_name)
-    
-    # If container doesn't exist in Docker but exists in config, show launch button
-    if not container_exists:
-        config_container = self.config_manager.get_container(container_name)
-        if config_container:
-            # Only update if state changed
-            if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or not current_enabled:
-                self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
-                self.apply_button_style(self.toggleButton, 'toggle_start')
-                self.toggleButton.setEnabled(True)
-            return
-    
-    # Make sure the docker handler has the correct container name
-    self.docker_handler.set_container_name(container_name)
-    
-    # Check if the container is running using docker_handler directly
-    is_running = self.docker_handler.is_container_running()
-    
-    # Determine the new state
-    new_text = STOP_CONTAINER_BUTTON_TEXT if is_running else LAUNCH_CONTAINER_BUTTON_TEXT
-    new_style = 'toggle_stop' if is_running else 'toggle_start'
-    
-    # Only update if state changed
-    if current_text != new_text:
-        self.toggleButton.setText(new_text)
-        self.apply_button_style(self.toggleButton, new_style)
-        self.toggleButton.setEnabled(True)
+        # Pass the container name explicitly to ensure we're stopping the right one
+        self.docker_handler.stop_container(container_name)
+        
+        # Clear and update all UI elements
+        self.update_toggle_button_text()
+        self.refresh_local_address()  # Updates address displays with cached data
+        self.maybe_refresh_uptime()   # Updates uptime displays
+        self.plot_data()              # Clears plots
+        
+        # Stop loading indicator
+        self.loading_indicator.stop()
+        
+        # Close the loading dialog
+        toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
+        if toggle_dialog_visible:
+            self.toggle_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
+        
+        # Process events to ensure immediate UI update
+        QApplication.processEvents()
+        
+        # Show success notification
+        # Get node alias from config if available
+        node_display_name = container_name
+        container_config = self.config_manager.get_container(container_name)
+        if container_config and container_config.node_alias:
+            node_display_name = container_config.node_alias
+            self.toast.show_notification(NotificationType.SUCCESS, f"Node '{node_display_name}' stopped successfully")
+        else:
+            self.toast.show_notification(NotificationType.SUCCESS, "Edge Node stopped successfully")
+        
+    except Exception as e:
+        # Stop loading indicator in case of error
+        self.loading_indicator.stop()
+        
+        # Close the loading dialog if it exists
+        toggle_dialog_visible = hasattr(self, 'toggle_dialog') and self.toggle_dialog is not None and self.toggle_dialog.isVisible()
+        if toggle_dialog_visible:
+            self.toggle_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'toggle_dialog', None) if hasattr(self, 'toggle_dialog') else None)
+            
+        self.add_log(f"Error stopping container: {str(e)}", color="red")
+        self.toast.show_notification(NotificationType.ERROR, f"Error stopping container: {str(e)}")
 
   def edit_file(self, file_path, func, title='Edit File'):
     env_content = ''
@@ -1302,9 +1415,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       
     # Only update if values have changed
     if uptime != self.__display_uptime:
-      if self.__display_uptime is not None and node_epoch_avail is not None and node_epoch_avail > 0:
-        color = 'green'
-        
+
       self.node_uptime.setText(f'Up Time: {uptime}')
 
       self.node_epoch.setText(f'Epoch: {node_epoch}')
@@ -1898,7 +2009,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
 
     # Create dialog
     dialog = QDialog(self)
-    dialog.setWindowTitle("Add New Node")
+    dialog.setWindowTitle(ADD_NEW_NODE_DIALOG_TITLE)
     dialog.setMinimumWidth(400)
 
     layout = QVBoxLayout()
@@ -1912,9 +2023,11 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Add buttons
     button_layout = QHBoxLayout()
     create_button = QPushButton("Create Node")
-    create_button.setProperty("type", "confirm")  # Set property for styling
     cancel_button = QPushButton("Cancel")
-    cancel_button.setProperty("type", "cancel")  # Set property for styling
+
+    # Apply the same styling as Start/Stop buttons
+    self.apply_button_style(create_button, 'start')  # Use 'start' style for Create button
+    self.apply_button_style(cancel_button, 'stop')   # Use 'stop' style for Cancel button
 
     button_layout.addWidget(create_button)
     button_layout.addWidget(cancel_button)
@@ -1937,6 +2050,42 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
   def add_new_node(self, container_name: str, volume_name: str, display_name: str = None):
     """Add a new node with the given container name and volume name,
        select it in the UI, and start it immediately."""
+    try:
+      from datetime import datetime
+
+      # Show the loading dialog - now with blue background
+      node_display_name = display_name if display_name else None
+      
+      if node_display_name:
+        message = f"Please wait while node '{node_display_name}' is being launched..."
+      else:
+        message = "Please wait while new Edge Node is being launched..."
+        
+      self.startup_dialog = LoadingDialog(
+          self, 
+          title="Starting Node", 
+          message=message,
+          size=50
+      )
+      self.startup_dialog.show()
+      
+      # Process events to ensure dialog is visible
+      QApplication.processEvents()
+      
+      # Add a small delay to ensure dialog is fully rendered
+      QTimer.singleShot(100, lambda: self._perform_add_new_node(container_name, volume_name, display_name))
+
+    except Exception as e:
+      self.add_log(f"Failed to create new node: {str(e)}", color="red")
+      # Close the loading dialog if it's still open
+      startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
+      if startup_dialog_visible:
+        self.startup_dialog.safe_close()
+        # Schedule removal of the reference after a delay
+        QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
+
+  def _perform_add_new_node(self, container_name, volume_name, display_name):
+    """Perform the actual node creation after the dialog is shown."""
     try:
       from datetime import datetime
 
@@ -1971,9 +2120,24 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       self.launch_container(volume_name)
 
       self.add_log(f"Successfully created and started new node: {container_name}", color="green")
+      
+      # Show success notification
+      node_display_name = "Edge Node"
+      if display_name:
+        node_display_name = display_name
+        self.toast.show_notification(NotificationType.SUCCESS, f"New Node '{node_display_name}' created successfully")
+      else:
+        self.toast.show_notification(NotificationType.SUCCESS, "New Edge Node created successfully")
 
     except Exception as e:
       self.add_log(f"Failed to create new node: {str(e)}", color="red")
+    finally:
+      # Close the loading dialog if it's still open
+      startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
+      if startup_dialog_visible:
+        self.startup_dialog.safe_close()
+        # Schedule removal of the reference after a delay
+        QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
 
   def launch_container(self, volume_name: str = None):
     """Launch the currently selected container with a mounted volume.
@@ -2010,7 +2174,54 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     self.add_log(f'Launching container {container_name} with volume {volume_name}...')
     
     try:
-        # Show loading indicator and clear info displays
+        # Show loading dialog if not already showing one from add_new_node
+        startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
+        if not startup_dialog_visible:
+            # Get node alias from config if available
+            container_config = self.config_manager.get_container(container_name)
+            node_alias = None
+            if container_config and container_config.node_alias:
+                node_alias = container_config.node_alias
+                message = f"Please wait while node '{node_alias}' is being launched..."
+            else:
+                message = "Please wait while Edge Node is being launched..."
+                
+            self.launcher_dialog = LoadingDialog(
+                self, 
+                title="Launching Node", 
+                message=message,
+                size=50
+            )
+            self.launcher_dialog.show()
+            
+            # Process events to ensure dialog is visible
+            QApplication.processEvents()
+            
+            # Add a small delay to ensure dialog is fully rendered
+            QTimer.singleShot(100, lambda: self._perform_container_launch(container_name, volume_name))
+        else:
+            # If we already have a startup dialog visible, just perform the launch
+            self._perform_container_launch(container_name, volume_name)
+            
+    except Exception as e:
+        # Stop loading indicator in case of error
+        self.loading_indicator.stop()
+        
+        # Close the loading dialog if we created one in this method
+        launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
+        if launcher_dialog_visible:
+            self.launcher_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+            
+        error_msg = f"Failed to launch container: {str(e)}"
+        self.add_log(error_msg, color="red")
+        self.toast.show_notification(NotificationType.ERROR, error_msg)
+
+  def _perform_container_launch(self, container_name, volume_name):
+    """Perform the actual container launch operation after the dialog is shown."""
+    try:
+        # Clear info displays
         self._clear_info_display()
         self.loading_indicator.start()
         
@@ -2041,12 +2252,34 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         # Stop loading indicator
         self.loading_indicator.stop()
         
+        # Close the loading dialog if we created one in this method
+        launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
+        if launcher_dialog_visible:
+            self.launcher_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+        
         # Show success notification
-        self.toast.show_notification(NotificationType.SUCCESS, f"Container {container_name} launched successfully")
+        # Get node alias from config if available
+        node_display_name = container_name
+        container_config = self.config_manager.get_container(container_name)
+        if container_config and container_config.node_alias:
+            node_display_name = container_config.node_alias
+            self.toast.show_notification(NotificationType.SUCCESS, f"Node '{node_display_name}' launched successfully")
+        else:
+            self.toast.show_notification(NotificationType.SUCCESS, "Edge Node launched successfully")
         
     except Exception as e:
         # Stop loading indicator on error
         self.loading_indicator.stop()
+        
+        # Close the loading dialog if we created one in this method
+        launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
+        if launcher_dialog_visible:
+            self.launcher_dialog.safe_close()
+            # Schedule removal of the reference after a delay
+            QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+            
         error_msg = f"Failed to launch container: {str(e)}"
         self.add_log(error_msg, color="red")
         self.toast.show_notification(NotificationType.ERROR, error_msg)
@@ -2195,7 +2428,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     
     # Update button state to show container is running
     self.toggleButton.setText(STOP_CONTAINER_BUTTON_TEXT)
-    self.toggleButton.setStyleSheet("background-color: red; color: white;")
+    self.apply_button_style(self.toggleButton, 'toggle_stop')
     self.toggleButton.setEnabled(True)
     
     # Log the setup
@@ -2280,3 +2513,62 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
       'Ratio1 Explorer is not yet implemented'
     )
     return
+
+  def update_toggle_button_text(self):
+    """Update the toggle button text and style based on the current container state"""
+    # Get the current index from the combo box
+    current_index = self.container_combo.currentIndex()
+    
+    # Get the current text to check if it needs to be updated
+    current_text = self.toggleButton.text()
+    current_enabled = self.toggleButton.isEnabled()
+    
+    if current_index < 0:
+        # Only update if state changed
+        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.apply_button_style(self.toggleButton, 'toggle_disabled')
+            self.toggleButton.setEnabled(False)
+        return
+        
+    # Get the actual container name from the item data
+    container_name = self.container_combo.itemData(current_index)
+    if not container_name:
+        # Only update if state changed
+        if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or current_enabled:
+            self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+            self.apply_button_style(self.toggleButton, 'toggle_disabled')
+            self.toggleButton.setEnabled(False)
+        return
+    
+    # Check if container exists in Docker
+    container_exists = self.container_exists_in_docker(container_name)
+    
+    # If container doesn't exist in Docker but exists in config, show launch button
+    if not container_exists:
+        config_container = self.config_manager.get_container(container_name)
+        if config_container:
+            # Only update if state changed
+            if current_text != LAUNCH_CONTAINER_BUTTON_TEXT or not current_enabled:
+                self.toggleButton.setText(LAUNCH_CONTAINER_BUTTON_TEXT)
+                self.apply_button_style(self.toggleButton, 'toggle_start')
+                self.toggleButton.setEnabled(True)
+            return
+    
+    # Make sure the docker handler has the correct container name
+    self.docker_handler.set_container_name(container_name)
+    
+    # Check if the container is running using docker_handler directly
+    is_running = self.docker_handler.is_container_running()
+    
+    # Determine the new state
+    new_text = STOP_CONTAINER_BUTTON_TEXT if is_running else LAUNCH_CONTAINER_BUTTON_TEXT
+    new_style = 'toggle_stop' if is_running else 'toggle_start'
+    
+    # Update text if changed
+    if current_text != new_text:
+        self.toggleButton.setText(new_text)
+    
+    # Always apply the style to ensure it updates when theme changes
+    self.apply_button_style(self.toggleButton, new_style)
+    self.toggleButton.setEnabled(True)
