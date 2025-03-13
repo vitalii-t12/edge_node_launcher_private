@@ -101,6 +101,18 @@ jobs:
           VERSION=$(cat ver.py | grep -o "'.*'" | tr -d "'")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      
+      # Create release
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          name: Version ${{ env.VERSION }}
+          tag: ${{ env.VERSION }}
+          allowUpdates: true
+          draft: false
+          makeLatest: true
+          
       - run: ${{ matrix.platformDependencies }}
       - name: Setup env
         run: |
@@ -198,14 +210,13 @@ jobs:
           path: dist/EdgeNodeLauncher
           overwrite: true
 
-      # Upload macOS app
-      - name: Upload macOS app as artifact
+      # For macOS, zip the .app directory first
+      - name: Zip macOS App
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
-        with:
-          name: EdgeNodeLauncher-${{ matrix.name }}-v${{ env.VERSION }}
-          path: dist/EdgeNodeLauncher.app
-          overwrite: true
+        run: |
+          cd dist
+          zip -r EdgeNodeLauncher-macOS-v${{ env.VERSION }}.zip EdgeNodeLauncher.app
+          cd ..
 
       # Upload Windows EXE to release
       - name: Upload Windows EXE to release
@@ -214,6 +225,7 @@ jobs:
         with:
           file: dist/EdgeNodeLauncher.exe
           asset_name: EdgeNodeLauncher-Windows-v${{ env.VERSION }}.exe
+          tag: ${{ env.VERSION }}
           repo_name: ${{ github.repository }}
           overwrite: true
 
@@ -224,6 +236,7 @@ jobs:
         with:
           file: dist/EdgeNodeLauncher.msi
           asset_name: EdgeNodeLauncher-Windows-v${{ env.VERSION }}.msi
+          tag: ${{ env.VERSION }}
           repo_name: ${{ github.repository }}
           overwrite: true
 
@@ -234,6 +247,7 @@ jobs:
         with:
           file: dist/EdgeNodeLauncher
           asset_name: EdgeNodeLauncher-${{ matrix.name }}-v${{ env.VERSION }}
+          tag: ${{ env.VERSION }}
           repo_name: ${{ github.repository }}
           overwrite: true
 
@@ -242,8 +256,9 @@ jobs:
         if: runner.os == 'macOS'
         uses: svenstaro/upload-release-action@master
         with:
-          file: dist/EdgeNodeLauncher.app
-          asset_name: EdgeNodeLauncher-macOS-v${{ env.VERSION }}.app
+          file: dist/EdgeNodeLauncher-macOS-v${{ env.VERSION }}.zip
+          asset_name: EdgeNodeLauncher-macOS-v${{ env.VERSION }}.zip
+          tag: ${{ env.VERSION }}
           repo_name: ${{ github.repository }}
           overwrite: true
 
@@ -259,16 +274,9 @@ jobs:
         run: |
           VERSION=$(cat ver.py | grep -o "'.*'" | tr -d "'")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
+          
       # For potential debugging
       - name: List available artifacts
         run: |
           echo "This step only lists artifacts that were made available to download"
           echo "VERSION: ${{ env.VERSION }}"
-
-      - uses: ncipollo/release-action@v1
-        with:
-          name: Version ${{ env.VERSION }}
-          allowUpdates: true
-          tag: ${{ env.VERSION }}
