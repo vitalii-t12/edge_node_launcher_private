@@ -102,6 +102,11 @@ class AuthorizedAddressesDialog(QDialog):
 
         layout = QVBoxLayout()
 
+        # Add note about max length
+        note_label = QLabel("Note: Maximum alias length is 15 characters")
+        note_label.setStyleSheet("color: gray; font-style: italic;")
+        layout.addWidget(note_label)
+
         # Headers
         header_layout = QHBoxLayout()
         header_layout.addWidget(QLabel("Address"))

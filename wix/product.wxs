@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"> 
+  <Product Id="*" Name="EdgeNodeLauncher" Language="1033" Version="1.0.0.0" Manufacturer="YourCompany" UpgradeCode="61DAB716-7CE9-4F67-BC46-7ADB96FB074A"> 
+    <Package InstallerVersion="200" Compressed="yes" /> 
+    <MediaTemplate EmbedCab="yes" /> 
+    <Feature Id="ProductFeature" Title="EdgeNodeLauncher" Level="1"> 
+      <ComponentRef Id="ApplicationComponent" /> 
+    </Feature> 
+    <Directory Id="TARGETDIR" Name="SourceDir"> 
+      <Directory Id="ProgramFilesFolder"> 
+        <Directory Id="INSTALLDIR" Name="EdgeNodeLauncher"> 
+          <Component Id="ApplicationComponent" Guid="*"> 
+            <File Id="ApplicationExe" Source="dist\EdgeNodeLauncher.exe" KeyPath="yes" /> 
+          </Component> 
+        </Directory> 
+      </Directory> 
+    </Directory> 
+  </Product> 
+</Wix> 
