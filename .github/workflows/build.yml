@@ -5,12 +5,6 @@ name: Multi-step multi-platform build
 on:
   push:
     branches: ["main"]
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: "Branch to run the workflow on"
-        required: true
-        default: "main"
 
 jobs:
   check-version:
@@ -263,16 +257,18 @@ jobs:
       - name: Retrieve version
         id: retrieve_version
         run: |
-          echo "VERSION=$(cat ver.py | grep -o "'.*'")" >> $GITHUB_OUTPUT
+          VERSION=$(cat ver.py | grep -o "'.*'" | tr -d "'")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       # For potential debugging
       - name: List available artifacts
         run: |
           echo "This step only lists artifacts that were made available to download"
-          echo "VERSION: ${{ steps.retrieve_version.outputs.VERSION }}"
+          echo "VERSION: ${{ env.VERSION }}"
 
       - uses: ncipollo/release-action@v1
         with:
-          name: Version ${{ steps.retrieve_version.outputs.version }}
+          name: Version ${{ env.VERSION }}
           allowUpdates: true
-          tag: ${{ steps.retrieve_version.outputs.version }}
+          tag: ${{ env.VERSION }}
