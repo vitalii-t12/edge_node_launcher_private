@@ -405,5 +405,3 @@ echo Done.
           self.add_log("You are already using the latest version. Current: {}, Online: {}".format(CURRENT_VERSION, latest_version))
     except Exception as e:
       self.add_log(f"Failed to check for updates: {e}")
-      QMessageBox.warning(None, 'Update Check Failed', f'Could not check for updates: {str(e)}')
-
