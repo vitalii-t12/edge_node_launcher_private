@@ -185,6 +185,132 @@ class DockerCommandThread(QThread):
             import traceback
             traceback.print_exc()
             self.error_message = error_msg
+            
+class DockerStreamingCommandThread(QThread):
+    """ Thread to run a Docker command with real-time streaming output """
+    output_received = pyqtSignal(str)
+    command_finished = pyqtSignal(object)
+    command_error = pyqtSignal(str)
+
+    def __init__(self, command: list, remote_ssh_command: list = None):
+        super().__init__()
+        self.command = command
+        self.remote_ssh_command = remote_ssh_command
+        # Store the result to be processed in the main thread
+        self.result_data = None
+        self.error_message = None
+        self.process = None
+        self.stdout_data = ""
+        self.stderr_data = ""
+
+    def run(self):
+        try:
+            full_command = self.command
+            is_docker_pull = len(self.command) >= 2 and self.command[0] == 'docker' and self.command[1] == 'pull'
+
+            # Add remote prefix if needed
+            if self.remote_ssh_command:
+                full_command = self.remote_ssh_command + full_command
+                
+            # Always log the command before executing it
+            logging.info(f"Executing streaming command: {' '.join(full_command)}")
+            
+            try:
+                # Start process with pipe for stdout and stderr
+                if os.name == 'nt':
+                    if is_docker_pull:
+                        logging.info(f"Starting Docker pull on Windows platform with streaming output")
+                    self.process = subprocess.Popen(
+                        full_command,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        creationflags=subprocess.CREATE_NO_WINDOW
+                    )
+                else:
+                    if is_docker_pull:
+                        logging.info(f"Starting Docker pull on {platform.system()} platform with streaming output")
+                    self.process = subprocess.Popen(
+                        full_command,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        bufsize=1  # Line buffered
+                    )
+                
+                # Read stdout and stderr in separate threads to prevent blocking
+                stdout_thread = threading.Thread(target=self._read_stream, args=(self.process.stdout, True))
+                stderr_thread = threading.Thread(target=self._read_stream, args=(self.process.stderr, False))
+                
+                stdout_thread.daemon = True
+                stderr_thread.daemon = True
+                
+                stdout_thread.start()
+                stderr_thread.start()
+                
+                # Wait for process to complete
+                return_code = self.process.wait()
+                
+                # Wait for threads to finish reading
+                stdout_thread.join(timeout=2)
+                stderr_thread.join(timeout=2)
+                
+                if is_docker_pull:
+                    logging.info(f"Docker pull command completed with return code: {return_code}")
+                    if return_code == 0:
+                        logging.info("Docker pull completed successfully")
+                    else:
+                        logging.error(f"Docker pull failed with error: {self.stderr_data}")
+
+                self.result_data = (self.stdout_data, self.stderr_data, return_code)
+                
+            except Exception as e:
+                error_msg = f"Error executing streaming command: {str(e)}"
+                logging.error(error_msg)
+                self.error_message = error_msg
+                
+        except Exception as e:
+            error_msg = f"Error in streaming thread: {str(e)}"
+            logging.error(error_msg)
+            self.error_message = error_msg
+    
+    def _read_stream(self, stream, is_stdout):
+        """Read from a stream line by line and emit signals for each line.
+        
+        Args:
+            stream: The stream to read from (stdout or stderr)
+            is_stdout: Whether this is stdout (True) or stderr (False)
+        """
+        try:
+            for line in iter(stream.readline, ''):
+                if not line:
+                    break
+                    
+                if is_stdout:
+                    self.stdout_data += line
+                    self.output_received.emit(line.strip())
+                else:
+                    self.stderr_data += line
+                    # For Docker pull, stderr often contains progress information too
+                    if "docker" in self.command and "pull" in self.command:
+                        self.output_received.emit(line.strip())
+        except Exception as e:
+            logging.error(f"Error reading from {'stdout' if is_stdout else 'stderr'}: {str(e)}")
+        finally:
+            stream.close()
+
+    def terminate_process(self):
+        """Terminate the running process if it exists"""
+        if self.process and self.process.poll() is None:
+            try:
+                if os.name == 'nt':
+                    import signal
+                    self.process.send_signal(signal.CTRL_BREAK_EVENT)
+                else:
+                    self.process.terminate()
+                logging.info("Process terminated")
+            except Exception as e:
+                logging.error(f"Error terminating process: {e}")
 
 class DockerDirectCommandThread(QThread):
     """ Thread to run a direct Docker command (not a container exec command) """
@@ -202,6 +328,7 @@ class DockerDirectCommandThread(QThread):
     def run(self):
         try:
             full_command = self.command
+            is_docker_pull = len(self.command) >= 2 and self.command[0] == 'docker' and self.command[1] == 'pull'
 
             # Add remote prefix if needed
             if self.remote_ssh_command:
@@ -215,6 +342,8 @@ class DockerDirectCommandThread(QThread):
             
             try:
                 if os.name == 'nt':
+                    if is_docker_pull:
+                        logging.info(f"Starting Docker pull on Windows platform")
                     result = subprocess.run(
                         full_command,
                         capture_output=True,
@@ -223,7 +352,16 @@ class DockerDirectCommandThread(QThread):
                         creationflags=subprocess.CREATE_NO_WINDOW
                     )
                 else:
+                    if is_docker_pull:
+                        logging.info(f"Starting Docker pull on {platform.system()} platform")
                     result = subprocess.run(full_command, capture_output=True, text=True, timeout=timeout)
+
+                if is_docker_pull:
+                    logging.info(f"Docker pull command completed with return code: {result.returncode}")
+                    if result.returncode == 0:
+                        logging.info("Docker pull completed successfully")
+                    else:
+                        logging.error(f"Docker pull failed with error: {result.stderr}")
 
                 self.result_data = (result.stdout, result.stderr, result.returncode)
             except subprocess.TimeoutExpired as e:
@@ -304,15 +442,52 @@ class DockerCommandHandler:
         # Image doesn't exist, return False
         return False
 
-    def pull_image(self, callback, error_callback):
+    def pull_image(self, callback, error_callback, output_callback=None):
         """Pull the Docker image with progress reporting.
         
         Args:
             callback: Success callback function
             error_callback: Error callback function
+            output_callback: Optional callback for streaming output
         """
+        logging.info(f"Starting Docker image pull for {DOCKER_IMAGE}")
         pull_command = ['docker', 'pull', DOCKER_IMAGE]
-        self._execute_direct_threaded(pull_command, callback, error_callback)
+        logging.info(f"Executing pull command: {' '.join(pull_command)}")
+        
+        # Use streaming thread for real-time updates
+        thread = DockerStreamingCommandThread(pull_command, self.remote_ssh_command)
+        
+        # Connect output signal to callback if provided
+        if output_callback:
+            thread.output_received.connect(output_callback)
+        
+        # Connect finished signal
+        thread.finished.connect(lambda: self._handle_streaming_thread_finished(thread, callback, error_callback))
+        
+        self.threads.append(thread)  # Keep reference to prevent GC
+        thread.start()
+    
+    def _handle_streaming_thread_finished(self, thread, callback, error_callback):
+        """Handle streaming thread completion.
+        
+        Args:
+            thread: The completed thread
+            callback: Success callback function
+            error_callback: Error callback function
+        """
+        # This method runs in the main thread
+        if thread.error_message and error_callback:
+            error_callback(thread.error_message)
+        elif thread.result_data and callback:
+            # Check if the callback expects a tuple or individual arguments
+            sig = inspect.signature(callback)
+            if len(sig.parameters) == 1:
+                # Callback expects a single tuple argument
+                callback(thread.result_data)
+            else:
+                # Callback expects individual arguments
+                stdout, stderr, return_code = thread.result_data
+                callback(stdout, stderr, return_code)
 
     def check_and_pull_image_updates(self, image_name: str = None, tag: str = None) -> tuple:
         """Check if a Docker image has updates available and pull if it does.
@@ -740,7 +915,8 @@ class DockerCommandHandler:
                 callback(thread.result_data)
             else:
                 # Callback expects individual arguments
-                callback(*thread.result_data)
+                stdout, stderr, return_code = thread.result_data
+                callback(stdout, stderr, return_code)
         
         # Remove thread from the list
         if thread in self.threads:

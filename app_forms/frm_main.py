@@ -2165,6 +2165,7 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             else:
                 message = "Please wait while Edge Node is being launched..."
                 
+            # Show loading dialog for launching operation
             self.launcher_dialog = LoadingDialog(
                 self, 
                 title="Launching Node", 
@@ -2263,28 +2264,32 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             # Define callbacks for Docker pull
             def on_pull_success(result):
                 stdout, stderr, return_code = result
-                # Process each line of output to update the dialog
-                for line in stdout.splitlines():
-                    if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                        self.docker_pull_dialog.update_pull_progress(line)
+                # No need to process lines here as they're processed in real-time by on_pull_output
                 
                 # If pull completed successfully
                 if return_code == 0:
                     if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                        self.docker_pull_dialog.pull_complete.emit(True, "Docker image pulled successfully")
+                        self.docker_pull_dialog.set_pull_complete(True, "Docker image pulled successfully")
                 else:
                     error_msg = f"Failed to pull Docker image: {stderr}"
                     self.add_log(error_msg, color="red")
                     if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                        self.docker_pull_dialog.pull_complete.emit(False, error_msg)
+                        self.docker_pull_dialog.set_pull_complete(False, error_msg)
             
             def on_pull_error(error_msg):
                 self.add_log(f"Error pulling Docker image: {error_msg}", color="red")
                 if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                    self.docker_pull_dialog.pull_complete.emit(False, error_msg)
+                    self.docker_pull_dialog.set_pull_complete(False, error_msg)
             
-            # Start the Docker pull operation
-            self.docker_handler.pull_image(on_pull_success, on_pull_error)
+            def on_pull_output(line):
+                # Process each line of output in real-time to update the dialog
+                if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
+                    self.docker_pull_dialog.update_pull_progress(line)
+                    # Process events to keep UI responsive
+                    QApplication.processEvents()
+            
+            # Start the Docker pull operation with real-time output processing
+            self.docker_handler.pull_image(on_pull_success, on_pull_error, on_pull_output)
             
             # Exit this method early - we'll continue after the pull completes
             return
@@ -2340,18 +2345,18 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             elif hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible():
                 self.startup_dialog.update_progress("Container launched successfully!")
             
-            # Close the loading dialogs after a short delay to show success message
+            # Close the loading dialogs immediately
             launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
             if launcher_dialog_visible:
-                QTimer.singleShot(500, lambda: self.launcher_dialog.safe_close() if hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None else None)
+                self.launcher_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(1000, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
             
             startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
             if startup_dialog_visible:
-                QTimer.singleShot(500, lambda: self.startup_dialog.safe_close() if hasattr(self, 'startup_dialog') and self.startup_dialog is not None else None)
+                self.startup_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(1000, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
             
             # Show success notification
             # Get node alias from config if available
@@ -2405,18 +2410,18 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             elif hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible():
                 self.startup_dialog.update_progress(f"Error: {error_msg}")
             
-            # Close the loading dialogs after a short delay to show error message
+            # Close the loading dialogs immediately
             launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
             if launcher_dialog_visible:
-                QTimer.singleShot(1500, lambda: self.launcher_dialog.safe_close() if hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None else None)
+                self.launcher_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(2000, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
             
             startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
             if startup_dialog_visible:
-                QTimer.singleShot(1500, lambda: self.startup_dialog.safe_close() if hasattr(self, 'startup_dialog') and self.startup_dialog is not None else None)
+                self.startup_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(2000, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
                 
             error_msg = f"Failed to launch container: {error_msg}"
             self.add_log(error_msg, color="red")
@@ -2457,14 +2462,16 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
     # Log the result
     if success:
         self.add_log("Docker image pulled successfully", color="green")
+        logging.info(f"Docker pull completed successfully: {message}")
     else:
         self.add_log(f"Docker image pull failed: {message}", color="red")
+        logging.error(f"Docker pull failed: {message}")
         
-    # Close the Docker pull dialog after a short delay
+    # Close the Docker pull dialog immediately
     if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-        QTimer.singleShot(500, lambda: self.docker_pull_dialog.safe_close() if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None else None)
+        self.docker_pull_dialog.safe_close()
         # Schedule removal of the reference after a delay
-        QTimer.singleShot(1000, lambda: setattr(self, 'docker_pull_dialog', None) if hasattr(self, 'docker_pull_dialog') else None)
+        QTimer.singleShot(500, lambda: setattr(self, 'docker_pull_dialog', None) if hasattr(self, 'docker_pull_dialog') else None)
     
     # If pull was successful, continue with container launch
     if success:
@@ -2474,10 +2481,10 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
         
         # Get node alias from config if available for better user feedback
         container_config = self.config_manager.get_container(container_name)
-        node_display_name = container_name
+        node_alias = None
         if container_config and container_config.node_alias:
-            node_display_name = container_config.node_alias
-            message = f"Please wait while node '{node_display_name}' is being launched..."
+            node_alias = container_config.node_alias
+            message = f"Please wait while node '{node_alias}' is being launched..."
         else:
             message = "Please wait while Edge Node is being launched..."
             
@@ -2840,28 +2847,32 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             # Define callbacks for Docker pull
             def on_pull_success(result):
                 stdout, stderr, return_code = result
-                # Process each line of output to update the dialog
-                for line in stdout.splitlines():
-                    if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                        self.docker_pull_dialog.update_pull_progress(line)
+                # No need to process lines here as they're processed in real-time by on_pull_output
                 
                 # If pull completed successfully
                 if return_code == 0:
                     if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                        self.docker_pull_dialog.pull_complete.emit(True, "Docker image pulled successfully")
+                        self.docker_pull_dialog.set_pull_complete(True, "Docker image pulled successfully")
                 else:
                     error_msg = f"Failed to pull Docker image: {stderr}"
                     self.add_log(error_msg, color="red")
                     if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                        self.docker_pull_dialog.pull_complete.emit(False, error_msg)
+                        self.docker_pull_dialog.set_pull_complete(False, error_msg)
             
             def on_pull_error(error_msg):
                 self.add_log(f"Error pulling Docker image: {error_msg}", color="red")
                 if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
-                    self.docker_pull_dialog.pull_complete.emit(False, error_msg)
+                    self.docker_pull_dialog.set_pull_complete(False, error_msg)
             
-            # Start the Docker pull operation
-            self.docker_handler.pull_image(on_pull_success, on_pull_error)
+            def on_pull_output(line):
+                # Process each line of output in real-time to update the dialog
+                if hasattr(self, 'docker_pull_dialog') and self.docker_pull_dialog is not None and self.docker_pull_dialog.isVisible():
+                    self.docker_pull_dialog.update_pull_progress(line)
+                    # Process events to keep UI responsive
+                    QApplication.processEvents()
+            
+            # Start the Docker pull operation with real-time output processing
+            self.docker_handler.pull_image(on_pull_success, on_pull_error, on_pull_output)
             
             # Exit this method early - we'll continue after the pull completes
             return
@@ -2917,18 +2928,18 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             elif hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible():
                 self.startup_dialog.update_progress("Container launched successfully!")
             
-            # Close the loading dialogs after a short delay to show success message
+            # Close the loading dialogs immediately
             launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
             if launcher_dialog_visible:
-                QTimer.singleShot(500, lambda: self.launcher_dialog.safe_close() if hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None else None)
+                self.launcher_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(1000, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
             
             startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
             if startup_dialog_visible:
-                QTimer.singleShot(500, lambda: self.startup_dialog.safe_close() if hasattr(self, 'startup_dialog') and self.startup_dialog is not None else None)
+                self.startup_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(1000, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
             
             # Show success notification
             # Get node alias from config if available
@@ -2982,18 +2993,18 @@ class EdgeNodeLauncher(QWidget, _DockerUtilsMixin, _UpdaterMixin):
             elif hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible():
                 self.startup_dialog.update_progress(f"Error: {error_msg}")
             
-            # Close the loading dialogs after a short delay to show error message
+            # Close the loading dialogs immediately
             launcher_dialog_visible = hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None and self.launcher_dialog.isVisible()
             if launcher_dialog_visible:
-                QTimer.singleShot(1500, lambda: self.launcher_dialog.safe_close() if hasattr(self, 'launcher_dialog') and self.launcher_dialog is not None else None)
+                self.launcher_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(2000, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'launcher_dialog', None) if hasattr(self, 'launcher_dialog') else None)
             
             startup_dialog_visible = hasattr(self, 'startup_dialog') and self.startup_dialog is not None and self.startup_dialog.isVisible()
             if startup_dialog_visible:
-                QTimer.singleShot(1500, lambda: self.startup_dialog.safe_close() if hasattr(self, 'startup_dialog') and self.startup_dialog is not None else None)
+                self.startup_dialog.safe_close()
                 # Schedule removal of the reference after a delay
-                QTimer.singleShot(2000, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
+                QTimer.singleShot(500, lambda: setattr(self, 'startup_dialog', None) if hasattr(self, 'startup_dialog') else None)
                 
             error_msg = f"Failed to launch container: {error_msg}"
             self.add_log(error_msg, color="red")
