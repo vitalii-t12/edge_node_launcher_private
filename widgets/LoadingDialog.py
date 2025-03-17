@@ -127,9 +127,11 @@ class LoadingDialog(QDialog):
         if hasattr(self, 'loading_indicator'):
             self.loading_indicator.stop()
         
+        # Close immediately and then use a timer to ensure proper cleanup
+        self.close()
         # Use a short timer to ensure proper context for closing
         # This must be called from the main thread
-        QTimer.singleShot(100, self.close) 
+        QTimer.singleShot(100, self.deleteLater)
     
     @pyqtSlot(str)
     def update_progress(self, message, process_events=True):
