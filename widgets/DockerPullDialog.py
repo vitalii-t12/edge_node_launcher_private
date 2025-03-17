@@ -333,7 +333,11 @@ class DockerPullDialog(QDialog):
         """Safely close the dialog with a timer to prevent direct deletion."""
         if hasattr(self, 'loading_indicator'):
             self.loading_indicator.stop()
-        QTimer.singleShot(100, self.close)
+        
+        # Close immediately and then use a timer to ensure proper cleanup
+        self.close()
+        # Use a short timer to ensure proper cleanup
+        QTimer.singleShot(100, self.deleteLater)
 
     def set_pull_complete(self, success, message):
         """Handle pull completion.
@@ -350,5 +354,11 @@ class DockerPullDialog(QDialog):
         else:
             self.set_message(f"Docker image pull failed: {message}")
         
+        # Process events to ensure UI updates immediately
+        QApplication.processEvents()
+        
         # Emit the signal to notify the parent
         self.pull_complete.emit(success, message)
+        
+        # Close the dialog automatically after a short delay
+        QTimer.singleShot(100, self.safe_close)
