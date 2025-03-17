@@ -2,6 +2,13 @@ from ver import __VER__
 
 FULL_DEBUG = True
 
+
+# ============================================================================
+# URLs
+# ============================================================================
+# GITHUB_API_URL = 'https://api.github.com/repos/Ratio1/edge_node_launcher/releases/latest' #FIXME
+GITHUB_API_URL = 'https://api.github.com/repos/vitalii-t12/edge_node_launcher/releases/latest'
+
 # ============================================================================
 # DIRECTORY AND FILE CONSTANTS
 # ============================================================================
@@ -14,7 +21,7 @@ E2_PEM_FILE = 'e2.pem'
 # ============================================================================
 DOCKER_VOLUME = 'ratio1_vol'
 DOCKER_IMAGE = 'ratio1/edge_node'
-DOCKER_TAG = 'mainnet'
+DOCKER_TAG = 'testnet'
 DOCKER_CONTAINER_NAME = 'r1node'
 DOCKER_VOLUME_PATH = '/edge_node/_local_cache'
 
@@ -133,7 +140,7 @@ DAPP_URLS = {
     'devnet': 'https://devnet-app.ratio1.ai/'
 }
 
-DEFAULT_ENVIRONMENT = 'mainnet'
+DEFAULT_ENVIRONMENT = 'testnet'
 
 # ============================================================================
 # TEMPLATES

@@ -7,10 +7,9 @@ import platform
 import subprocess
 from PyQt5.QtWidgets import QMessageBox
 
+from utils.const import GITHUB_API_URL
 from ver import __VER__ as CURRENT_VERSION
 
-
-GITHUB_API_URL = 'https://api.github.com/repos/Ratio1/edge_node_launcher/releases/latest'
 DOWNLOAD_DIR = 'downloads'
 
 class _UpdaterMixin:
@@ -405,5 +404,3 @@ echo Done.
           self.add_log("You are already using the latest version. Current: {}, Online: {}".format(CURRENT_VERSION, latest_version))
     except Exception as e:
       self.add_log(f"Failed to check for updates: {e}")
-      QMessageBox.warning(None, 'Update Check Failed', f'Could not check for updates: {str(e)}')
-
