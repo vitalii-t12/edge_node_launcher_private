@@ -361,28 +361,6 @@ jobs:
           repo_name: ${{ github.repository }}
           overwrite: true
 
-      # Upload macOS app to release
-      - name: Upload macOS app to release
-        if: runner.os == 'macOS'
-        uses: svenstaro/upload-release-action@master
-        with:
-          file: dist/EdgeNodeLauncher.app
-          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app
-          tag: ${{ env.VERSION }}
-          repo_name: ${{ github.repository }}
-          overwrite: true
-
-      # Upload macOS zipped app to release
-      - name: Upload macOS zipped app to release
-        if: runner.os == 'macOS'
-        uses: svenstaro/upload-release-action@master
-        with:
-          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app.zip
-          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app.zip
-          tag: ${{ env.VERSION }}
-          repo_name: ${{ github.repository }}
-          overwrite: true
-
       # Upload macOS zipped files to release
       - name: Upload macOS zipped files to release
         if: runner.os == 'macOS'
