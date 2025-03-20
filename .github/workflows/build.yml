@@ -23,9 +23,9 @@ jobs:
         run: |
           LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "none")
           if [ "$LATEST_TAG" = "none" ]; then
-            echo "No tags found."
+          echo "No tags found."
           else
-            echo "Latest tag is $LATEST_TAG"
+          echo "Latest tag is $LATEST_TAG"
           fi
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
@@ -48,6 +48,7 @@ jobs:
   build:
     needs: check-version
     if: needs.check-version.outputs.should-run == 'true'
+
     strategy:
       matrix:
         include:
@@ -89,12 +90,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up Python 3.10.11
         uses: actions/setup-python@v2
         with:
           python-version: "3.10.11"
-
       - name: Read app version
         id: app_version
         shell: bash
@@ -104,12 +103,10 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - run: ${{ matrix.platformDependencies }}
-
       - name: Setup env
         run: |
           pip install -r requirements.txt
           pip3 install --upgrade PyInstaller pyinstaller-hooks-contrib
-
       - name: Build app
         run: ${{ matrix.build }}
 
@@ -125,9 +122,9 @@ jobs:
           password: ${{ secrets.SSL_PASSWORD }}
           # Credential ID for signing certificate.
           credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
-          # OAuth TOTP Secret
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
           totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
-          # Path of code object to be signed (EXE).
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
           # Directory where signed code object(s) will be written.
           output_path: ${{ github.workspace }}/signed
@@ -157,14 +154,23 @@ jobs:
         if: runner.os == 'Windows'
         uses: sslcom/esigner-codesign@develop
         with:
+          # Sign and timestamp code object.
           command: sign
+          # SSL.com account username
           username: ${{ secrets.SSL_USERNAME }}
+          # SSL.com account password.
           password: ${{ secrets.SSL_PASSWORD }}
+          # Credential ID for signing certificate.
           credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
           totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
           file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.msi
+          # Directory where signed code object(s) will be written.
           output_path: ${{ github.workspace }}/signed
+          # Scan code before sign
           malware_block: true
+          # Environment Name, For Production 'PROD' or For Staging 'TEST'
           environment_name: PROD
 
       - name: Replace non-signed version with signed one
@@ -177,18 +183,31 @@ jobs:
       - name: Create AppImage
         if: runner.os == 'Linux'
         run: |
+          # Install AppImage tools and dependencies
           sudo apt-get update
           sudo apt-get install -y libfuse2 desktop-file-utils
+          
+          # Create tarball as a fallback option first (in case AppImage fails)
           echo "Creating tarball as fallback option"
           mkdir -p dist
+          
+          # Download appimagetool
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
+          
+          # Create AppDir structure
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/applications
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          
+          # Copy binary and icon
           cp dist/EdgeNodeLauncher AppDir/usr/bin/
+          
+          # Copy icon to both locations - IMPORTANT: Must be in root with exact name referenced in desktop file
           cp assets/r1_icon.png AppDir/EdgeNodeLauncher.png
           cp assets/r1_icon.png AppDir/usr/share/icons/hicolor/256x256/apps/EdgeNodeLauncher.png
+          
+          # Create desktop file in the root directory (required by appimagetool)
           cat > AppDir/EdgeNodeLauncher.desktop << EOF
           [Desktop Entry]
           Name=EdgeNodeLauncher
@@ -197,8 +216,14 @@ jobs:
           Type=Application
           Categories=Utility;
           EOF
+          
+          # Also create a copy in the standard location
           cp AppDir/EdgeNodeLauncher.desktop AppDir/usr/share/applications/
+          
+          # Validate desktop file
           desktop-file-validate AppDir/EdgeNodeLauncher.desktop || echo "Desktop file validation issues detected"
+          
+          # Create AppRun file
           cat > AppDir/AppRun << EOF
           #!/bin/bash
           SELF=\$(readlink -f "\$0")
@@ -206,10 +231,21 @@ jobs:
           export PATH="\${HERE}/usr/bin:\${PATH}"
           "\${HERE}/usr/bin/EdgeNodeLauncher" "\$@"
           EOF
+            
           chmod +x AppDir/AppRun
+          
+          # Debug - List files in AppDir
+          echo "Listing AppDir contents:"
+          find AppDir -type f | sort
+          
+          # Set architecture explicitly
           export ARCH=x86_64
+          
+          # Try to build AppImage with verbose output
+          echo "Attempting to create AppImage..."
           ./appimagetool -v AppDir dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.AppImage || {
             echo "AppImage creation failed, trying alternative method..."
+            # Alternative method if the first one fails
             ./appimagetool --appimage-extract
             ./squashfs-root/AppRun -v AppDir dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.AppImage || {
               echo "Both AppImage creation methods failed. Will use tarball fallback."
@@ -220,6 +256,8 @@ jobs:
       - name: Create macOS .app bundle
         if: runner.os == 'macOS'
         run: |
+          # PyInstaller should have created the .app bundle
+          # Just make sure it's properly packaged
           cd dist
           # Create a zip of the .app directory
           ditto -c -k --keepParent EdgeNodeLauncher.app EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app.zip
@@ -231,9 +269,11 @@ jobs:
         shell: powershell
         run: |
           cd dist
+          # Create separate zip files for EXE and MSI
           Compress-Archive -Path 'EdgeNodeLauncher.exe' -DestinationPath "EdgeNodeLauncher-v${{ env.VERSION }}-Windows.exe.zip" -Force
           Compress-Archive -Path 'EdgeNodeLauncher.msi' -DestinationPath "EdgeNodeLauncher-v${{ env.VERSION }}-Windows.msi.zip" -Force
-          # Combined zip
+          
+          # Create combined zip with both files
           Compress-Archive -Path 'EdgeNodeLauncher.exe', 'EdgeNodeLauncher.msi' -DestinationPath "EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip" -Force
           cd ..
 
@@ -245,16 +285,125 @@ jobs:
           zip -r EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip EdgeNodeLauncher.app
           cd ..
 
-      # Upload artifacts (NOT to release, just to Actions storage)
+      # Upload artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: EdgeNodeLauncher-${{ matrix.name }}-v${{ env.VERSION }}
-          path: dist/
+          path: |
+            dist/EdgeNodeLauncher*
           overwrite: true
 
+      # Upload to release - Windows EXE
+      - name: Upload Windows EXE to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher.exe
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-Windows.exe
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
 
-  # This job only runs once ALL matrix builds have finished successfully.
+      # Upload Windows MSI to release
+      - name: Upload MSI to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher.msi
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-Windows.msi
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload Windows zipped EXE to release
+      - name: Upload Windows zipped EXE to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-Windows.exe.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-Windows_exe.zip
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload Windows zipped MSI to release
+      - name: Upload Windows zipped MSI to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-Windows.msi.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-Windows_msi.zip
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload Windows zipped files to release
+      - name: Upload Windows zipped files to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload Linux AppImage to release
+      - name: Upload Linux AppImage to release
+        if: runner.os == 'Linux'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file_glob: true
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.*Image
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.AppImage
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload macOS app to release
+      - name: Upload macOS app to release
+        if: runner.os == 'macOS'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher.app
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload macOS zipped app to release
+      - name: Upload macOS zipped app to release
+        if: runner.os == 'macOS'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app.zip
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload macOS zipped files to release
+      - name: Upload macOS zipped files to release
+        if: runner.os == 'macOS'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          name: Version ${{ env.VERSION }}
+          tag: ${{ env.VERSION }}
+          allowUpdates: true
+          draft: false
+          makeLatest: true
+
   create-release:
     runs-on: ubuntu-latest
     needs: build
@@ -262,36 +411,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-
       - name: Retrieve version
         id: retrieve_version
         run: |
           VERSION=$(cat ver.py | grep -o "'.*'" | tr -d "'")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Release version is: $VERSION"
 
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: dist
-
-      - name: Create or update the Release
-        id: create_release
-        uses: ncipollo/release-action@v1
-        with:
-          name: "Version ${{ env.VERSION }}"
-          tag: ${{ env.VERSION }}
-          allowUpdates: true
-          draft: false
-          makeLatest: true
-
-      # Example approach: Upload everything from dist/ in one go with file_glob.
-      # If you prefer explicit naming, do multiple svenstaro/upload-release-action steps instead
-      - name: Upload all artifacts to Release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ env.VERSION }}
-          file_glob: true
-          file: dist/**/* # This grabs everything in `dist` from all OSes
-          overwrite: true
+      # For potential debugging
+      - name: List available artifacts
+        run: |
+          echo "This step only lists artifacts that were made available to download"
+          echo "VERSION: ${{ env.VERSION }}"
