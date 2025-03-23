@@ -10,12 +10,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Remove old artifacts
-        uses: c-hive/gha-remove-artifacts@v1
+      - name: Get artifact list
+        id: artifact-list
+        uses: actions/github-script@v6
         with:
-          # Keep artifacts that are less than 1 month old
-          # All our artifacts are tagged
-          age: '1 hour'
-          # Keep the most recent 4 artifacts
-          skip-recent: 4
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            
+            console.log(`Found ${artifacts.data.artifacts.length} artifacts`);
+            
+            // Keep the 10 most recent artifacts
+            const artifactsToDelete = artifacts.data.artifacts
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .slice(10)
+              .filter(artifact => {
+                // Keep artifacts newer than 7 days regardless of the 10 most recent rule
+                const createdAt = new Date(artifact.created_at);
+                const now = new Date();
+                const ageInDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+                return ageInDays > 7;
+              });
+            
+            console.log(`Will delete ${artifactsToDelete.length} artifacts`);
+            
+            return {
+              artifactsToDelete: artifactsToDelete.map(a => ({
+                id: a.id,
+                name: a.name,
+                created_at: a.created_at
+              }))
+            };
+
+      - name: Delete old artifacts
+        if: steps.artifact-list.outputs.artifactsToDelete != '[]'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifactsToDelete = JSON.parse(steps.artifact-list.outputs.result).artifactsToDelete;
+            
+            console.log('Deleting the following artifacts:');
+            for (const artifact of artifactsToDelete) {
+              console.log(`- ${artifact.name} (created at ${artifact.created_at})`);
+              try {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id
+                });
+                console.log(`  Successfully deleted artifact ${artifact.id} (${artifact.name})`);
+              } catch (error) {
+                console.log(`  Failed to delete artifact ${artifact.id} (${artifact.name}): ${error.message}`);
+              }
+            }
 
