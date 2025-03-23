@@ -1,79 +1,380 @@
-name: Cleanup Artifacts
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Multi-step multi-platform build
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight
-  workflow_dispatch:
+  push:
+    branches: ["main"]
 
 jobs:
-  cleanup:
+  check-version:
     runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check-version.outputs.should-run }}
 
     steps:
-      - name: Get artifact list
-        id: artifact-list
-        uses: actions/github-script@v6
+      - uses: actions/checkout@v3
         with:
-          script: |
-            const artifacts = await github.rest.actions.listArtifactsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 100
-            });
-            
-            console.log(`Found ${artifacts.data.artifacts.length} artifacts`);
-            
-            // Keep the 10 most recent artifacts
-            const artifactsToDelete = artifacts.data.artifacts
-              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-              .slice(10)
-              .filter(artifact => {
-                // Keep artifacts newer than 7 days regardless of the 10 most recent rule
-                const createdAt = new Date(artifact.created_at);
-                const now = new Date();
-                const ageInDays = (now - createdAt) / (1000 * 60 * 60 * 24);
-                return ageInDays > 7;
-              });
-            
-            console.log(`Will delete ${artifactsToDelete.length} artifacts`);
-            
-            // Set output for the next step
-            core.setOutput('artifactsToDeleteJson', JSON.stringify(artifactsToDelete.map(a => ({
-              id: a.id,
-              name: a.name,
-              created_at: a.created_at
-            }))));
-            
-            return artifactsToDelete.length;
+          fetch-depth: 0 # Fetches all history for all branches and tags
 
-      - name: Delete old artifacts
-        if: steps.artifact-list.outputs.artifactsToDeleteJson != '[]'
-        uses: actions/github-script@v6
-        env:
-          ARTIFACTS_TO_DELETE: ${{ steps.artifact-list.outputs.artifactsToDeleteJson }}
+      # Step to fetch the latest release version
+      - name: Get latest release version
+        id: latest-version
+        run: |
+          LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "none")
+          if [ "$LATEST_TAG" = "none" ]; then
+          echo "No tags found."
+          else
+          echo "Latest tag is $LATEST_TAG"
+          fi
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+
+      # Step to read version.py and compare
+      - name: Check version in ver.py
+        id: check-version
+        run: |
+          CURRENT_VERSION=$(cat ver.py | grep -o "'.*'")
+          echo "Current version is $CURRENT_VERSION"
+
+          if [ "$CURRENT_VERSION" == "$LATEST_TAG" ]; then
+            echo "Version $CURRENT_VERSION has not been incremented vs already released $LATEST_TAG. Build will be cancelled."
+            echo "::set-output name=should-run::false"
+            exit 1
+          else
+            echo "Current version $CURRENT_VERSION differs from latest tag $LATEST_TAG. Build will continue."
+            echo "::set-output name=should-run::true"
+          fi
+
+  build:
+    needs: check-version
+    if: needs.check-version.outputs.should-run == 'true'
+
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            build: ./build_scripts/win32_build.bat
+            name: WIN32
+            platformDependencies: ""
+
+          - os: ubuntu-24.04
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+            name: LINUX_Ubuntu-24.04
+            platformDependencies: sudo apt-get update && sudo apt install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
+
+          - os: ubuntu-22.04
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+            name: LINUX_Ubuntu-22.04
+            platformDependencies: sudo apt-get update && sudo apt install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
+
+          - os: ubuntu-20.04
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+            name: LINUX_Ubuntu-20.04
+            platformDependencies: sudo apt-get update && sudo apt-get install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev --fix-missing
+
+          - os: macos-latest
+            build: |
+              chmod +x build_scripts/unix_build.sh
+              ./build_scripts/unix_build.sh
+            name: OSX-arm64
+
+    name: Build installers ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions: write-all
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.10.11
+        uses: actions/setup-python@v2
         with:
-          script: |
-            // Get the artifacts to delete from the previous step's output
-            const artifactsToDeleteJson = process.env.ARTIFACTS_TO_DELETE;
-            if (!artifactsToDeleteJson || artifactsToDeleteJson === '[]') {
-              console.log('No artifacts to delete');
-              return;
-            }
-            
-            const artifactsToDelete = JSON.parse(artifactsToDeleteJson);
-            
-            console.log('Deleting the following artifacts:');
-            for (const artifact of artifactsToDelete) {
-              console.log(`- ${artifact.name} (created at ${artifact.created_at})`);
-              try {
-                await github.rest.actions.deleteArtifact({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  artifact_id: artifact.id
-                });
-                console.log(`  Successfully deleted artifact ${artifact.id} (${artifact.name})`);
-              } catch (error) {
-                console.log(`  Failed to delete artifact ${artifact.id} (${artifact.name}): ${error.message}`);
-              }
-            }
+          python-version: "3.10.11"
+      - name: Read app version
+        id: app_version
+        shell: bash
+        run: |
+          VERSION=$(cat ver.py | grep -o "'.*'" | tr -d "'")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
+      - run: ${{ matrix.platformDependencies }}
+      - name: Setup env
+        run: |
+          pip install -r requirements.txt
+          pip3 install --upgrade PyInstaller pyinstaller-hooks-contrib
+      - name: Build app
+        run: ${{ matrix.build }}
+
+      - name: Sign Windows app
+        if: runner.os == 'Windows'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          # Sign and timestamp code object.
+          command: sign
+          # SSL.com account username
+          username: ${{ secrets.SSL_USERNAME }}
+          # SSL.com account password.
+          password: ${{ secrets.SSL_PASSWORD }}
+          # Credential ID for signing certificate.
+          credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
+          totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
+          file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.exe
+          # Directory where signed code object(s) will be written.
+          output_path: ${{ github.workspace }}/signed
+          # Scan code before sign
+          malware_block: true
+          # Environment Name, For Production 'PROD' or For Staging 'TEST'
+          environment_name: PROD
+
+      - name: Replace non-signed version with signed one
+        if: runner.os == 'Windows'
+        run: |
+          rm dist/EdgeNodeLauncher.exe
+          mv signed/EdgeNodeLauncher.exe dist/EdgeNodeLauncher.exe
+
+      - name: Create msi
+        if: runner.os == 'Windows'
+        run: |
+          echo Checking EULA file exists:
+          dir build_scripts
+          echo EULA content:
+          type wix\License.rtf
+          echo "====="
+          echo Running MSI build script...
+          ./build_scripts/build_msi.bat
+
+      - name: Sign the msi installer
+        if: runner.os == 'Windows'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          # Sign and timestamp code object.
+          command: sign
+          # SSL.com account username
+          username: ${{ secrets.SSL_USERNAME }}
+          # SSL.com account password.
+          password: ${{ secrets.SSL_PASSWORD }}
+          # Credential ID for signing certificate.
+          credential_id: ${{ secrets.SSL_CREDENTIAL_ID }}
+          # OAuth TOTP Secret (https://www.ssl.com/how-to/automate-esigner-ev-code-signing)
+          totp_secret: ${{ secrets.SSL_TOTP_SECRET }}
+          # Path of code object to be signed. (DLL, JAR, EXE, MSI files vb... )
+          file_path: ${{ github.workspace }}/dist/EdgeNodeLauncher.msi
+          # Directory where signed code object(s) will be written.
+          output_path: ${{ github.workspace }}/signed
+          # Scan code before sign
+          malware_block: true
+          # Environment Name, For Production 'PROD' or For Staging 'TEST'
+          environment_name: PROD
+
+      - name: Replace non-signed version with signed one
+        if: runner.os == 'Windows'
+        run: |
+          rm dist/EdgeNodeLauncher.msi
+          mv signed/EdgeNodeLauncher.msi dist/EdgeNodeLauncher.msi
+
+      # Create AppImage for Linux
+      - name: Create AppImage
+        if: runner.os == 'Linux'
+        run: |
+          # Install AppImage tools and dependencies
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 desktop-file-utils
+          
+          # Create tarball as a fallback option first (in case AppImage fails)
+          echo "Creating tarball as fallback option"
+          mkdir -p dist
+          
+          # Download appimagetool
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+          
+          # Create AppDir structure
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          
+          # Copy binary and icon
+          cp dist/EdgeNodeLauncher AppDir/usr/bin/
+          
+          # Copy icon to both locations - IMPORTANT: Must be in root with exact name referenced in desktop file
+          cp assets/r1_icon.png AppDir/EdgeNodeLauncher.png
+          cp assets/r1_icon.png AppDir/usr/share/icons/hicolor/256x256/apps/EdgeNodeLauncher.png
+          
+          # Create desktop file in the root directory (required by appimagetool)
+          cat > AppDir/EdgeNodeLauncher.desktop << EOF
+          [Desktop Entry]
+          Name=EdgeNodeLauncher
+          Exec=EdgeNodeLauncher
+          Icon=EdgeNodeLauncher
+          Type=Application
+          Categories=Utility;
+          EOF
+          
+          # Also create a copy in the standard location
+          cp AppDir/EdgeNodeLauncher.desktop AppDir/usr/share/applications/
+          
+          # Validate desktop file
+          desktop-file-validate AppDir/EdgeNodeLauncher.desktop || echo "Desktop file validation issues detected"
+          
+          # Create AppRun file
+          cat > AppDir/AppRun << EOF
+          #!/bin/bash
+          SELF=\$(readlink -f "\$0")
+          HERE=\${SELF%/*}
+          export PATH="\${HERE}/usr/bin:\${PATH}"
+          "\${HERE}/usr/bin/EdgeNodeLauncher" "\$@"
+          EOF
+            
+          chmod +x AppDir/AppRun
+          
+          # Debug - List files in AppDir
+          echo "Listing AppDir contents:"
+          find AppDir -type f | sort
+          
+          # Set architecture explicitly
+          export ARCH=x86_64
+          
+          # Try to build AppImage with verbose output
+          echo "Attempting to create AppImage..."
+          ./appimagetool -v AppDir dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.AppImage || {
+            echo "AppImage creation failed, trying alternative method..."
+            # Alternative method if the first one fails
+            ./appimagetool --appimage-extract
+            ./squashfs-root/AppRun -v AppDir dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.AppImage || {
+              echo "Both AppImage creation methods failed. Will use tarball fallback."
+            }
+          }
+
+      # Create macOS .app bundle
+      - name: Create macOS .app bundle
+        if: runner.os == 'macOS'
+        run: |
+          # PyInstaller should have created the .app bundle
+          # Just make sure it's properly packaged
+          cd dist
+          # Create a zip of the .app directory
+          ditto -c -k --keepParent EdgeNodeLauncher.app EdgeNodeLauncher-v${{ env.VERSION }}-macOS.app.zip
+          cd ..
+
+      # Create zip files for Windows
+      - name: Zip apps for Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          cd dist
+          # Create separate zip files for EXE and MSI
+          Compress-Archive -Path 'EdgeNodeLauncher.exe' -DestinationPath "EdgeNodeLauncher-v${{ env.VERSION }}-Windows.exe.zip" -Force
+          Compress-Archive -Path 'EdgeNodeLauncher.msi' -DestinationPath "EdgeNodeLauncher-v${{ env.VERSION }}-Windows.msi.zip" -Force
+          
+          # Create combined zip with both files
+          Compress-Archive -Path 'EdgeNodeLauncher.exe', 'EdgeNodeLauncher.msi' -DestinationPath "EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip" -Force
+          cd ..
+
+      # Create zip files for macOS
+      - name: Zip apps for macOS
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip EdgeNodeLauncher.app
+          cd ..
+
+      # Upload artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdgeNodeLauncher-${{ matrix.name }}-v${{ env.VERSION }}
+          path: |
+            dist/EdgeNodeLauncher*
+          overwrite: true
+
+      # Upload to release - Windows EXE
+      - name: Upload Windows EXE to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher.exe
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-Windows.exe
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload Windows MSI to release
+      - name: Upload MSI to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher.msi
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-Windows.msi
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload Windows zipped MSI to release
+      - name: Upload Windows zipped MSI to release
+        if: runner.os == 'Windows'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-Windows.msi.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-Windows_msi.zip
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload Linux AppImage to release
+      - name: Upload Linux AppImage to release
+        if: runner.os == 'Linux'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file_glob: true
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.*Image
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.AppImage
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      # Upload macOS zipped files to release
+      - name: Upload macOS zipped files to release
+        if: runner.os == 'macOS'
+        uses: svenstaro/upload-release-action@master
+        with:
+          file: dist/EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip
+          asset_name: EdgeNodeLauncher-v${{ env.VERSION }}-${{ matrix.name }}.zip
+          tag: ${{ env.VERSION }}
+          repo_name: ${{ github.repository }}
+          overwrite: true
+
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          name: Version ${{ env.VERSION }}
+          tag: ${{ env.VERSION }}
+          allowUpdates: true
+          draft: false
+          makeLatest: true
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions: write-all
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Retrieve version
+        id: retrieve_version
+        run: |
+          VERSION=$(cat ver.py | grep -o "'.*'" | tr -d "'")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      # For potential debugging
+      - name: List available artifacts
+        run: |
+          echo "This step only lists artifacts that were made available to download"
+          echo "VERSION: ${{ env.VERSION }}"
